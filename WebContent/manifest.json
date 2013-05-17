@@ -12,8 +12,9 @@
     },
 
     "permissions": [
-        "tabs", // to programmatically inject content script
-        "http://*/*", "https://*/*" // access all websites
+        "tabs",
+        "http://*/*",
+        "https://*/*"
     ],
 
     "browser_action": {
