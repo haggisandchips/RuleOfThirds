@@ -1,0 +1,22 @@
+{
+    "manifest_version": 2,
+
+    "name": "Rule of Thirds",
+    "description": "Simple extension to draw a 3x3 grid on an image to help visualise the Rule of Thirds.",
+    "version": "1.0",
+
+    "background": {
+        "scripts": [
+            "background.js"
+        ]
+    },
+
+    "permissions": [
+        "tabs", // to programmatically inject content script
+        "http://*/*", "https://*/*" // access all websites
+    ],
+
+    "browser_action": {
+        "name": "Rule of Thirds"
+    }
+}
