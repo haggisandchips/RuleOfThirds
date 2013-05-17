@@ -1,3 +1,7 @@
+/*
+ * License, blah, blah, blah ...
+ */
+var MIN_SIZE = 50;
 
 // TODO Move this to a function call
 
@@ -8,7 +12,7 @@ for (var ii = 0; ii < images.length; ii++) {
     var w = image.width();
     var h = image.height();
 
-    if(image.is(':visible') && (w > 500 || h > 500)) {
+    if(image.is(':visible') && (w >= MIN_SIZE || h >= MIN_SIZE)) {
 
         // Outline the image so I can see which images are being processed
         image.css('outline', '#fff solid 1px');
@@ -20,7 +24,6 @@ for (var ii = 0; ii < images.length; ii++) {
         console.log(w + 'x' + h + ' image found at ' + x + ',' + y);
 
         var canvas = document.createElement('canvas');
-        // TODO Set data attribute with extension id
 
         // TODO Will <img> sizes always match the image itself - what if there is a margin?
 
@@ -71,10 +74,13 @@ for (var ii = 0; ii < images.length; ii++) {
 
         // Add canvas to div so that we can position as per image
         var holder = document.createElement('div');
+        // TODO holder.setAttribute('data-extension-id', id);
         holder.appendChild(canvas);
 
         // Insert holder into document just before image
         image.before(holder);
+
+        // TODO Add listener to image so we can remove canvas if image is hidden, moves or resizes
 
         // TODO What about z-index?
 

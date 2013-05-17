@@ -1,4 +1,6 @@
-
+/*
+ * License, blah, blah, blah ...
+ */
 var id = chrome.i18n.getMessage("@@extension_id");
 
 chrome.browserAction.onClicked.addListener(function(tab) {
