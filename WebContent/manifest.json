@@ -5,12 +5,17 @@
     "description": "Simple extension to draw a 3x3 grid on an image to help visualise the Rule of Thirds.",
     "version": "1.0",
 
+    "icons": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    },
+
     "background": {
         "scripts": [
             "background.js"
         ]
     },
-
     "permissions": [
         "tabs",
         "http://*/*",
