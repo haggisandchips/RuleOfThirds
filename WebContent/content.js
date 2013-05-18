@@ -24,18 +24,18 @@ function applyGrids(id) {
     for (var ii = 0; ii < images.length; ii++) {
 
         var image = $(images[ii]);
+
         var w = image.width();
         var h = image.height();
 
         // TODO Determine if image position is 'fixed' (including ancestry) and omit them as well
-        if(image.css('visibility') !== 'hidden' &&
-            ((w >= MIN_SIZE && h >= MIN_SIZE_OTHER) || (h >= MIN_SIZE && w >= MIN_SIZE_OTHER))) {
+        if(image.css('visibility') !== 'hidden' && isMinSize(w, h)) {
 
             var offset = image.offset();
+            var w = image.width();
+            var h = image.height();
             var x = offset.left;
             var y = offset.top;
-
-            console.log(w + 'x' + h + ' image found at ' + x + ',' + y);
 
             var canvas = document.createElement('canvas');
             canvas.width = w;
@@ -86,6 +86,17 @@ function applyGrids(id) {
             holder.style.margin = image.css('margin');
             holder.setAttribute('data-extension-id', id);
             image.offsetParent().append(holder);
+
+            var actualImage = new Image();
+            actualImage.onload = function(actualImage, holder) {
+                return function() {
+                    var minSize = isMinSize(actualImage.width, actualImage.height);
+                    if(!minSize) {
+                        $(holder).remove();
+                    }
+                }
+            }(actualImage, holder);
+            actualImage.src = image.attr('src');
         }
     }
 }
@@ -96,3 +107,7 @@ function removeGrids(id) {
     $('#' + id).remove();
 }
 
+function isMinSize(w, h) {
+
+    return (w >= MIN_SIZE && h >= MIN_SIZE_OTHER) || (h >= MIN_SIZE && w >= MIN_SIZE_OTHER);
+}
