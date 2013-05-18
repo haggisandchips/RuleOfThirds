@@ -2,7 +2,7 @@
  * License, blah, blah, blah ...
  */
 
-var MIN_SIZE = 50;
+var MIN_SIZE = 100, MIN_SIZE_OTHER = MIN_SIZE / 2;
 
 function toggleGrids(id) {
 
@@ -27,7 +27,9 @@ function applyGrids(id) {
         var w = image.width();
         var h = image.height();
 
-        if(image.is(':visible') && (w >= MIN_SIZE || h >= MIN_SIZE)) {
+        // TODO Determine if image position is 'fixed' (including ancestry) and omit them as well
+        if(image.css('visibility') !== 'hidden' &&
+            ((w >= MIN_SIZE && h >= MIN_SIZE_OTHER) || (h >= MIN_SIZE && w >= MIN_SIZE_OTHER))) {
 
             var offset = image.offset();
             var x = offset.left;
@@ -73,14 +75,13 @@ function applyGrids(id) {
             ctx.arc(2 * w/3, 2 * h/3, radius, 0, 360, true);
             ctx.stroke();
 
-            // Position canvas absolutely within document
+            // Add canvas to the image's parent offset by the same amount
             canvas.style.position = 'absolute';
-            canvas.style.left = x + 'px';
-            canvas.style.top = y + 'px';
-            // TODO Can this be calculated when the image value is "auto" ???
-            canvas.style.zIndex = 10000;
+            var parentOffset = image.offsetParent().offset();
+            canvas.style.left = (x - parentOffset.left) + 'px';
+            canvas.style.top = (y - parentOffset.top) + 'px';
             canvas.setAttribute('data-extension-id', id);
-            document.body.appendChild(canvas);
+            image.before(canvas);
         }
     }
 }
