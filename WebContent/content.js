@@ -76,12 +76,16 @@ function applyGrids(id) {
             ctx.stroke();
 
             // Add canvas to the image's parent offset by the same amount
-            canvas.style.position = 'absolute';
-            var parentOffset = image.offsetParent().offset();
-            canvas.style.left = (x - parentOffset.left) + 'px';
-            canvas.style.top = (y - parentOffset.top) + 'px';
-            canvas.setAttribute('data-extension-id', id);
-            image.before(canvas);
+            var holder = document.createElement('div');
+            holder.appendChild(canvas);
+            holder.style.position = 'absolute';
+            var parentOffset = image.position();
+            holder.style.left = parentOffset.left + parseInt(image.css('border-left-width')) + 'px';
+            holder.style.top = parentOffset.top + parseInt(image.css('border-top-width')) + 'px';
+            holder.style.padding = image.css('padding');
+            holder.style.margin = image.css('margin');
+            holder.setAttribute('data-extension-id', id);
+            image.offsetParent().append(holder);
         }
     }
 }
