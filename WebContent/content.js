@@ -73,28 +73,14 @@ function applyGrids(id) {
             ctx.arc(2 * w/3, 2 * h/3, radius, 0, 360, true);
             ctx.stroke();
 
-            // Add canvas to div so that we can position as per image
-            var holder = document.createElement('div');
-            holder.setAttribute('data-extension-id', id);
-            holder.appendChild(canvas);
-
-            // Insert holder into document just before image
-            image.before(holder);
-
-            // Position canvas holder at the same location as the image and absolutely to not disrupt the page
-            holder.style.position = 'absolute';
-            holder.style.left = x;
-            holder.style.top = y;
-
-            // Allow for padding and margins
-            holder.style.paddingLeft = image.css('padding-left');
-            holder.style.paddingRight = image.css('padding-right');
-            holder.style.paddingTop = image.css('padding-top');
-            holder.style.paddingBottom = image.css('padding-bottom');
-            holder.style.marginLeft = image.css('margin-left');
-            holder.style.marginRight = image.css('margin-right');
-            holder.style.marginTop = image.css('margin-top');
-            holder.style.marginBottom = image.css('margin-bottom');
+            // Position canvas absolutely within document
+            canvas.style.position = 'absolute';
+            canvas.style.left = x + 'px';
+            canvas.style.top = y + 'px';
+            // TODO Can this be calculated when the image value is "auto" ???
+            canvas.style.zIndex = 10000;
+            canvas.setAttribute('data-extension-id', id);
+            document.body.appendChild(canvas);
         }
     }
 }
