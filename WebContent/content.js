@@ -63,16 +63,16 @@ function applyGrids(id) {
             ctx.shadowBlur = radius / 2;
             ctx.shadowColor = '#a00';
             ctx.beginPath();
-            ctx.arc(w/3, h/3, radius, 0, 360, true);
+            ctx.arc(w/3, h/3, radius, 0, 2 * Math.PI, true);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(2 * w/3, h/3, radius, 0, 360, true);
+            ctx.arc(2 * w/3, h/3, radius, 0, 2 * Math.PI, true);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(w/3, 2 * h/3, radius, 0, 360, true);
+            ctx.arc(w/3, 2 * h/3, radius, 0, 2 * Math.PI, true);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(2 * w/3, 2 * h/3, radius, 0, 360, true);
+            ctx.arc(2 * w/3, 2 * h/3, radius, 0, 2 * Math.PI, true);
             ctx.stroke();
 
             // Add canvas to the image's parent offset by the same amount
