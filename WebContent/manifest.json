@@ -3,7 +3,7 @@
 
     "name": "Rule of Thirds",
     "description": "Simple extension to draw a 3 x 3 grid on an image to help visualise the Rule of Thirds.",
-    "version": "1.4",
+    "version": "1.5",
 
     "icons": {
         "16": "icon16.png",
