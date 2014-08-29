@@ -29,7 +29,7 @@ function applyGrids(id) {
         var h = image.height();
 
         // TODO Determine if image position is 'fixed' (including ancestry) and omit them as well
-        if(image.css('visibility') !== 'hidden' && isMinSize(w, h)) {
+        if(image.css('visibility') !== 'hidden' && image.css('display') !== 'none' && isMinSize(w, h)) {
 
             var offset = image.offset();
             var w = image.width();
