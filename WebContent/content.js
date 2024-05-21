@@ -1,113 +1,141 @@
-/*
- * License, blah, blah, blah ...
- */
+if (typeof rotInit === 'undefined') {
 
-var MIN_SIZE = 100, MIN_SIZE_OTHER = MIN_SIZE / 2;
+    console.log('Injecting function');
 
-function toggleGrids(id) {
+    const rotInit = function () {
 
-    if($('#' + id).length == 0) {
-        applyGrids(id);
-    } else {
-        removeGrids(id);
-    }
-}
+        const MIN_LONG = 100, MIN_SHORT = 50;
 
-function applyGrids(id) {
+        let controlElement = document.getElementById('rule-of-thirds');
 
-    // Set flag to indicate that grids have been applied
-    var flag = document.createElement('div');
-    flag.id = id;
-    document.body.appendChild(flag);
+        if (!controlElement) {
 
-    var images = document.getElementsByTagName("img");
-    for (var ii = 0; ii < images.length; ii++) {
+            // Add control element
+            controlElement = document.createElement('div');
+            controlElement.id = 'rule-of-thirds';
+            controlElement.setAttribute('grids', 'false');
+            document.body.appendChild(controlElement);
 
-        var image = $(images[ii]);
+            chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
-        var w = image.width();
-        var h = image.height();
+                console.log('Received message: ' + JSON.stringify(request));
 
-        // TODO Determine if image position is 'fixed' (including ancestry) and omit them as well
-        if(image.css('visibility') !== 'hidden' && image.css('display') !== 'none' && isMinSize(w, h)) {
-
-            var offset = image.offset();
-            var w = image.width();
-            var h = image.height();
-            var x = offset.left;
-            var y = offset.top;
-
-            var canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-
-            var ctx = canvas.getContext('2d');
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = '#000';
-
-            // Draw Rule of Thirds grid
-            ctx.beginPath();
-            ctx.moveTo(0, h/3);
-            ctx.lineTo(w, h/3);
-            ctx.moveTo(0, 2 * h/3);
-            ctx.lineTo(w, 2 * h/3);
-            ctx.moveTo(w/3, 0);
-            ctx.lineTo(w/3, h);
-            ctx.moveTo(2 * w/3, 0);
-            ctx.lineTo(2 * w/3, h);
-            ctx.stroke();
-
-            // Add circles with glow around the intersections
-            var radius = Math.min(w, h) / 50;
-            ctx.strokeStyle = '#c00';
-            ctx.shadowBlur = radius / 2;
-            ctx.shadowColor = '#a00';
-            ctx.beginPath();
-            ctx.arc(w/3, h/3, radius, 0, 2 * Math.PI, true);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(2 * w/3, h/3, radius, 0, 2 * Math.PI, true);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(w/3, 2 * h/3, radius, 0, 2 * Math.PI, true);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(2 * w/3, 2 * h/3, radius, 0, 2 * Math.PI, true);
-            ctx.stroke();
-
-            // Add canvas to the image's parent offset by the same amount
-            var holder = document.createElement('div');
-            holder.appendChild(canvas);
-            holder.style.position = 'absolute';
-            var parentOffset = image.position();
-            holder.style.left = parentOffset.left + parseInt(image.css('border-left-width')) + 'px';
-            holder.style.top = parentOffset.top + parseInt(image.css('border-top-width')) + 'px';
-            holder.style.padding = image.css('padding');
-            holder.style.margin = image.css('margin');
-            holder.setAttribute('data-extension-id', id);
-            image.offsetParent().append(holder);
-
-            var actualImage = new Image();
-            actualImage.onload = function(actualImage, holder) {
-                return function() {
-                    var minSize = isMinSize(actualImage.width, actualImage.height);
-                    if(!minSize) {
-                        $(holder).remove();
-                    }
+                if (request.command === 'TOGGLE_ROT') {
+                    toggleGrids();
+                    sendResponse('TOGGLED');
                 }
-            }(actualImage, holder);
-            actualImage.src = image.attr('src');
+            });
+        }
+
+        function toggleGrids() {
+
+            if (controlElement.getAttribute('grids') === 'false') {
+                applyGrids();
+            } else {
+                removeGrids();
+            }
+        }
+
+        function applyGrids() {
+
+            console.log('Applying grids');
+
+            const images = document.getElementsByTagName('img');
+            for (let ii = 0; ii < images.length; ii++) {
+
+                const image = images[ii];
+
+                let w = image.width;
+                let h = image.height;
+
+                const computedStyle = getComputedStyle(image, null);
+                const visibility = computedStyle['visibility'];
+                const display = computedStyle['display'];
+
+                if (visibility !== 'hidden' && display !== 'none' && isMinSize(w, h)) {
+
+                    w = image.width;
+                    h = image.height;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = '#000';
+
+                    // Draw Rule of Thirds grid
+                    ctx.beginPath();
+                    ctx.moveTo(0, h / 3);
+                    ctx.lineTo(w, h / 3);
+                    ctx.moveTo(0, 2 * h / 3);
+                    ctx.lineTo(w, 2 * h / 3);
+                    ctx.moveTo(w / 3, 0);
+                    ctx.lineTo(w / 3, h);
+                    ctx.moveTo(2 * w / 3, 0);
+                    ctx.lineTo(2 * w / 3, h);
+                    ctx.stroke();
+
+                    // Add circles with glow around the intersections
+                    var radius = Math.min(w, h) / 50;
+                    ctx.strokeStyle = '#c00';
+                    ctx.shadowBlur = radius / 2;
+                    ctx.shadowColor = '#a00';
+                    ctx.beginPath();
+                    ctx.arc(w / 3, h / 3, radius, 0, 2 * Math.PI, true);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(2 * w / 3, h / 3, radius, 0, 2 * Math.PI, true);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(w / 3, 2 * h / 3, radius, 0, 2 * Math.PI, true);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(2 * w / 3, 2 * h / 3, radius, 0, 2 * Math.PI, true);
+                    ctx.stroke();
+
+                    // Add canvas to the image's parent offset by the same amount
+                    const holder = document.createElement('div');
+                    holder.appendChild(canvas);
+                    holder.style.position = 'absolute';
+                    holder.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
+                    holder.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
+                    holder.style.padding = computedStyle.padding;
+                    holder.style.margin = computedStyle.margin;
+                    holder.setAttribute('data-extension', 'rule-of-thirds');
+
+                    const parentElement = image.offsetParent ? image.offsetParent : document.body;
+                    parentElement.append(holder);
+
+                    const actualImage = new Image();
+                    actualImage.onload = function (actualImage, holder) {
+                        return function () {
+                            const minSize = isMinSize(actualImage.width, actualImage.height);
+                            if (!minSize) {
+                                holder.remove();
+                            }
+                        }
+                    }(actualImage, holder);
+                    actualImage.src = image.attributes.getNamedItem('src').value;
+                }
+
+                controlElement.setAttribute('grids', 'true');
+            }
+        }
+
+        function removeGrids() {
+
+            console.log('Removing grids');
+
+            document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
+            controlElement.setAttribute('grids', 'false');
+        }
+
+        function isMinSize(w, h) {
+
+            return (w >= MIN_LONG && h >= MIN_SHORT) || (h >= MIN_LONG && w >= MIN_SHORT);
         }
     }
-}
-
-function removeGrids(id) {
-
-    $("[data-extension-id='" + id + "']").remove();
-    $('#' + id).remove();
-}
-
-function isMinSize(w, h) {
-
-    return (w >= MIN_SIZE && h >= MIN_SIZE_OTHER) || (h >= MIN_SIZE && w >= MIN_SIZE_OTHER);
+    rotInit();
 }
