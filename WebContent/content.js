@@ -6,24 +6,40 @@ if (typeof rotInit === 'undefined') {
 
         const MIN_LONG = 100, MIN_SHORT = 50;
 
+        let options;
+
+        const promise = readOptions();
+
         let controlElement = document.getElementById('rule-of-thirds');
-
         if (!controlElement) {
-
             // Add control element
             controlElement = document.createElement('div');
             controlElement.id = 'rule-of-thirds';
             controlElement.setAttribute('grids', 'false');
             document.body.appendChild(controlElement);
+        }
 
-            chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+        promise.then(toggleGrids);
 
-                console.log('Received message: ' + JSON.stringify(request));
+        async function readOptions() {
 
-                if (request.command === 'TOGGLE_ROT') {
-                    toggleGrids();
-                    sendResponse('TOGGLED');
-                }
+            return new Promise((resolve) => {
+                chrome.storage.sync.get(
+                    {
+                        overlayStyle: 'grid',
+                        renderGrid: 'enabled',
+                        gridRows: 3,
+                        gridColumns: 3,
+                        lineColour: '#000',
+                        renderCircle: 'enabled',
+                        circleColour: '#f00',
+                        circleRadius: 50
+                    },
+                    (data) => {
+                        options = data;
+                        resolve();
+                    }
+                );
             });
         }
 
@@ -44,84 +60,31 @@ if (typeof rotInit === 'undefined') {
             for (let ii = 0; ii < images.length; ii++) {
 
                 const image = images[ii];
-
-                let w = image.width;
-                let h = image.height;
-
-                const computedStyle = getComputedStyle(image, null);
-                const visibility = computedStyle['visibility'];
-                const display = computedStyle['display'];
-
-                if (visibility !== 'hidden' && display !== 'none' && isMinSize(w, h)) {
-
-                    w = image.width;
-                    h = image.height;
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = w;
-                    canvas.height = h;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = '#000';
-
-                    // Draw Rule of Thirds grid
-                    ctx.beginPath();
-                    ctx.moveTo(0, h / 3);
-                    ctx.lineTo(w, h / 3);
-                    ctx.moveTo(0, 2 * h / 3);
-                    ctx.lineTo(w, 2 * h / 3);
-                    ctx.moveTo(w / 3, 0);
-                    ctx.lineTo(w / 3, h);
-                    ctx.moveTo(2 * w / 3, 0);
-                    ctx.lineTo(2 * w / 3, h);
-                    ctx.stroke();
-
-                    // Add circles with glow around the intersections
-                    var radius = Math.min(w, h) / 50;
-                    ctx.strokeStyle = '#c00';
-                    ctx.shadowBlur = radius / 2;
-                    ctx.shadowColor = '#a00';
-                    ctx.beginPath();
-                    ctx.arc(w / 3, h / 3, radius, 0, 2 * Math.PI, true);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(2 * w / 3, h / 3, radius, 0, 2 * Math.PI, true);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(w / 3, 2 * h / 3, radius, 0, 2 * Math.PI, true);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(2 * w / 3, 2 * h / 3, radius, 0, 2 * Math.PI, true);
-                    ctx.stroke();
-
-                    // Add canvas to the image's parent offset by the same amount
-                    const holder = document.createElement('div');
-                    holder.appendChild(canvas);
-                    holder.style.position = 'absolute';
-                    holder.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
-                    holder.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
-                    holder.style.padding = computedStyle.padding;
-                    holder.style.margin = computedStyle.margin;
-                    holder.setAttribute('data-extension', 'rule-of-thirds');
-
-                    const parentElement = image.offsetParent ? image.offsetParent : document.body;
-                    parentElement.append(holder);
-
-                    const actualImage = new Image();
-                    actualImage.onload = function (actualImage, holder) {
-                        return function () {
-                            const minSize = isMinSize(actualImage.width, actualImage.height);
-                            if (!minSize) {
-                                holder.remove();
-                            }
-                        }
-                    }(actualImage, holder);
-                    actualImage.src = image.attributes.getNamedItem('src').value;
+                if (!image.offsetParent) {
+                    continue;
                 }
 
-                controlElement.setAttribute('grids', 'true');
+                const computedStyle = getComputedStyle(image, null);
+                const w = image.width;
+                const h = image.height;
+
+                if (shouldRender(computedStyle, w, h)) {
+                    const canvas = createCanvas(w, h, image, computedStyle);
+
+                    // Draw Rule of Thirds grid
+                    switch (options.overlayStyle) {
+                        case 'grid':
+                            drawGrid(canvas.getContext('2d'), w, h);
+                            break;
+                    }
+
+                    image.offsetParent.append(canvas);
+
+                    removeUndersizedImages(canvas, image);
+                }
             }
+
+            controlElement.setAttribute('grids', 'true');
         }
 
         function removeGrids() {
@@ -132,10 +95,97 @@ if (typeof rotInit === 'undefined') {
             controlElement.setAttribute('grids', 'false');
         }
 
+        function shouldRender(computedStyle, w, h) {
+
+            const visibility = computedStyle['visibility'];
+            const display = computedStyle['display'];
+
+            return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h);
+        }
+
         function isMinSize(w, h) {
 
             return (w >= MIN_LONG && h >= MIN_SHORT) || (h >= MIN_LONG && w >= MIN_SHORT);
         }
+
+        function createCanvas(w, h, image, computedStyle) {
+
+            const canvas = document.createElement('canvas');
+
+            canvas.width = w;
+            canvas.height = h;
+            canvas.style.overflow = 'hidden';
+            canvas.style.position = 'absolute';
+
+            if (image.style['margin'] !== 'auto') {
+                canvas.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
+                canvas.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
+            }
+            canvas.style.padding = computedStyle.padding;
+            canvas.style.margin = computedStyle.margin;
+            canvas.style.overflow = 'hidden';
+            canvas.setAttribute('data-extension', 'rule-of-thirds');
+
+            return canvas;
+        }
+
+        // TODO It would be better to use this approach before adding the canvas
+        //      Also, when does this actually apply?
+        function removeUndersizedImages(canvas, image) {
+
+            const actualImage = new Image();
+
+            actualImage.onload = function () {
+                return function () {
+                    const minSize = isMinSize(actualImage.width, actualImage.height);
+                    if (!minSize) {
+                        canvas.remove();
+                    }
+                }
+            }();
+
+            actualImage.src = image.attributes.getNamedItem('src').value;
+        }
+
+        function drawGrid(ctx, w, h, sections) {
+
+            const gridRows = options.gridRows;
+            const gridColumns = options.gridColumns;
+
+            if (options.renderGrid === 'enabled') {
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = options.lineColour;
+
+                ctx.beginPath();
+                for (let y = 1; y < gridRows; y++) {
+                    ctx.moveTo(0, y * h / gridRows);
+                    ctx.lineTo(w, y * h / gridRows);
+                }
+                for (let x = 1; x < gridColumns; x++) {
+                    ctx.moveTo(x * w / gridColumns, 0);
+                    ctx.lineTo(x * w / gridColumns, h);
+                }
+                ctx.stroke();
+            }
+
+            if (options.renderCircle === 'enabled') {
+                // Add circles around the intersections
+                const radius = Math.min(
+                    (w / options.gridColumns) / 2,
+                    (h / options.gridRows) / 2,
+                    options.circleRadius);
+                ctx.strokeStyle = options.circleColour;
+
+                for (let x = 1; x < gridColumns; x++) {
+                    for (let y = 1; y < gridRows; y++) {
+                        ctx.beginPath();
+                        ctx.arc(x * w / gridColumns, y * h / gridRows, radius, 0, 2 * Math.PI, true);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
     }
+
     rotInit();
 }
