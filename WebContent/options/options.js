@@ -6,7 +6,7 @@ const DEFAULT_OPTIONS = {
     lineColour: '#000',
     renderCircle: 'enabled',
     circleColour: '#f00',
-    circleRadius: 50
+    circleRadius: 5
 };
 
 // Restores options from chrome.storage
@@ -86,5 +86,5 @@ function getSelectedOption(elementName) {
 }
 
 document.addEventListener('DOMContentLoaded', loadOptions);
-document.getElementById('save').addEventListener('click', saveOptions);
+document.querySelectorAll('input').forEach(input => input.addEventListener('change', saveOptions));
 document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);

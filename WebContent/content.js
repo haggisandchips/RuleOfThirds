@@ -15,8 +15,20 @@ if (typeof rotInit === 'undefined') {
             // Add control element
             controlElement = document.createElement('div');
             controlElement.id = 'rule-of-thirds';
-            controlElement.setAttribute('grids', 'false');
+            controlElement.setAttribute('active', 'false');
             document.body.appendChild(controlElement);
+
+            chrome.storage.onChanged.addListener((changes, area) => {
+                if (area === 'sync'/* && changes.options?.newValue*/) {
+                    console.log('Options changed - refreshing overlays');
+                    if (controlElement.getAttribute('active') === 'true') {
+                        readOptions().then(() => {
+                            removeGrids();
+                            applyGrids();
+                        })
+                    }
+                }
+            });
         }
 
         promise.then(toggleGrids);
@@ -33,7 +45,7 @@ if (typeof rotInit === 'undefined') {
                         lineColour: '#000',
                         renderCircle: 'enabled',
                         circleColour: '#f00',
-                        circleRadius: 50
+                        circleRadius: 5
                     },
                     (data) => {
                         options = data;
@@ -45,7 +57,7 @@ if (typeof rotInit === 'undefined') {
 
         function toggleGrids() {
 
-            if (controlElement.getAttribute('grids') === 'false') {
+            if (controlElement.getAttribute('active') === 'false') {
                 applyGrids();
             } else {
                 removeGrids();
@@ -84,7 +96,7 @@ if (typeof rotInit === 'undefined') {
                 }
             }
 
-            controlElement.setAttribute('grids', 'true');
+            controlElement.setAttribute('active', 'true');
         }
 
         function removeGrids() {
@@ -92,7 +104,7 @@ if (typeof rotInit === 'undefined') {
             console.log('Removing grids');
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
-            controlElement.setAttribute('grids', 'false');
+            controlElement.setAttribute('active', 'false');
         }
 
         function shouldRender(computedStyle, w, h) {
