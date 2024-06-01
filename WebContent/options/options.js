@@ -1,5 +1,4 @@
 const DEFAULT_OPTIONS = {
-    overlayStyle: 'grid',
     renderGrid: 'enabled',
     gridRows: 3,
     gridColumns: 3,
@@ -21,7 +20,6 @@ const loadOptions = () => {
 // Saves options to chrome.storage
 const saveOptions = () => {
 
-    const overlayStyle = getSelectedOption('overlay-style');
     const renderGrid = getSelectedOption('render-grid');
     const gridRows = document.getElementById('grid-rows').value;
     const gridColumns = document.getElementById('grid-columns').value;
@@ -32,7 +30,6 @@ const saveOptions = () => {
 
     chrome.storage.sync.set(
         {
-            overlayStyle,
             renderGrid,
             gridRows,
             gridColumns,
@@ -42,12 +39,10 @@ const saveOptions = () => {
             circleRadius
         },
         () => {
-            // Update status to let user know options were saved.
-            const status = document.getElementById('status');
-            status.textContent = 'Options saved.';
-            setTimeout(() => {
-                status.textContent = '';
-            }, 1000);
+            M.toast({
+                html: 'Options saved.',
+                displayLength: 2000
+            });
         }
     );
 };
@@ -61,7 +56,6 @@ const restoreDefaultOptions = () => {
 
 function setOptions(options) {
 
-    selectOption('overlay-style', options.overlayStyle);
     selectOption('render-grid', options.renderGrid);
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
@@ -69,6 +63,8 @@ function setOptions(options) {
     selectOption('render-circle', options.renderCircle);
     selectOption('circle-colour', options.circleColour);
     document.getElementById('circle-radius').value = options.circleRadius;
+
+    M.updateTextFields();
 }
 
 function selectOption(elementName, value) {

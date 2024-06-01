@@ -38,7 +38,6 @@ if (typeof rotInit === 'undefined') {
             return new Promise((resolve) => {
                 chrome.storage.sync.get(
                     {
-                        overlayStyle: 'grid',
                         renderGrid: 'enabled',
                         gridRows: 3,
                         gridColumns: 3,
@@ -84,11 +83,7 @@ if (typeof rotInit === 'undefined') {
                     const canvas = createCanvas(w, h, image, computedStyle);
 
                     // Draw Rule of Thirds grid
-                    switch (options.overlayStyle) {
-                        case 'grid':
-                            drawGrid(canvas.getContext('2d'), w, h);
-                            break;
-                    }
+                    drawGrid(canvas.getContext('2d'), w, h);
 
                     image.offsetParent.append(canvas);
 
