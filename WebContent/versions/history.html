@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Rule of Thirds: Version History</title>
+    <script src="../js/materialize.min.js"></script>
+    <link rel="stylesheet" href="../css/materialize.min.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col s12">
+          <h2>Rule of Thirds: Version History</h2>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col s12">
+          <h3>v1.7</h3>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col s12">
+          <h4>New Features</h4>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col s12 l6">
+          <h5>Options Page</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Added a new Options page allowing control over whether to render grid and/or circles,
+            grid dimensions (see next section), colours and circle radius.
+          </p>
+          <p class="flow-text">
+            Options are accessed by right-clicking on the extension's icon and selecting <em>Options</em>.
+          </p>
+          <p class="flow-text">
+            Any changes take effect immediately.
+          </p>
+          <p class="flow-text">
+            Options are persisted across sessions and will apply to all user's synced browsers.
+          </p>
+        </div>
+        <div class="col s12 l6">
+          <h5>Grid Dimensions</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Extension now allows grids of arbitrary sizes to be rendered. Use the new Options
+            page to control this.
+          </p>
+          <p class="flow-text">
+            NOTE: <strong>Grid size is NOT restricted</strong>. Setting grid size to a large number WILL
+            cause performance issues.
+          </p>
+          <h5>Local Images</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Extension should now correctly overlay grid for local images opened in the browser.
+          </p>
+          <p class="flow-text">
+            <em>ie</em> images loaded via <code>file://</code> protocol)
+          </p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col s12">
+          <h4>Technical Changes</h4>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12">
+          <p class="flow-text">
+            Extension no longer has automatic access to every page (<strong>it never did anything unless
+            clicked</strong>)
+          </p>
+          <p class="flow-text">Instead, the extension is now only granted access as and when the extension's
+            icon is clicked.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h3>v1.6</h3>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col s12">
+          <h4>Technical Changes</h4>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12">
+          <p class="flow-text">
+            Updated to use Manifest v3.
+          </p>
+          <p class="flow-text">
+            Remove dependency on jQuery and use native functions instead.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </body>
+</html>
