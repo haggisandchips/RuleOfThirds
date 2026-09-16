@@ -1,3 +1,45 @@
+// Pure helpers, hoisted out of rotInit() so they can be unit tested in
+// isolation (see /test) and reused without touching the DOM or chrome.*.
+// `function` declarations (unlike rotInit's `const`) are safe to redeclare
+// if this file is injected into the same page more than once.
+
+function resolveImageSrc(image) {
+
+    return image.currentSrc || image.src;
+}
+
+function isMinSize(w, h, minLong, minShort) {
+
+    return (w >= minLong && h >= minShort) || (h >= minLong && w >= minShort);
+}
+
+function shouldRender(computedStyle, w, h, minLong, minShort) {
+
+    const visibility = computedStyle['visibility'];
+    const display = computedStyle['display'];
+
+    return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h, minLong, minShort);
+}
+
+// Storage may hold values saved by an older version of the options page
+// (numbers saved as strings, or missing bounds checks), so re-validate on
+// every read rather than trusting what was persisted.
+function sanitizeOptions(data) {
+
+    return {
+        ...data,
+        gridRows: sanitizeInt(data.gridRows, 2, 3),
+        gridColumns: sanitizeInt(data.gridColumns, 2, 3),
+        circleRadius: sanitizeInt(data.circleRadius, 1, 5)
+    };
+}
+
+function sanitizeInt(value, min, fallback) {
+
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
+}
+
 if (typeof rotInit === 'undefined') {
 
     console.log('Injecting function');
@@ -54,25 +96,6 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        // Storage may hold values saved by an older version of the options page
-        // (numbers saved as strings, or missing bounds checks), so re-validate on
-        // every read rather than trusting what was persisted.
-        function sanitizeOptions(data) {
-
-            return {
-                ...data,
-                gridRows: sanitizeInt(data.gridRows, 2, 3),
-                gridColumns: sanitizeInt(data.gridColumns, 2, 3),
-                circleRadius: sanitizeInt(data.circleRadius, 1, 5)
-            };
-        }
-
-        function sanitizeInt(value, min, fallback) {
-
-            const parsed = parseInt(value, 10);
-            return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
-        }
-
         function toggleGrids() {
 
             if (controlElement.getAttribute('active') === 'false') {
@@ -98,7 +121,7 @@ if (typeof rotInit === 'undefined') {
                 const w = image.width;
                 const h = image.height;
 
-                if (shouldRender(computedStyle, w, h)) {
+                if (shouldRender(computedStyle, w, h, MIN_LONG, MIN_SHORT)) {
                     const canvas = createCanvas(w, h, image, computedStyle);
 
                     // Draw Rule of Thirds grid
@@ -119,19 +142,6 @@ if (typeof rotInit === 'undefined') {
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
             controlElement.setAttribute('active', 'false');
-        }
-
-        function shouldRender(computedStyle, w, h) {
-
-            const visibility = computedStyle['visibility'];
-            const display = computedStyle['display'];
-
-            return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h);
-        }
-
-        function isMinSize(w, h) {
-
-            return (w >= MIN_LONG && h >= MIN_SHORT) || (h >= MIN_LONG && w >= MIN_SHORT);
         }
 
         function createCanvas(w, h, image, computedStyle) {
@@ -163,14 +173,14 @@ if (typeof rotInit === 'undefined') {
 
             actualImage.onload = function () {
                 return function () {
-                    const minSize = isMinSize(actualImage.width, actualImage.height);
+                    const minSize = isMinSize(actualImage.width, actualImage.height, MIN_LONG, MIN_SHORT);
                     if (!minSize) {
                         canvas.remove();
                     }
                 }
             }();
 
-            actualImage.src = image.currentSrc || image.src;
+            actualImage.src = resolveImageSrc(image);
         }
 
         function drawGrid(ctx, w, h, sections) {
@@ -213,5 +223,12 @@ if (typeof rotInit === 'undefined') {
         }
     }
 
-    rotInit();
+    // Guards Node (used by /test) where there's no page to attach to.
+    if (typeof document !== 'undefined') {
+        rotInit();
+    }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {resolveImageSrc, isMinSize, shouldRender, sanitizeInt, sanitizeOptions};
 }

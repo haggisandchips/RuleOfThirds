@@ -95,11 +95,18 @@ function showToast(message) {
 function parseValidInt(elementId, min, fallback) {
 
     const element = document.getElementById(elementId);
-    const parsed = parseInt(element.value, 10);
-    const value = Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
+    const value = clampInt(element.value, min, fallback);
 
     element.value = value;
     return value;
+}
+
+// Pure clamping logic, split out from parseValidInt so it can be unit
+// tested without a DOM (see /test).
+function clampInt(value, min, fallback) {
+
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
 }
 
 function selectOption(elementName, value) {
@@ -116,6 +123,13 @@ function getSelectedOption(elementName) {
     return document.querySelector('input[name="' + elementName + '"]:checked').value;
 }
 
-document.addEventListener('DOMContentLoaded', loadOptions);
-document.querySelectorAll('input').forEach(input => input.addEventListener('change', saveOptions));
-document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
+// Guards Node (used by /test) where there's no page to attach to.
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', loadOptions);
+    document.querySelectorAll('input').forEach(input => input.addEventListener('change', saveOptions));
+    document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt};
+}

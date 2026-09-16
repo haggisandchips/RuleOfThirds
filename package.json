@@ -1,0 +1,9 @@
+{
+    "name": "rule-of-thirds",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Chrome extension that overlays a Rule of Thirds grid on images.",
+    "scripts": {
+        "test": "node --test"
+    }
+}
