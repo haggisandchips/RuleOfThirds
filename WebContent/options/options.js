@@ -42,10 +42,7 @@ const saveOptions = () => {
             circleRadius
         },
         () => {
-            M.toast({
-                html: 'Options saved.',
-                displayLength: 2000
-            });
+            showToast('Options saved.');
         }
     );
 };
@@ -66,8 +63,30 @@ function setOptions(options) {
     selectOption('render-circle', options.renderCircle);
     selectOption('circle-colour', options.circleColour);
     document.getElementById('circle-radius').value = options.circleRadius;
+}
 
-    M.updateTextFields();
+const TOAST_DISPLAY_MS = 2000;
+
+function showToast(message) {
+
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove(), {once: true});
+    }, TOAST_DISPLAY_MS);
 }
 
 // Reads a number input, clamping it to `min` and falling back to `fallback`
