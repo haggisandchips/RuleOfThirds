@@ -23,8 +23,20 @@ try {
 
         chrome.scripting.executeScript({
             target: {tabId: tab.id}, files: ['content.js']
+        }).catch(() => {
+            showToast("Sorry, this page doesn't allow the Rule of Thirds grid to be added.");
         });
     });
 } catch (e) {
     console.log(e);
+}
+
+function showToast(message) {
+
+    chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon48.png',
+        title: 'Rule of Thirds',
+        message
+    });
 }

@@ -8,6 +8,9 @@ const DEFAULT_OPTIONS = {
     circleRadius: 5
 };
 
+const MIN_GRID_LINES = 2;
+const MIN_CIRCLE_RADIUS = 1;
+
 // Restores options from chrome.storage
 const loadOptions = () => {
 
@@ -21,12 +24,12 @@ const loadOptions = () => {
 const saveOptions = () => {
 
     const renderGrid = getSelectedOption('render-grid');
-    const gridRows = document.getElementById('grid-rows').value;
-    const gridColumns = document.getElementById('grid-columns').value;
+    const gridRows = parseValidInt('grid-rows', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows);
+    const gridColumns = parseValidInt('grid-columns', MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns);
     const lineColour = getSelectedOption('line-colour');
     const renderCircle = getSelectedOption('render-circle');
     const circleColour = getSelectedOption('circle-colour');
-    const circleRadius = document.getElementById('circle-radius').value;
+    const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
 
     chrome.storage.sync.set(
         {
@@ -65,6 +68,19 @@ function setOptions(options) {
     document.getElementById('circle-radius').value = options.circleRadius;
 
     M.updateTextFields();
+}
+
+// Reads a number input, clamping it to `min` and falling back to `fallback`
+// when the field is blank or not a number, then reflects the corrected
+// value back into the field so the UI never shows an unsaved bad value.
+function parseValidInt(elementId, min, fallback) {
+
+    const element = document.getElementById(elementId);
+    const parsed = parseInt(element.value, 10);
+    const value = Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
+
+    element.value = value;
+    return value;
 }
 
 function selectOption(elementName, value) {

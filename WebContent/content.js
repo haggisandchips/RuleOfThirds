@@ -47,11 +47,30 @@ if (typeof rotInit === 'undefined') {
                         circleRadius: 5
                     },
                     (data) => {
-                        options = data;
+                        options = sanitizeOptions(data);
                         resolve();
                     }
                 );
             });
+        }
+
+        // Storage may hold values saved by an older version of the options page
+        // (numbers saved as strings, or missing bounds checks), so re-validate on
+        // every read rather than trusting what was persisted.
+        function sanitizeOptions(data) {
+
+            return {
+                ...data,
+                gridRows: sanitizeInt(data.gridRows, 2, 3),
+                gridColumns: sanitizeInt(data.gridColumns, 2, 3),
+                circleRadius: sanitizeInt(data.circleRadius, 1, 5)
+            };
+        }
+
+        function sanitizeInt(value, min, fallback) {
+
+            const parsed = parseInt(value, 10);
+            return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
         }
 
         function toggleGrids() {
@@ -151,7 +170,7 @@ if (typeof rotInit === 'undefined') {
                 }
             }();
 
-            actualImage.src = image.attributes.getNamedItem('src').value;
+            actualImage.src = image.currentSrc || image.src;
         }
 
         function drawGrid(ctx, w, h, sections) {
