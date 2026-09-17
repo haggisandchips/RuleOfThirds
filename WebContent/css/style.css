@@ -31,6 +31,16 @@ h2, h3, h4, h5, h6 {
     font-weight: 400;
 }
 
+h4 {
+    font-size: 2rem;
+    margin: 0.75rem 0 1.5rem;
+}
+
+h5 {
+    font-size: 1.5rem;
+    margin: 0.75rem 0;
+}
+
 .container {
     width: 90%;
     max-width: 1200px;
@@ -91,6 +101,34 @@ label:not([for]) {
     gap: 0.4rem;
     cursor: pointer;
     margin: 0.35rem 0;
+}
+
+label:not([for]) span {
+    color: var(--color-muted);
+    transition: color 0.2s ease;
+}
+
+input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid #9e9e9e;
+    background: transparent;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="radio"]:checked {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 3px #fafafa, inset 0 0 0 8px var(--color-primary);
+}
+
+input[type="radio"]:checked + span {
+    color: var(--color-text);
 }
 
 input[type="number"] {
