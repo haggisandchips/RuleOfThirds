@@ -86,7 +86,8 @@ if (typeof rotInit === 'undefined') {
                         lineColour: '#fff',
                         renderCircle: 'enabled',
                         circleColour: '#f00',
-                        circleRadius: 5
+                        circleRadius: 5,
+                        circleStyle: 'outline'
                     },
                     (data) => {
                         options = sanitizeOptions(data);
@@ -216,12 +217,17 @@ if (typeof rotInit === 'undefined') {
                     (h / options.gridRows) / 2,
                     options.circleRadius);
                 ctx.strokeStyle = options.circleColour;
+                ctx.fillStyle = options.circleColour;
 
                 for (let x = 1; x < gridColumns; x++) {
                     for (let y = 1; y < gridRows; y++) {
                         ctx.beginPath();
                         ctx.arc(x * w / gridColumns, y * h / gridRows, radius, 0, 2 * Math.PI, true);
-                        ctx.stroke();
+                        if (options.circleStyle === 'filled') {
+                            ctx.fill();
+                        } else {
+                            ctx.stroke();
+                        }
                     }
                 }
             }

@@ -90,7 +90,8 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         lineColour: '#000',
         renderCircle: 'enabled',
         circleColour: '#f00',
-        circleRadius: '-1'
+        circleRadius: '-1',
+        circleStyle: 'outline'
     });
 
     assert.deepEqual(result, {
@@ -100,6 +101,7 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         lineColour: '#000',
         renderCircle: 'enabled',
         circleColour: '#f00',
-        circleRadius: 1
+        circleRadius: 1,
+        circleStyle: 'outline'
     });
 });

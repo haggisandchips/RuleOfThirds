@@ -5,7 +5,8 @@ const DEFAULT_OPTIONS = {
     lineColour: '#fff',
     renderCircle: 'enabled',
     circleColour: '#f00',
-    circleRadius: 5
+    circleRadius: 5,
+    circleStyle: 'outline'
 };
 
 const MIN_GRID_LINES = 1;
@@ -41,6 +42,7 @@ const saveOptions = (event) => {
     const renderCircle = getSelectedOption('render-circle');
     const circleColour = getSelectedOption('circle-colour');
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
+    const circleStyle = getSelectedOption('circle-style');
 
     chrome.storage.sync.set(
         {
@@ -50,7 +52,8 @@ const saveOptions = (event) => {
             lineColour,
             renderCircle,
             circleColour,
-            circleRadius
+            circleRadius,
+            circleStyle
         },
         () => {
             showToast('Options saved.');
@@ -74,6 +77,7 @@ function setOptions(options) {
     selectOption('render-circle', options.renderCircle);
     selectOption('circle-colour', options.circleColour);
     document.getElementById('circle-radius').value = options.circleRadius;
+    selectOption('circle-style', options.circleStyle);
 }
 
 const TOAST_DISPLAY_MS = 2000;
