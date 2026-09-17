@@ -171,9 +171,10 @@ input[type="range"] {
     margin: 0.5rem 0;
 }
 
-/* Puts the native colour picker and the quick-pick swatches on one line,
-   so "Quick Pick" reads as a caption for that row rather than a second
-   block-level label competing with "Line Colour"/"Circle Colour" above. */
+/* Puts the native colour picker and the quick-pick swatches on one line.
+   No visible label on the swatches - proximity, the hover scale-up and the
+   selection ring already read as "quick alternatives to the picker" (each
+   still carries an aria-label for screen readers). */
 .colour-row {
     display: flex;
     align-items: center;
@@ -181,16 +182,11 @@ input[type="range"] {
     flex-wrap: wrap;
 }
 
-.quick-pick-label {
-    font-size: 0.8rem;
-    color: var(--color-muted);
-    margin-left: 1.5rem;
-}
-
 .quick-swatch-group {
     display: inline-flex;
     flex-wrap: wrap;
     gap: 0.35rem;
+    margin-left: 4em;
 }
 
 .quick-swatch {
