@@ -106,6 +106,8 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         renderGrid: true,
         gridRows: 3,
         gridColumns: 3,
+        gridRowLines: [true, true],
+        gridColumnLines: [true, true],
         lineColour: '#000',
         lineOpacity: 100,
         renderCircle: true,
@@ -114,6 +116,27 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         circleRadius: 1,
         circleStyle: 'outline'
     });
+});
+
+test('sanitizeOptions treats a missing line-state array as every line enabled', () => {
+    const result = sanitizeOptions({gridRows: 4, gridColumns: 2});
+
+    assert.deepEqual(result.gridRowLines, [true, true, true]);
+    assert.deepEqual(result.gridColumnLines, [true]);
+});
+
+test('sanitizeOptions only disables a line on an explicit false, and resizes to the current grid', () => {
+    const result = sanitizeOptions({
+        gridRows: 3,
+        gridColumns: 4,
+        gridRowLines: [false, 'not a boolean'],
+        gridColumnLines: [true, false]
+    });
+
+    assert.deepEqual(result.gridRowLines, [false, true]);
+    // Grew from 2 stored entries to 3 (gridColumns 4 => 3 lines) - the new
+    // trailing entry has no stored data, so it defaults to enabled.
+    assert.deepEqual(result.gridColumnLines, [true, false, true]);
 });
 
 test('hexToRgba converts a hex colour and opacity percentage to an rgba() string', () => {

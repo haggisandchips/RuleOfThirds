@@ -7,7 +7,9 @@ const {
     MIN_CIRCLE_RADIUS,
     clampInt,
     minGridLines,
-    computeGridLineMinimums
+    computeGridLineMinimums,
+    resizeLineStates,
+    resetLineStates
 } = require('../WebContent/options/options.js');
 
 test('clampInt parses a valid numeric string', () => {
@@ -69,4 +71,22 @@ test('computeGridLineMinimums leaves both at the base minimum with no trigger', 
         computeGridLineMinimums(1, 1, undefined),
         {gridRowsMin: MIN_GRID_LINES, gridColumnsMin: MIN_GRID_LINES}
     );
+});
+
+test('resizeLineStates pads a shorter array with enabled (true) lines', () => {
+    assert.deepEqual(resizeLineStates([false], 3), [false, true, true]);
+});
+
+test('resizeLineStates truncates a longer array, keeping the surviving lines\' states', () => {
+    assert.deepEqual(resizeLineStates([false, true, false], 1), [false]);
+});
+
+test('resizeLineStates treats a missing or non-array value as no existing lines', () => {
+    assert.deepEqual(resizeLineStates(undefined, 2), [true, true]);
+    assert.deepEqual(resizeLineStates(null, 0), []);
+});
+
+test('resetLineStates always returns every line enabled, regardless of prior state', () => {
+    assert.deepEqual(resetLineStates(3), [true, true, true]);
+    assert.deepEqual(resetLineStates(0), []);
 });

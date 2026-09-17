@@ -26,10 +26,15 @@ function shouldRender(computedStyle, w, h, minLong, minShort) {
 // every read rather than trusting what was persisted.
 function sanitizeOptions(data) {
 
+    const gridRows = sanitizeInt(data.gridRows, 1, 3);
+    const gridColumns = sanitizeInt(data.gridColumns, 1, 3);
+
     return {
         ...data,
-        gridRows: sanitizeInt(data.gridRows, 1, 3),
-        gridColumns: sanitizeInt(data.gridColumns, 1, 3),
+        gridRows,
+        gridColumns,
+        gridRowLines: sanitizeLineStates(data.gridRowLines, gridRows - 1),
+        gridColumnLines: sanitizeLineStates(data.gridColumnLines, gridColumns - 1),
         circleRadius: sanitizeInt(data.circleRadius, 1, 5),
         lineOpacity: sanitizeInt(data.lineOpacity, 0, 100, 100),
         circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100)
@@ -40,6 +45,19 @@ function sanitizeInt(value, min, fallback, max = Infinity) {
 
     const parsed = parseInt(value, 10);
     return Number.isNaN(parsed) ? fallback : Math.min(Math.max(parsed, min), max);
+}
+
+// Storage may hold a shorter/longer array than the current grid size (eg
+// after Rows/Columns changed on another synced browser), and only an
+// explicit `false` should ever disable a line - anything else defaults to
+// enabled, including entries missing entirely.
+function sanitizeLineStates(lines, count) {
+
+    const result = [];
+    for (let ii = 0; ii < count; ii++) {
+        result.push(Array.isArray(lines) ? lines[ii] !== false : true);
+    }
+    return result;
 }
 
 // Converts a "#rrggbb" colour plus a 0-100 opacity percentage into an
@@ -96,6 +114,8 @@ if (typeof rotInit === 'undefined') {
                         renderGrid: true,
                         gridRows: 3,
                         gridColumns: 3,
+                        gridRowLines: [true, true],
+                        gridColumnLines: [true, true],
                         lineColour: '#ffffff',
                         lineOpacity: 100,
                         renderCircle: true,
@@ -208,6 +228,8 @@ if (typeof rotInit === 'undefined') {
 
             const gridRows = options.gridRows;
             const gridColumns = options.gridColumns;
+            const rowLines = options.gridRowLines;
+            const columnLines = options.gridColumnLines;
 
             if (options.renderGrid) {
                 ctx.lineWidth = 1;
@@ -215,18 +237,24 @@ if (typeof rotInit === 'undefined') {
 
                 ctx.beginPath();
                 for (let y = 1; y < gridRows; y++) {
-                    ctx.moveTo(0, y * h / gridRows);
-                    ctx.lineTo(w, y * h / gridRows);
+                    if (rowLines[y - 1]) {
+                        ctx.moveTo(0, y * h / gridRows);
+                        ctx.lineTo(w, y * h / gridRows);
+                    }
                 }
                 for (let x = 1; x < gridColumns; x++) {
-                    ctx.moveTo(x * w / gridColumns, 0);
-                    ctx.lineTo(x * w / gridColumns, h);
+                    if (columnLines[x - 1]) {
+                        ctx.moveTo(x * w / gridColumns, 0);
+                        ctx.lineTo(x * w / gridColumns, h);
+                    }
                 }
                 ctx.stroke();
             }
 
             if (options.renderCircle) {
-                // Add circles around the intersections
+                // A circle only exists where a row line and a column line
+                // actually cross, so both need to be enabled - independent
+                // of whether the grid lines themselves are being rendered.
                 const radius = Math.min(
                     (w / options.gridColumns) / 2,
                     (h / options.gridRows) / 2,
@@ -236,6 +264,10 @@ if (typeof rotInit === 'undefined') {
 
                 for (let x = 1; x < gridColumns; x++) {
                     for (let y = 1; y < gridRows; y++) {
+                        if (!columnLines[x - 1] || !rowLines[y - 1]) {
+                            continue;
+                        }
+
                         ctx.beginPath();
                         ctx.arc(x * w / gridColumns, y * h / gridRows, radius, 0, 2 * Math.PI, true);
                         if (options.circleStyle === 'filled') {

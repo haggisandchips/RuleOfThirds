@@ -2,6 +2,8 @@ const DEFAULT_OPTIONS = {
     renderGrid: true,
     gridRows: 3,
     gridColumns: 3,
+    gridRowLines: [true, true],
+    gridColumnLines: [true, true],
     lineColour: '#ffffff',
     lineOpacity: 100,
     renderCircle: true,
@@ -14,6 +16,12 @@ const DEFAULT_OPTIONS = {
 const MIN_GRID_LINES = 1;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_OPACITY = 0;
+
+// Per-line enabled state for the "Customise" preview - kept as plain module
+// state (rather than re-read from the DOM) since there's no input element
+// backing each line, only the preview's own buttons.
+let gridRowLineStates = DEFAULT_OPTIONS.gridRowLines.slice();
+let gridColumnLineStates = DEFAULT_OPTIONS.gridColumnLines.slice();
 
 // Restores options from chrome.storage
 const loadOptions = () => {
@@ -41,6 +49,19 @@ const saveOptions = (event) => {
     const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows);
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
 
+    // Resizing the grid shifts every line's position, so a line left
+    // disabled at its old position would silently apply to a different
+    // line - resetting both arrays to fully enabled avoids that surprise.
+    // Otherwise just keep the arrays the correct length defensively.
+    if (changedElementId === 'grid-rows' || changedElementId === 'grid-columns') {
+        gridRowLineStates = resetLineStates(gridRows - 1);
+        gridColumnLineStates = resetLineStates(gridColumns - 1);
+    } else {
+        gridRowLineStates = resizeLineStates(gridRowLineStates, gridRows - 1);
+        gridColumnLineStates = resizeLineStates(gridColumnLineStates, gridColumns - 1);
+    }
+    renderGridCustomisePreview();
+
     const lineColour = document.getElementById('line-colour').value;
     const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
     const renderCircle = document.getElementById('render-circle').checked;
@@ -54,6 +75,8 @@ const saveOptions = (event) => {
             renderGrid,
             gridRows,
             gridColumns,
+            gridRowLines: gridRowLineStates,
+            gridColumnLines: gridColumnLineStates,
             lineColour,
             lineOpacity,
             renderCircle,
@@ -80,6 +103,9 @@ function setOptions(options) {
     document.getElementById('render-grid').checked = options.renderGrid;
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
+    gridRowLineStates = resizeLineStates(options.gridRowLines, options.gridRows - 1);
+    gridColumnLineStates = resizeLineStates(options.gridColumnLines, options.gridColumns - 1);
+    renderGridCustomisePreview();
     document.getElementById('line-colour').value = options.lineColour;
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
@@ -91,6 +117,7 @@ function setOptions(options) {
     updateOpacityLabel('circle-opacity');
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+    updateGridCustomiseNote();
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native
@@ -162,6 +189,80 @@ function clampInt(value, min, fallback) {
     return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
 }
 
+// Defensively matches a line-state array to the current line count (eg
+// when loading a value saved before Rows/Columns last changed elsewhere) -
+// NOT used when the user edits Rows/Columns themselves, since that always
+// resets every line back to enabled instead (see resetLineStates).
+function resizeLineStates(states, count) {
+
+    const result = (Array.isArray(states) ? states : []).slice(0, count);
+    while (result.length < count) {
+        result.push(true);
+    }
+    return result;
+}
+
+// Every line defaults back to enabled whenever Rows/Columns itself changes,
+// since resizing the grid shifts each line's position - keeping an old
+// disabled flag at the same index would silently apply it to a different
+// line instead.
+function resetLineStates(count) {
+
+    return new Array(count).fill(true);
+}
+
+// Rebuilds the "Customise" preview from gridRowLineStates/gridColumnLineStates -
+// called whenever those arrays change (on load, on Rows/Columns change, or
+// on a line click) since there's no cheaper way to patch just one button's
+// position when the count itself may have changed.
+function renderGridCustomisePreview() {
+
+    const preview = document.getElementById('grid-customise-preview');
+    preview.replaceChildren();
+
+    gridRowLineStates.forEach((enabled, index) => {
+        const position = (index + 1) / (gridRowLineStates.length + 1) * 100;
+        preview.appendChild(createGridCustomiseLineButton('row', enabled, position, () => {
+            gridRowLineStates[index] = !gridRowLineStates[index];
+            renderGridCustomisePreview();
+            saveOptions();
+        }));
+    });
+
+    gridColumnLineStates.forEach((enabled, index) => {
+        const position = (index + 1) / (gridColumnLineStates.length + 1) * 100;
+        preview.appendChild(createGridCustomiseLineButton('column', enabled, position, () => {
+            gridColumnLineStates[index] = !gridColumnLineStates[index];
+            renderGridCustomisePreview();
+            saveOptions();
+        }));
+    });
+}
+
+// The circle clause only makes sense while Circles are actually enabled -
+// otherwise a line click only ever shows/hides the line itself.
+function updateGridCustomiseNote() {
+
+    const circlesEnabled = document.getElementById('render-circle').checked;
+    const note = document.querySelector('.grid-customise-note');
+
+    note.textContent = 'Click a line to show / hide it' +
+        (circlesEnabled ? ', and its associated intersection circles.' : '.');
+}
+
+function createGridCustomiseLineButton(axis, enabled, positionPercent, onClick) {
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'grid-customise-line grid-customise-line-' + axis + (enabled ? '' : ' disabled');
+    button.style[axis === 'row' ? 'top' : 'left'] = positionPercent + '%';
+    button.setAttribute('aria-pressed', String(enabled));
+    button.setAttribute('aria-label', (axis === 'row' ? 'Row' : 'Column') + ' line, ' + (enabled ? 'enabled' : 'disabled'));
+    button.addEventListener('click', onClick);
+
+    return button;
+}
+
 // A 1x1 grid draws no lines in either direction, so once one dimension is 1,
 // the other dimension's floor rises to 2.
 function minGridLines(otherDimensionValue) {
@@ -206,6 +307,8 @@ if (typeof document !== 'undefined') {
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
+    document.getElementById('render-circle').addEventListener('change', updateGridCustomiseNote);
+
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
         document.getElementById(colourInputId).value = swatch.dataset.value;
@@ -217,5 +320,5 @@ if (typeof document !== 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums};
+    module.exports = {DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums, resizeLineStates, resetLineStates};
 }
