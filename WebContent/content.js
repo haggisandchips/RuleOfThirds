@@ -28,8 +28,8 @@ function sanitizeOptions(data) {
 
     return {
         ...data,
-        gridRows: sanitizeInt(data.gridRows, 2, 3),
-        gridColumns: sanitizeInt(data.gridColumns, 2, 3),
+        gridRows: sanitizeInt(data.gridRows, 1, 3),
+        gridColumns: sanitizeInt(data.gridColumns, 1, 3),
         circleRadius: sanitizeInt(data.circleRadius, 1, 5)
     };
 }
