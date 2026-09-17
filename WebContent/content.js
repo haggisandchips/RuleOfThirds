@@ -30,14 +30,27 @@ function sanitizeOptions(data) {
         ...data,
         gridRows: sanitizeInt(data.gridRows, 1, 3),
         gridColumns: sanitizeInt(data.gridColumns, 1, 3),
-        circleRadius: sanitizeInt(data.circleRadius, 1, 5)
+        circleRadius: sanitizeInt(data.circleRadius, 1, 5),
+        lineOpacity: sanitizeInt(data.lineOpacity, 0, 100, 100),
+        circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100)
     };
 }
 
-function sanitizeInt(value, min, fallback) {
+function sanitizeInt(value, min, fallback, max = Infinity) {
 
     const parsed = parseInt(value, 10);
-    return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
+    return Number.isNaN(parsed) ? fallback : Math.min(Math.max(parsed, min), max);
+}
+
+// Converts a "#rrggbb" colour plus a 0-100 opacity percentage into an
+// rgba() string a canvas context can use directly as a strokeStyle/fillStyle.
+function hexToRgba(hex, opacityPercent) {
+
+    const r = parseInt(hex.substring(1, 3), 16);
+    const g = parseInt(hex.substring(3, 5), 16);
+    const b = parseInt(hex.substring(5, 7), 16);
+
+    return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + (opacityPercent / 100) + ')';
 }
 
 if (typeof rotInit === 'undefined') {
@@ -83,9 +96,11 @@ if (typeof rotInit === 'undefined') {
                         renderGrid: 'enabled',
                         gridRows: 3,
                         gridColumns: 3,
-                        lineColour: '#fff',
+                        lineColour: '#ffffff',
+                        lineOpacity: 100,
                         renderCircle: 'enabled',
-                        circleColour: '#f00',
+                        circleColour: '#ff0000',
+                        circleOpacity: 100,
                         circleRadius: 5,
                         circleStyle: 'outline'
                     },
@@ -196,7 +211,7 @@ if (typeof rotInit === 'undefined') {
 
             if (options.renderGrid === 'enabled') {
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = options.lineColour;
+                ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
 
                 ctx.beginPath();
                 for (let y = 1; y < gridRows; y++) {
@@ -216,8 +231,8 @@ if (typeof rotInit === 'undefined') {
                     (w / options.gridColumns) / 2,
                     (h / options.gridRows) / 2,
                     options.circleRadius);
-                ctx.strokeStyle = options.circleColour;
-                ctx.fillStyle = options.circleColour;
+                ctx.strokeStyle = hexToRgba(options.circleColour, options.circleOpacity);
+                ctx.fillStyle = hexToRgba(options.circleColour, options.circleOpacity);
 
                 for (let x = 1; x < gridColumns; x++) {
                     for (let y = 1; y < gridRows; y++) {
@@ -241,5 +256,5 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {resolveImageSrc, isMinSize, shouldRender, sanitizeInt, sanitizeOptions};
+    module.exports = {resolveImageSrc, isMinSize, shouldRender, sanitizeInt, sanitizeOptions, hexToRgba};
 }

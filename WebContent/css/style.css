@@ -165,6 +165,49 @@ input[type="number"]:focus {
     border-bottom: 2px solid var(--color-primary);
 }
 
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--color-primary);
+    margin: 0.5rem 0;
+}
+
+/* Puts the native colour picker and the quick-pick swatches on one line.
+   No visible label on the swatches - proximity, the hover scale-up and the
+   selection ring already read as "quick alternatives to the picker" (each
+   still carries an aria-label for screen readers). */
+.colour-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.quick-swatch-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: 4em;
+}
+
+.quick-swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: var(--swatch-colour);
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.quick-swatch:hover {
+    transform: scale(1.1);
+}
+
+.quick-swatch.selected {
+    border-color: var(--color-primary);
+}
+
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;

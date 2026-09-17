@@ -42,56 +42,26 @@
             <input type="number" id="grid-columns" min="1"/>
           </p>
         </div>
-        <div class="col s12 m3 offset-m1">
+        <div class="col s12 m5 offset-m1">
           <p>
-            <label>
-              <input type="radio" id="line-colour-black" name="line-colour" value="#000">
-              <span>Black</span>
-            </label>
+            <label for="line-colour">Line Colour</label>
+            <span class="colour-row">
+              <input type="color" id="line-colour" value="#ffffff"/>
+              <span class="quick-swatch-group" id="line-colour-quick" data-for="line-colour">
+                <button type="button" class="quick-swatch" data-value="#000000" style="--swatch-colour:#000000" aria-label="Black"></button>
+                <button type="button" class="quick-swatch" data-value="#ffffff" style="--swatch-colour:#ffffff" aria-label="White"></button>
+                <button type="button" class="quick-swatch" data-value="#ff0000" style="--swatch-colour:#ff0000" aria-label="Red"></button>
+                <button type="button" class="quick-swatch" data-value="#ffff00" style="--swatch-colour:#ffff00" aria-label="Yellow"></button>
+                <button type="button" class="quick-swatch" data-value="#00ff00" style="--swatch-colour:#00ff00" aria-label="Green"></button>
+                <button type="button" class="quick-swatch" data-value="#0000ff" style="--swatch-colour:#0000ff" aria-label="Blue"></button>
+                <button type="button" class="quick-swatch" data-value="#ff00ff" style="--swatch-colour:#ff00ff" aria-label="Magenta"></button>
+                <button type="button" class="quick-swatch" data-value="#00ffff" style="--swatch-colour:#00ffff" aria-label="Cyan"></button>
+              </span>
+            </span>
           </p>
           <p>
-            <label>
-              <input type="radio" id="line-colour-white" name="line-colour" value="#fff">
-              <span>White</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="line-colour-red" name="line-colour" value="#f00">
-              <span>Red</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="line-colour-yellow" name="line-colour" value="#ff0">
-              <span>Yellow</span>
-            </label>
-          </p>
-        </div>
-        <div class="col s12 m3">
-          <p>
-            <label>
-              <input type="radio" id="line-colour-green" name="line-colour" value="#0f0">
-              <span>Green</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="line-colour-blue" name="line-colour" value="#00f">
-              <span>Blue</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="line-colour-magenta" name="line-colour" value="#f0f">
-              <span>Magenta</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="line-colour-cyan" name="line-colour" value="#0ff">
-              <span>Cyan</span>
-            </label>
+            <label for="line-opacity">Opacity</label>
+            <input type="range" id="line-opacity" min="0" max="100"/>
           </p>
         </div>
       </div>
@@ -133,56 +103,26 @@
             </label>
           </p>
         </div>
-        <div class="col s12 m3 offset-m1">
+        <div class="col s12 m5 offset-m1">
           <p>
-            <label>
-              <input type="radio" id="circle-colour-black" name="circle-colour" value="#000">
-              <span>Black</span>
-            </label>
+            <label for="circle-colour">Circle Colour</label>
+            <span class="colour-row">
+              <input type="color" id="circle-colour" value="#ff0000"/>
+              <span class="quick-swatch-group" id="circle-colour-quick" data-for="circle-colour">
+                <button type="button" class="quick-swatch" data-value="#000000" style="--swatch-colour:#000000" aria-label="Black"></button>
+                <button type="button" class="quick-swatch" data-value="#ffffff" style="--swatch-colour:#ffffff" aria-label="White"></button>
+                <button type="button" class="quick-swatch" data-value="#ff0000" style="--swatch-colour:#ff0000" aria-label="Red"></button>
+                <button type="button" class="quick-swatch" data-value="#ffff00" style="--swatch-colour:#ffff00" aria-label="Yellow"></button>
+                <button type="button" class="quick-swatch" data-value="#00ff00" style="--swatch-colour:#00ff00" aria-label="Green"></button>
+                <button type="button" class="quick-swatch" data-value="#0000ff" style="--swatch-colour:#0000ff" aria-label="Blue"></button>
+                <button type="button" class="quick-swatch" data-value="#ff00ff" style="--swatch-colour:#ff00ff" aria-label="Magenta"></button>
+                <button type="button" class="quick-swatch" data-value="#00ffff" style="--swatch-colour:#00ffff" aria-label="Cyan"></button>
+              </span>
+            </span>
           </p>
           <p>
-            <label>
-              <input type="radio" id="circle-colour-white" name="circle-colour" value="#fff">
-              <span>White</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="circle-colour-red" name="circle-colour" value="#f00">
-              <span>Red</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="circle-colour-yellow" name="circle-colour" value="#ff0">
-              <span>Yellow</span>
-            </label>
-          </p>
-        </div>
-        <div class="col s12 m3">
-          <p>
-            <label>
-              <input type="radio" id="circle-colour-green" name="circle-colour" value="#0f0">
-              <span>Green</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="circle-colour-blue" name="circle-colour" value="#00f">
-              <span>Blue</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="circle-colour-magenta" name="circle-colour" value="#f0f">
-              <span>Magenta</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="circle-colour-cyan" name="circle-colour" value="#0ff">
-              <span>Cyan</span>
-            </label>
+            <label for="circle-opacity">Opacity</label>
+            <input type="range" id="circle-opacity" min="0" max="100"/>
           </p>
         </div>
       </div>

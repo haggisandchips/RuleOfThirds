@@ -6,7 +6,8 @@ const {
     isMinSize,
     shouldRender,
     sanitizeInt,
-    sanitizeOptions
+    sanitizeOptions,
+    hexToRgba
 } = require('../WebContent/content.js');
 
 test('resolveImageSrc prefers currentSrc over src', () => {
@@ -82,14 +83,21 @@ test('sanitizeInt clamps values below the minimum instead of rendering nothing',
     assert.equal(sanitizeInt('-5', 2, 3), 2);
 });
 
+test('sanitizeInt clamps values above an optional maximum', () => {
+    assert.equal(sanitizeInt('150', 0, 100, 100), 100);
+    assert.equal(sanitizeInt('50', 0, 100, 100), 50);
+});
+
 test('sanitizeOptions clamps the numeric fields and leaves everything else untouched', () => {
     const result = sanitizeOptions({
         renderGrid: 'enabled',
         gridRows: '3',
         gridColumns: '',
         lineColour: '#000',
+        lineOpacity: '150',
         renderCircle: 'enabled',
         circleColour: '#f00',
+        circleOpacity: '-10',
         circleRadius: '-1',
         circleStyle: 'outline'
     });
@@ -99,9 +107,17 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         gridRows: 3,
         gridColumns: 3,
         lineColour: '#000',
+        lineOpacity: 100,
         renderCircle: 'enabled',
         circleColour: '#f00',
+        circleOpacity: 0,
         circleRadius: 1,
         circleStyle: 'outline'
     });
+});
+
+test('hexToRgba converts a hex colour and opacity percentage to an rgba() string', () => {
+    assert.equal(hexToRgba('#ff0000', 100), 'rgba(255, 0, 0, 1)');
+    assert.equal(hexToRgba('#00ff00', 50), 'rgba(0, 255, 0, 0.5)');
+    assert.equal(hexToRgba('#0000ff', 0), 'rgba(0, 0, 255, 0)');
 });

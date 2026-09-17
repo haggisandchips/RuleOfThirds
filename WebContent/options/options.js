@@ -2,15 +2,18 @@ const DEFAULT_OPTIONS = {
     renderGrid: 'enabled',
     gridRows: 3,
     gridColumns: 3,
-    lineColour: '#fff',
+    lineColour: '#ffffff',
+    lineOpacity: 100,
     renderCircle: 'enabled',
-    circleColour: '#f00',
+    circleColour: '#ff0000',
+    circleOpacity: 100,
     circleRadius: 5,
     circleStyle: 'outline'
 };
 
 const MIN_GRID_LINES = 1;
 const MIN_CIRCLE_RADIUS = 1;
+const MIN_OPACITY = 0;
 
 // Restores options from chrome.storage
 const loadOptions = () => {
@@ -38,9 +41,11 @@ const saveOptions = (event) => {
     const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows);
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
 
-    const lineColour = getSelectedOption('line-colour');
+    const lineColour = document.getElementById('line-colour').value;
+    const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
     const renderCircle = getSelectedOption('render-circle');
-    const circleColour = getSelectedOption('circle-colour');
+    const circleColour = document.getElementById('circle-colour').value;
+    const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style');
 
@@ -50,8 +55,10 @@ const saveOptions = (event) => {
             gridRows,
             gridColumns,
             lineColour,
+            lineOpacity,
             renderCircle,
             circleColour,
+            circleOpacity,
             circleRadius,
             circleStyle
         },
@@ -73,11 +80,28 @@ function setOptions(options) {
     selectOption('render-grid', options.renderGrid);
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
-    selectOption('line-colour', options.lineColour);
+    document.getElementById('line-colour').value = options.lineColour;
+    syncQuickPickSelection('line-colour');
+    document.getElementById('line-opacity').value = options.lineOpacity;
     selectOption('render-circle', options.renderCircle);
-    selectOption('circle-colour', options.circleColour);
+    document.getElementById('circle-colour').value = options.circleColour;
+    syncQuickPickSelection('circle-colour');
+    document.getElementById('circle-opacity').value = options.circleOpacity;
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+}
+
+// Highlights whichever quick-pick swatch matches the colour input's current
+// value (and un-highlights the rest), whether that value was just set via
+// a quick-pick click or the native picker landed on the same colour.
+function syncQuickPickSelection(colourInputId) {
+
+    const value = document.getElementById(colourInputId).value;
+    const quickGroup = document.getElementById(colourInputId + '-quick');
+
+    quickGroup.querySelectorAll('.quick-swatch').forEach(swatch => {
+        swatch.classList.toggle('selected', swatch.dataset.value === value);
+    });
 }
 
 const TOAST_DISPLAY_MS = 2000;
@@ -164,6 +188,19 @@ function getSelectedOption(elementName) {
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', loadOptions);
     document.querySelectorAll('input').forEach(input => input.addEventListener('change', saveOptions));
+
+    // 'input' (not just 'change') so the selection ring tracks the native
+    // colour picker live, in case it's dragged onto a quick-pick colour.
+    document.getElementById('line-colour').addEventListener('input', () => syncQuickPickSelection('line-colour'));
+    document.getElementById('circle-colour').addEventListener('input', () => syncQuickPickSelection('circle-colour'));
+
+    document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
+        const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
+        document.getElementById(colourInputId).value = swatch.dataset.value;
+        syncQuickPickSelection(colourInputId);
+        saveOptions();
+    }));
+
     document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
 }
 
