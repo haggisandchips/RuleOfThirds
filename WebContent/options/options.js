@@ -87,6 +87,11 @@ function showToast(message) {
         document.body.appendChild(container);
     }
 
+    // Number spinners fire many rapid 'change' events, each triggering a
+    // save. Without this, every one of those saves would queue its own
+    // toast, flooding the page with "Options saved." notifications.
+    container.replaceChildren();
+
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
