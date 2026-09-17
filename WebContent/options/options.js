@@ -81,12 +81,29 @@ function setOptions(options) {
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
     document.getElementById('line-colour').value = options.lineColour;
+    updateColourPreview('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
     selectOption('render-circle', options.renderCircle);
     document.getElementById('circle-colour').value = options.circleColour;
+    updateColourPreview('circle-colour');
     document.getElementById('circle-opacity').value = options.circleOpacity;
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+}
+
+// The chosen colour is shown in its own preview swatch rather than relying
+// on the native <input type="color">'s own rendering, since it needs to
+// stay in sync however the colour was set (native picker or quick-pick).
+function updateColourPreview(colourInputId) {
+
+    const value = document.getElementById(colourInputId).value;
+
+    document.getElementById(colourInputId + '-preview').style.backgroundColor = value;
+
+    const quickGroup = document.getElementById(colourInputId + '-quick');
+    quickGroup.querySelectorAll('.quick-swatch').forEach(swatch => {
+        swatch.classList.toggle('selected', swatch.dataset.value === value);
+    });
 }
 
 const TOAST_DISPLAY_MS = 2000;
@@ -173,6 +190,19 @@ function getSelectedOption(elementName) {
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', loadOptions);
     document.querySelectorAll('input').forEach(input => input.addEventListener('change', saveOptions));
+
+    // 'input' (not just 'change') so the preview swatch tracks the native
+    // colour picker live, the same way its own internal swatch would.
+    document.getElementById('line-colour').addEventListener('input', () => updateColourPreview('line-colour'));
+    document.getElementById('circle-colour').addEventListener('input', () => updateColourPreview('circle-colour'));
+
+    document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
+        const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
+        document.getElementById(colourInputId).value = swatch.dataset.value;
+        updateColourPreview(colourInputId);
+        saveOptions();
+    }));
+
     document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
 }
 
