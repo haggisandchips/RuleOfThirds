@@ -1,10 +1,10 @@
 const DEFAULT_OPTIONS = {
-    renderGrid: 'enabled',
+    renderGrid: true,
     gridRows: 3,
     gridColumns: 3,
     lineColour: '#ffffff',
     lineOpacity: 100,
-    renderCircle: 'enabled',
+    renderCircle: true,
     circleColour: '#ff0000',
     circleOpacity: 100,
     circleRadius: 5,
@@ -27,7 +27,7 @@ const loadOptions = () => {
 // Saves options to chrome.storage
 const saveOptions = (event) => {
 
-    const renderGrid = getSelectedOption('render-grid');
+    const renderGrid = document.getElementById('render-grid').checked;
 
     // The field the user is actively editing has its minimum raised to 2
     // whenever the *other* field is currently 1, so it's impossible to type
@@ -43,7 +43,7 @@ const saveOptions = (event) => {
 
     const lineColour = document.getElementById('line-colour').value;
     const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
-    const renderCircle = getSelectedOption('render-circle');
+    const renderCircle = document.getElementById('render-circle').checked;
     const circleColour = document.getElementById('circle-colour').value;
     const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
@@ -77,14 +77,14 @@ const restoreDefaultOptions = () => {
 
 function setOptions(options) {
 
-    selectOption('render-grid', options.renderGrid);
+    document.getElementById('render-grid').checked = options.renderGrid;
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
     document.getElementById('line-colour').value = options.lineColour;
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
     updateOpacityLabel('line-opacity');
-    selectOption('render-circle', options.renderCircle);
+    document.getElementById('render-circle').checked = options.renderCircle;
     document.getElementById('circle-colour').value = options.circleColour;
     syncQuickPickSelection('circle-colour');
     document.getElementById('circle-opacity').value = options.circleOpacity;

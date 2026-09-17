@@ -90,12 +90,12 @@ test('sanitizeInt clamps values above an optional maximum', () => {
 
 test('sanitizeOptions clamps the numeric fields and leaves everything else untouched', () => {
     const result = sanitizeOptions({
-        renderGrid: 'enabled',
+        renderGrid: true,
         gridRows: '3',
         gridColumns: '',
         lineColour: '#000',
         lineOpacity: '150',
-        renderCircle: 'enabled',
+        renderCircle: true,
         circleColour: '#f00',
         circleOpacity: '-10',
         circleRadius: '-1',
@@ -103,12 +103,12 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
     });
 
     assert.deepEqual(result, {
-        renderGrid: 'enabled',
+        renderGrid: true,
         gridRows: 3,
         gridColumns: 3,
         lineColour: '#000',
         lineOpacity: 100,
-        renderCircle: 'enabled',
+        renderCircle: true,
         circleColour: '#f00',
         circleOpacity: 0,
         circleRadius: 1,

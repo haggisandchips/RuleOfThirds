@@ -93,12 +93,12 @@ if (typeof rotInit === 'undefined') {
             return new Promise((resolve) => {
                 chrome.storage.sync.get(
                     {
-                        renderGrid: 'enabled',
+                        renderGrid: true,
                         gridRows: 3,
                         gridColumns: 3,
                         lineColour: '#ffffff',
                         lineOpacity: 100,
-                        renderCircle: 'enabled',
+                        renderCircle: true,
                         circleColour: '#ff0000',
                         circleOpacity: 100,
                         circleRadius: 5,
@@ -209,7 +209,7 @@ if (typeof rotInit === 'undefined') {
             const gridRows = options.gridRows;
             const gridColumns = options.gridColumns;
 
-            if (options.renderGrid === 'enabled') {
+            if (options.renderGrid) {
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
 
@@ -225,7 +225,7 @@ if (typeof rotInit === 'undefined') {
                 ctx.stroke();
             }
 
-            if (options.renderCircle === 'enabled') {
+            if (options.renderCircle) {
                 // Add circles around the intersections
                 const radius = Math.min(
                     (w / options.gridColumns) / 2,
