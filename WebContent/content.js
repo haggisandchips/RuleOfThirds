@@ -111,7 +111,6 @@ if (typeof rotInit === 'undefined') {
 
             const images = document.getElementsByTagName('img');
             for (let ii = 0; ii < images.length; ii++) {
-
                 const image = images[ii];
                 if (!image.offsetParent) {
                     continue;
@@ -122,18 +121,24 @@ if (typeof rotInit === 'undefined') {
                 const h = image.height;
 
                 if (shouldRender(computedStyle, w, h, MIN_LONG, MIN_SHORT)) {
-                    const canvas = createCanvas(w, h, image, computedStyle);
-
-                    // Draw Rule of Thirds grid
-                    drawGrid(canvas.getContext('2d'), w, h);
-
-                    image.offsetParent.append(canvas);
-
-                    removeUndersizedImages(canvas, image);
+                    renderImageOverlay(image, computedStyle, w, h);
                 }
             }
 
             controlElement.setAttribute('active', 'true');
+        }
+
+        function renderImageOverlay(image, computedStyle, w, h) {
+
+            const imageParent = image.offsetParent;
+            const canvas = createCanvas(w, h, image, computedStyle);
+
+            // Draw Rule of Thirds grid
+            drawGrid(canvas.getContext('2d'), w, h);
+
+            imageParent.append(canvas);
+
+            removeUndersizedImages(canvas, image);
         }
 
         function removeGrids() {
