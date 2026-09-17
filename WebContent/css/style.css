@@ -165,6 +165,12 @@ input[type="number"]:focus {
     border-bottom: 2px solid var(--color-primary);
 }
 
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--color-primary);
+    margin: 0.5rem 0;
+}
+
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;

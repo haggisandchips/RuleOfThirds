@@ -3,14 +3,17 @@ const DEFAULT_OPTIONS = {
     gridRows: 3,
     gridColumns: 3,
     lineColour: '#ffffff',
+    lineOpacity: 100,
     renderCircle: 'enabled',
     circleColour: '#ff0000',
+    circleOpacity: 100,
     circleRadius: 5,
     circleStyle: 'outline'
 };
 
 const MIN_GRID_LINES = 1;
 const MIN_CIRCLE_RADIUS = 1;
+const MIN_OPACITY = 0;
 
 // Restores options from chrome.storage
 const loadOptions = () => {
@@ -39,8 +42,10 @@ const saveOptions = (event) => {
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
 
     const lineColour = document.getElementById('line-colour').value;
+    const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
     const renderCircle = getSelectedOption('render-circle');
     const circleColour = document.getElementById('circle-colour').value;
+    const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style');
 
@@ -50,8 +55,10 @@ const saveOptions = (event) => {
             gridRows,
             gridColumns,
             lineColour,
+            lineOpacity,
             renderCircle,
             circleColour,
+            circleOpacity,
             circleRadius,
             circleStyle
         },
@@ -74,8 +81,10 @@ function setOptions(options) {
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
     document.getElementById('line-colour').value = options.lineColour;
+    document.getElementById('line-opacity').value = options.lineOpacity;
     selectOption('render-circle', options.renderCircle);
     document.getElementById('circle-colour').value = options.circleColour;
+    document.getElementById('circle-opacity').value = options.circleOpacity;
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
 }
