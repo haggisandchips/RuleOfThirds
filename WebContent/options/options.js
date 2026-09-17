@@ -2,9 +2,9 @@ const DEFAULT_OPTIONS = {
     renderGrid: 'enabled',
     gridRows: 3,
     gridColumns: 3,
-    lineColour: '#fff',
+    lineColour: '#ffffff',
     renderCircle: 'enabled',
-    circleColour: '#f00',
+    circleColour: '#ff0000',
     circleRadius: 5,
     circleStyle: 'outline'
 };
@@ -38,9 +38,9 @@ const saveOptions = (event) => {
     const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows);
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
 
-    const lineColour = getSelectedOption('line-colour');
+    const lineColour = document.getElementById('line-colour').value;
     const renderCircle = getSelectedOption('render-circle');
-    const circleColour = getSelectedOption('circle-colour');
+    const circleColour = document.getElementById('circle-colour').value;
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style');
 
@@ -73,9 +73,9 @@ function setOptions(options) {
     selectOption('render-grid', options.renderGrid);
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
-    selectOption('line-colour', options.lineColour);
+    document.getElementById('line-colour').value = options.lineColour;
     selectOption('render-circle', options.renderCircle);
-    selectOption('circle-colour', options.circleColour);
+    document.getElementById('circle-colour').value = options.circleColour;
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
 }

@@ -83,9 +83,9 @@ if (typeof rotInit === 'undefined') {
                         renderGrid: 'enabled',
                         gridRows: 3,
                         gridColumns: 3,
-                        lineColour: '#fff',
+                        lineColour: '#ffffff',
                         renderCircle: 'enabled',
-                        circleColour: '#f00',
+                        circleColour: '#ff0000',
                         circleRadius: 5,
                         circleStyle: 'outline'
                     },
