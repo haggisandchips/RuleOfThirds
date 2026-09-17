@@ -2,7 +2,7 @@ const DEFAULT_OPTIONS = {
     renderGrid: 'enabled',
     gridRows: 3,
     gridColumns: 3,
-    lineColour: '#000',
+    lineColour: '#fff',
     renderCircle: 'enabled',
     circleColour: '#f00',
     circleRadius: 5
