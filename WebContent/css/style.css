@@ -171,6 +171,22 @@ input[type="range"] {
     margin: 0.5rem 0;
 }
 
+.opacity-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Fixed width so the slider doesn't shift as the digit count changes
+   (eg "9%" vs "100%"). */
+.opacity-value {
+    flex-shrink: 0;
+    width: 2.5em;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+    text-align: right;
+}
+
 /* Puts the native colour picker and the quick-pick swatches on one line.
    No visible label on the swatches - proximity, the hover scale-up and the
    selection ring already read as "quick alternatives to the picker" (each

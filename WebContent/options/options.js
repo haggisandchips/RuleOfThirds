@@ -83,12 +83,21 @@ function setOptions(options) {
     document.getElementById('line-colour').value = options.lineColour;
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
+    updateOpacityLabel('line-opacity');
     selectOption('render-circle', options.renderCircle);
     document.getElementById('circle-colour').value = options.circleColour;
     syncQuickPickSelection('circle-colour');
     document.getElementById('circle-opacity').value = options.circleOpacity;
+    updateOpacityLabel('circle-opacity');
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+}
+
+// Shows the slider's current value as text (eg "75%"), since the native
+// range input has no built-in way to display its own numeric value.
+function updateOpacityLabel(opacityInputId) {
+
+    document.getElementById(opacityInputId + '-value').textContent = document.getElementById(opacityInputId).value + '%';
 }
 
 // Highlights whichever quick-pick swatch matches the colour input's current
@@ -193,6 +202,9 @@ if (typeof document !== 'undefined') {
     // colour picker live, in case it's dragged onto a quick-pick colour.
     document.getElementById('line-colour').addEventListener('input', () => syncQuickPickSelection('line-colour'));
     document.getElementById('circle-colour').addEventListener('input', () => syncQuickPickSelection('circle-colour'));
+
+    document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
+    document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
