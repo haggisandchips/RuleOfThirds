@@ -464,6 +464,12 @@ const PREVIEW_ASPECT_RATIO = 240 / 360;
 // would wrap Control onto its own line despite technically fitting.
 const LAYOUT_SAFETY_MARGIN = 4;
 
+// Below this, sharing the row with Control's fixed 200px would squeeze
+// Preview into a barely-useful sliver well before anything looks visually
+// "broken" - stack Control above Preview instead once side-by-side would
+// leave Preview narrower than this.
+const MIN_SIDE_BY_SIDE_PREVIEW_WIDTH = 200;
+
 function layoutGridCustomiseCanvases() {
 
     const col = document.getElementById('grid-customise-col');
@@ -475,7 +481,11 @@ function layoutGridCustomiseCanvases() {
     const paddingX = parseFloat(colStyle.paddingLeft) + parseFloat(colStyle.paddingRight);
     const availableWidth = col.clientWidth - paddingX;
 
-    const previewWidth = Math.max(1, Math.min(availableWidth - CONTROL_SIZE - gap - LAYOUT_SAFETY_MARGIN, PREVIEW_MAX_WIDTH));
+    const sideBySidePreviewWidth = availableWidth - CONTROL_SIZE - gap - LAYOUT_SAFETY_MARGIN;
+    const stacked = sideBySidePreviewWidth < MIN_SIDE_BY_SIDE_PREVIEW_WIDTH;
+    col.classList.toggle('grid-customise-col-stacked', stacked);
+
+    const previewWidth = Math.max(1, Math.min(stacked ? availableWidth : sideBySidePreviewWidth, PREVIEW_MAX_WIDTH));
     const previewHeight = Math.round(previewWidth * PREVIEW_ASPECT_RATIO);
 
     setCanvasSize('grid-customise-preview', previewWidth, previewHeight);
@@ -485,9 +495,11 @@ function layoutGridCustomiseCanvases() {
     // align-items:flex-start) - nudge Control's panel down by half the
     // height difference so its canvas lands centred against Preview's,
     // which CSS alone can't do now Preview's own panel is taller (it has
-    // the photo toggle under its canvas that Control's doesn't).
+    // the photo toggle under its canvas that Control's doesn't). Not
+    // needed when stacked - they're no longer side by side, so there's no
+    // vertical alignment between them to correct for.
     const controlPanel = document.getElementById('grid-customise-control').closest('.grid-customise-panel');
-    controlPanel.style.marginTop = Math.max(0, (previewHeight - CONTROL_SIZE) / 2) + 'px';
+    controlPanel.style.marginTop = stacked ? '' : Math.max(0, (previewHeight - CONTROL_SIZE) / 2) + 'px';
 
     renderGridCustomisePreview();
 }

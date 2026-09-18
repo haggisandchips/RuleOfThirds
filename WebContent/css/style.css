@@ -340,6 +340,15 @@ input[type="range"] {
     margin-top: 0.5rem;
 }
 
+/* Applied by layoutGridCustomiseCanvases() in options.js once sharing the
+   row with Control's fixed 200px would squeeze Preview into a barely-
+   useful sliver - stacks Control above Preview and centres both instead
+   of squeezing them side by side. */
+.grid-customise-col-stacked {
+    flex-direction: column;
+    align-items: center;
+}
+
 .grid-customise-panel {
     display: flex;
     flex-direction: column;

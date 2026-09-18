@@ -271,11 +271,18 @@ priority order as time allows; none of these block day-to-day use.
     still wins via source order when the white swatch is the selected one.
     Verified both states via computed style in a browser.
 
-28. **Narrow-viewport Customise layout degrades before it visibly "breaks".**
-    Control is a fixed 200×200 square; Preview shrinks via
-    `Math.max(1, …)` and can become a useless sliver well before the single
-    600px breakpoint kicks in. Consider stacking Control above Preview
-    below some width.
+28. ~~**Narrow-viewport Customise layout degrades before it visibly "breaks".**~~ **Fixed.**
+    `layoutGridCustomiseCanvases()` now stacks Control above Preview (via
+    a new `.grid-customise-col-stacked` class - `flex-direction: column`)
+    once sharing the row with Control's fixed 200px would leave Preview
+    narrower than `MIN_SIDE_BY_SIDE_PREVIEW_WIDTH` (200px), instead of
+    squeezing it down toward `Math.max(1, …)`. Also skips the side-by-side
+    vertical-centring `marginTop` hack when stacked, since there's nothing
+    to centre against once they're no longer side by side. Live-verified
+    in a browser: forced a 380px container width, confirmed the stacked
+    class applies and Preview claims the full width instead of being
+    squeezed, then reverted to a wide container and confirmed it correctly
+    un-stacks back to the normal side-by-side layout.
 
 29. ~~**Field caption text is small**~~ **Fixed.**
     `label[for]`/`.field-caption` bumped from `0.8rem` to `0.875rem`.
