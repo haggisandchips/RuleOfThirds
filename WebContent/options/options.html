@@ -15,6 +15,27 @@
 
       <div class="row">
         <div class="col s12">
+          <h5>Overlay Style</h5>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12 m3">
+          <p>
+            <label>
+              <input type="radio" id="overlay-style-grid" name="overlay-style" value="grid">
+              <span>Grid</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="overlay-style-golden-ratio" name="overlay-style" value="golden-ratio">
+              <span>Golden Ratio</span>
+            </label>
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
           <h5>Line Colour</h5>
           <div class="divider"></div>
         </div>
@@ -45,7 +66,7 @@
         </div>
       </div>
 
-      <div class="row">
+      <div class="row grid-mode-row">
         <div class="col s12 m3">
           <div class="row">
             <div class="col s12">
@@ -131,7 +152,7 @@
         </div>
       </div>
 
-      <div class="row">
+      <div class="row grid-mode-row">
         <div class="col s12">
           <h5>Customise</h5>
           <div class="divider"></div>
@@ -158,6 +179,81 @@
               </label>
             </p>
           </div>
+        </div>
+      </div>
+
+      <div class="row golden-ratio-mode-row">
+        <div class="col s12">
+          <h5>Golden Ratio</h5>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12 m3">
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-clockwise" name="golden-ratio-direction" value="clockwise">
+              <span>Clockwise</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-counter-clockwise" name="golden-ratio-direction" value="counter-clockwise">
+              <span>Counter-Clockwise</span>
+            </label>
+          </p>
+        </div>
+        <div class="col s12 m4">
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-top-left" name="golden-ratio-start" value="top-left">
+              <span>Top Left</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-top-right" name="golden-ratio-start" value="top-right">
+              <span>Top Right</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-bottom-left" name="golden-ratio-start" value="bottom-left">
+              <span>Bottom Left</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-bottom-right" name="golden-ratio-start" value="bottom-right">
+              <span>Bottom Right</span>
+            </label>
+          </p>
+        </div>
+        <div class="col s12 m5">
+          <p class="golden-ratio-thumbnails">
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-left" aria-label="Clockwise, starting top left">
+              <canvas width="40" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-right" aria-label="Clockwise, starting top right">
+              <canvas width="60" height="40"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-left" aria-label="Clockwise, starting bottom left">
+              <canvas width="60" height="40"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-right" aria-label="Clockwise, starting bottom right">
+              <canvas width="40" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-left" aria-label="Counter-clockwise, starting top left">
+              <canvas width="60" height="40"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-right" aria-label="Counter-clockwise, starting top right">
+              <canvas width="40" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-left" aria-label="Counter-clockwise, starting bottom left">
+              <canvas width="40" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-right" aria-label="Counter-clockwise, starting bottom right">
+              <canvas width="60" height="40"></canvas>
+            </button>
+          </p>
         </div>
       </div>
 
@@ -231,6 +327,7 @@
     </div>
 
     <script src="../grid-render.js"></script>
+    <script src="../golden-ratio.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

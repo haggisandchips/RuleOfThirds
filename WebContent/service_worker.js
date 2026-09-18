@@ -36,7 +36,7 @@ chrome.action.onClicked.addListener(tab => {
     // grid is already active, since injection only happens here.
     chrome.storage.sync.get({applyToFrames: false}, ({applyToFrames}) => {
         chrome.scripting.executeScript({
-            target: {tabId: tab.id, allFrames: applyToFrames}, files: ['grid-render.js', 'content.js']
+            target: {tabId: tab.id, allFrames: applyToFrames}, files: ['grid-render.js', 'golden-ratio.js', 'content.js']
         }).catch(() => {
             showRefusalBadge(tab.id);
         });
