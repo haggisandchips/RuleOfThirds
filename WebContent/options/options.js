@@ -45,6 +45,7 @@ const loadOptions = () => {
 const saveOptions = (event, successMessage = 'Options saved.', successAction) => {
 
     const renderGrid = document.getElementById('render-grid').checked;
+    syncDependentFieldsEnabled();
 
     // The field the user is actively editing has its minimum raised to 2
     // whenever the *other* field is currently 1, so it's impossible to type
@@ -145,11 +146,51 @@ function setOptions(options) {
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
     document.getElementById('preview-background-image').checked = options.previewBackgroundImage;
+    syncDependentFieldsEnabled();
     // Depends on every field set above, since an accurate preview needs all
     // of them (colours, opacity, style, both enabled toggles, and the photo
     // toggle) - layoutGridCustomiseCanvases() sizes the canvases and then
     // renders.
     layoutGridCustomiseCanvases();
+}
+
+// Line Colour/Opacity only ever affect anything while Grid itself is
+// enabled (drawGridOverlay only reads them inside its
+// `if (options.renderGrid)` branch); Circles' Radius/Style/Colour/Opacity
+// are the same story for Circles. Disabling (and dimming, via the
+// `input:disabled`/`.quick-swatch:disabled` rules in style.css) those
+// fields while their section is off makes that dependency visible instead
+// of leaving fully-interactive controls that silently do nothing.
+const GRID_ONLY_FIELD_IDS = ['line-colour', 'line-opacity'];
+const CIRCLE_ONLY_FIELD_IDS = ['circle-radius', 'circle-style-outline', 'circle-style-filled', 'circle-colour', 'circle-opacity'];
+
+// Rows/Columns are different: they position BOTH the grid lines (while
+// Grid is enabled) AND the circle intersections (while Circles is enabled,
+// independent of Grid - drawGridOverlay's circle loop reads gridRows/
+// gridColumns inside its own `if (options.renderCircle)` branch, not
+// gated on renderGrid at all). Only disable them once *neither* section
+// would use them.
+const GRID_DIMENSION_FIELD_IDS = ['grid-rows', 'grid-columns'];
+
+function syncDependentFieldsEnabled() {
+
+    const gridEnabled = document.getElementById('render-grid').checked;
+    const circleEnabled = document.getElementById('render-circle').checked;
+
+    setFieldsEnabled(GRID_DIMENSION_FIELD_IDS, gridEnabled || circleEnabled);
+    setSectionFieldsEnabled(GRID_ONLY_FIELD_IDS, 'line-colour-quick', gridEnabled);
+    setSectionFieldsEnabled(CIRCLE_ONLY_FIELD_IDS, 'circle-colour-quick', circleEnabled);
+}
+
+function setFieldsEnabled(fieldIds, enabled) {
+
+    fieldIds.forEach(id => { document.getElementById(id).disabled = !enabled; });
+}
+
+function setSectionFieldsEnabled(fieldIds, quickSwatchGroupId, enabled) {
+
+    setFieldsEnabled(fieldIds, enabled);
+    document.querySelectorAll('#' + quickSwatchGroupId + ' .quick-swatch').forEach(button => { button.disabled = !enabled; });
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native

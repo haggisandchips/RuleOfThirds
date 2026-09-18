@@ -239,6 +239,16 @@ input[type="range"] {
     margin: 0.5rem 0;
 }
 
+/* Grid's Rows/Columns/Line Colour and Circles' Radius/Style/Colour are
+   disabled via syncDependentFieldsEnabled() in options.js while their
+   section's own "Enabled" checkbox is off, since none of them do anything
+   in that state - dimmed and cursor:not-allowed makes that visible rather
+   than leaving fully-interactive controls that silently have no effect. */
+input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .opacity-row {
     display: flex;
     align-items: center;
@@ -286,6 +296,15 @@ input[type="range"] {
 
 .quick-swatch:hover {
     transform: scale(1.1);
+}
+
+.quick-swatch:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.quick-swatch:disabled:hover {
+    transform: none;
 }
 
 /* The white swatch's own border is transparent like every other swatch's,

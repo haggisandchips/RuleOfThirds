@@ -177,11 +177,25 @@ priority order as time allows; none of these block day-to-day use.
     kept landing on the same pixel row each time; and the keyboard focus
     ring (#5) still rendered at the correct scaled position too.
 
-14. **Options page gives no "why doesn't this do anything" affordance when a section is off.**
-    Unchecking Grid's/Circles' "Enabled" doesn't disable/grey the dependent
-    fields (Rows/Columns/Radius/Colour/Opacity) — they stay fully
-    interactive despite being inert. Toggle a `disabled`/dimmed state on
-    dependent fields based on the section's Enabled checkbox.
+14. ~~**Options page gives no "why doesn't this do anything" affordance when a section is off.**~~ **Fixed.**
+    `syncDependentFieldsEnabled()` disables (and dims, via
+    `input:disabled`/`.quick-swatch:disabled` in `style.css`) Line Colour/
+    Line Opacity while Grid's "Enabled" is off, and Radius/Style/Circle
+    Colour/Circle Opacity while Circles' "Enabled" is off - both drive off
+    the section's own checkbox and match exactly what `drawGridOverlay`
+    actually reads inside each `if (options.render*)` branch.
+
+    Rows/Columns are handled separately from the rest of Grid's fields:
+    caught in review that they also position circle intersections whenever
+    Circles is enabled, independent of Grid - `drawGridOverlay`'s circle
+    loop reads `gridRows`/`gridColumns` inside its own
+    `if (options.renderCircle)` branch, not gated on `renderGrid` at all.
+    So they only disable once *neither* section would use them, not just
+    whenever Grid is off. Called from both `setOptions()` (initial load/
+    restore/undo) and `saveOptions()` (every live field edit).
+    Live-verified in a browser across all four Grid/Circle on/off
+    combinations, confirming Rows/Columns specifically stay enabled
+    whenever either section needs them.
 
 15. ~~**Customise feature has weak discoverability.**~~ **Fixed.**
     Added a one-line `.help-text` note under the "Customise" heading:
