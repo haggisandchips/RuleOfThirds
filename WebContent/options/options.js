@@ -16,6 +16,10 @@ const DEFAULT_OPTIONS = {
 };
 
 const MIN_GRID_LINES = 1;
+// 9 rows/columns keeps a nice synergy with the Rule of Thirds itself (3x3)
+// while still ruling out a grid large enough to blow chrome.storage.sync's
+// per-item quota via circleLines.
+const MAX_GRID_LINES = 9;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_OPACITY = 0;
 
@@ -45,12 +49,12 @@ const saveOptions = (event) => {
     // your way into a 1x1 grid. The untouched field keeps the base minimum -
     // it was already valid before this edit, so it can't newly need raising.
     const changedElementId = event && event.target && event.target.id;
-    const currentGridRows = clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows);
-    const currentGridColumns = clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns);
+    const currentGridRows = clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES);
+    const currentGridColumns = clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns, MAX_GRID_LINES);
     const {gridRowsMin, gridColumnsMin} = computeGridLineMinimums(currentGridRows, currentGridColumns, changedElementId);
 
-    const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows);
-    const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
+    const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES);
+    const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns, MAX_GRID_LINES);
 
     // Resizing the grid shifts every line's (and circle's) position, so one
     // left disabled at its old position would silently apply to a different
@@ -94,7 +98,9 @@ const saveOptions = (event) => {
             previewBackgroundImage
         },
         () => {
-            showToast('Options saved.');
+            showToast(chrome.runtime.lastError
+                ? 'Could not save options: ' + chrome.runtime.lastError.message
+                : 'Options saved.');
         }
     );
 };
@@ -185,10 +191,10 @@ function showToast(message) {
 // Reads a number input, clamping it to `min` and falling back to `fallback`
 // when the field is blank or not a number, then reflects the corrected
 // value back into the field so the UI never shows an unsaved bad value.
-function parseValidInt(elementId, min, fallback) {
+function parseValidInt(elementId, min, fallback, max) {
 
     const element = document.getElementById(elementId);
-    const value = clampInt(element.value, min, fallback);
+    const value = clampInt(element.value, min, fallback, max);
 
     element.value = value;
     return value;
@@ -196,10 +202,10 @@ function parseValidInt(elementId, min, fallback) {
 
 // Pure clamping logic, split out from parseValidInt so it can be unit
 // tested without a DOM (see /test).
-function clampInt(value, min, fallback) {
+function clampInt(value, min, fallback, max = Infinity) {
 
     const parsed = parseInt(value, 10);
-    return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
+    return Number.isNaN(parsed) ? fallback : Math.min(Math.max(parsed, min), max);
 }
 
 // Defensively matches a line-state array to the current line count (eg
@@ -297,8 +303,8 @@ function buildLiveGridCustomiseOptions() {
 
     return {
         renderGrid: document.getElementById('render-grid').checked,
-        gridRows: clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows),
-        gridColumns: clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns),
+        gridRows: clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES),
+        gridColumns: clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns, MAX_GRID_LINES),
         gridRowLines: gridRowLineStates,
         gridColumnLines: gridColumnLineStates,
         lineColour: document.getElementById('line-colour').value,
@@ -664,7 +670,7 @@ if (typeof document !== 'undefined') {
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
+        DEFAULT_OPTIONS, MIN_GRID_LINES, MAX_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
         resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
         computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground
     };

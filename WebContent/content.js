@@ -21,8 +21,11 @@ function shouldRender(computedStyle, w, h, minLong, minShort) {
 // every read rather than trusting what was persisted.
 function sanitizeOptions(data) {
 
-    const gridRows = sanitizeInt(data.gridRows, 1, 3);
-    const gridColumns = sanitizeInt(data.gridColumns, 1, 3);
+    // 9 rows/columns matches the max the options page itself enforces (see
+    // MAX_GRID_LINES in options.js) - capped here too in case a larger
+    // value was already synced from before that limit existed.
+    const gridRows = sanitizeInt(data.gridRows, 1, 3, 9);
+    const gridColumns = sanitizeInt(data.gridColumns, 1, 3, 9);
 
     return {
         ...data,

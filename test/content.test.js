@@ -97,6 +97,13 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
     });
 });
 
+test('sanitizeOptions caps gridRows/gridColumns at 9', () => {
+    const result = sanitizeOptions({gridRows: '20', gridColumns: '12'});
+
+    assert.equal(result.gridRows, 9);
+    assert.equal(result.gridColumns, 9);
+});
+
 test('sanitizeOptions treats a missing line-state array as every line enabled', () => {
     const result = sanitizeOptions({gridRows: 4, gridColumns: 2});
 

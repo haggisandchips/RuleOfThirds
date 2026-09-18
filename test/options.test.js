@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
     DEFAULT_OPTIONS,
     MIN_GRID_LINES,
+    MAX_GRID_LINES,
     MIN_CIRCLE_RADIUS,
     clampInt,
     minGridLines,
@@ -72,6 +73,11 @@ test('clampInt clamps to the minimum instead of accepting 0 or negative values',
 
 test('clampInt passes through an already-valid value unchanged', () => {
     assert.equal(clampInt('12', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows), 12);
+});
+
+test('clampInt clamps to an optional maximum', () => {
+    assert.equal(clampInt('20', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES), MAX_GRID_LINES);
+    assert.equal(clampInt('9', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES), 9);
 });
 
 test('minGridLines stays at the base minimum when the other dimension is not 1', () => {

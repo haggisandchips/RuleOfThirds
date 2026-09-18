@@ -46,16 +46,21 @@ priority order as time allows; none of these block day-to-day use.
    styling, and either keyboard-driven target traversal or an equivalent
    non-canvas control list.
 
-6. **`options.js:saveOptions` — no upper bound on Rows/Columns/Radius, and save failures are silent.**
-   `options.html:64,68,90` have no `max`; `clampInt` (`options.js:199-203`)
-   only enforces a minimum. A very large grid can make `circleLines` exceed
-   `chrome.storage.sync`'s ~8KB per-item quota, and `saveOptions`
-   (`options.js:39-100`) never checks `chrome.runtime.lastError` in the
-   `chrome.storage.sync.set` callback (`options.js:96-98`) — the "Options saved." toast fires
-   even on a silent quota failure. (Note: no *upper bound* on grid size is
-   intentional per the v1.7 changelog's performance-warning note — the real
-   bug is the missing `lastError` check masking a failed save. Add the
-   `lastError` check; a sane `max` is optional polish on top.)
+6. ~~**`options.js:saveOptions` — no upper bound on Rows/Columns/Radius, and save failures are silent.**~~ **Fixed.**
+   Rows/Columns are now capped at 9 (`MAX_GRID_LINES` in `options.js`, `max="9"`
+   on `options.html`'s inputs, and threaded through `clampInt`/`parseValidInt`
+   and the live preview) — chosen deliberately over a larger technical
+   maximum for its 3x3-grid synergy with the Rule of Thirds itself, and it
+   also rules out `circleLines` ever approaching `chrome.storage.sync`'s
+   per-item quota. `sanitizeOptions` in `content.js` now enforces the same
+   cap defensively, in case a larger value was already synced from before
+   this existed. `saveOptions`'s `chrome.storage.sync.set` callback now
+   checks `chrome.runtime.lastError` and shows the actual error instead of
+   a false "Options saved." (Radius was left unbounded — it doesn't
+   contribute to the quota risk this item was really about.) Live-tested in
+   a browser: typing 20 into Rows clamps to 9 and the preview updates to a
+   9-row grid; a simulated `chrome.storage.sync.set` failure surfaces the
+   `lastError` message in the toast instead of a false success.
 
 7. **`grid-render.test.js` — the v1.8 "filled circle" feature has zero test assertions.**
    `createRecordingContext()` tracks a `fill` counter but no test ever reads
