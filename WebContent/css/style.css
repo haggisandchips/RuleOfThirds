@@ -83,10 +83,14 @@ h5 {
        actually override its flex-basis instead of losing on specificity */
     .row > .m2 { flex-basis: 16.6667%; max-width: 16.6667%; }
     .row > .m3 { flex-basis: 25%; max-width: 25%; }
+    .row > .m4 { flex-basis: 33.3333%; max-width: 33.3333%; }
     .row > .m5 { flex-basis: 41.6667%; max-width: 41.6667%; }
     .row > .m6, .row > .l6 { flex-basis: 50%; max-width: 50%; }
     .row > .m7 { flex-basis: 58.3333%; max-width: 58.3333%; }
+    .row > .m8 { flex-basis: 66.6667%; max-width: 66.6667%; }
+    .row > .m9 { flex-basis: 75%; max-width: 75%; }
     .row > .offset-m1 { margin-left: 8.3333%; }
+
 }
 
 .divider {
@@ -105,8 +109,10 @@ h5 {
     color: #424242;
 }
 
-/* Field captions (labels with a `for`, placed before their input) */
-label[for] {
+/* Field captions (labels with a `for`, placed before their input, or a
+   plain span above a widget that has no single bound input). */
+label[for],
+.field-caption {
     display: block;
     font-size: 0.8rem;
     color: var(--color-muted);
@@ -258,6 +264,59 @@ input[type="range"] {
 
 .quick-swatch.selected {
     border-color: var(--color-primary);
+}
+
+/* Two side-by-side canvases for the "Customise" grid, sized by
+   layoutGridCustomiseCanvases() in options.js rather than CSS: "Control" is
+   a fixed 200x200 square, and "Preview" claims whatever width is left in
+   the row, up to its native 1080px image width (so it's never upscaled
+   blurry). Both get their width/height *attributes* (not just CSS) set to
+   match, so the canvas's actual pixel backing store stays crisp as the
+   window resizes, not just CSS-stretched. align-items:flex-start, with
+   Control's own panel given a matching margin-top in JS, keeps Control's
+   canvas vertically centred against Preview's - plain CSS centring would
+   centre the whole *panels* instead, throwing that off by the photo
+   toggle's height under Preview's canvas alone.
+
+   "Control" is a fixed white-background, black/grey reference map
+   (renderGridCustomiseReference()) that always uses the same two colours
+   regardless of what the user has actually picked, so there's never any
+   ambiguity about what's enabled or where to click - it's the only one of
+   the two that's actually clickable, and its cursor switches to a pointer
+   only when hovering an actual line/circle (see onGridCustomiseHover in
+   options.js). "Preview" is a live, accurate-colour render
+   (drawGridOverlay(), same as the real overlay, optionally with the
+   tinted background photo behind it - see drawPreviewBackground) - a
+   hidden line/circle simply isn't drawn there, exactly like the real
+   thing - purely informational, not interactive. */
+.grid-customise-col {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.grid-customise-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.grid-customise-preview,
+.grid-customise-control {
+    display: block;
+    margin-top: 0.25rem;
+    border: 1px solid var(--color-divider);
+}
+
+/* align-self:flex-start overrides the panel's own centring just for this,
+   so it lines up with Preview's left edge instead of sitting centred
+   under it. */
+.grid-customise-photo-toggle {
+    align-self: flex-start;
+    margin: 0.5rem 0 0;
 }
 
 .btn-large {

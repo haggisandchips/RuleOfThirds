@@ -2,18 +2,29 @@ const DEFAULT_OPTIONS = {
     renderGrid: true,
     gridRows: 3,
     gridColumns: 3,
+    gridRowLines: [true, true],
+    gridColumnLines: [true, true],
     lineColour: '#ffffff',
     lineOpacity: 100,
     renderCircle: true,
     circleColour: '#ff0000',
     circleOpacity: 100,
     circleRadius: 5,
-    circleStyle: 'outline'
+    circleStyle: 'outline',
+    circleLines: [[true, true], [true, true]],
+    previewBackgroundImage: true
 };
 
 const MIN_GRID_LINES = 1;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_OPACITY = 0;
+
+// Per-line/per-circle enabled state for the "Customise" preview - kept as
+// plain module state (rather than re-read from the DOM) since there's no
+// input element backing each one, only the preview canvas itself.
+let gridRowLineStates = DEFAULT_OPTIONS.gridRowLines.slice();
+let gridColumnLineStates = DEFAULT_OPTIONS.gridColumnLines.slice();
+let circleLineStates = DEFAULT_OPTIONS.circleLines.map(row => row.slice());
 
 // Restores options from chrome.storage
 const loadOptions = () => {
@@ -41,6 +52,21 @@ const saveOptions = (event) => {
     const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows);
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
 
+    // Resizing the grid shifts every line's (and circle's) position, so one
+    // left disabled at its old position would silently apply to a different
+    // line/circle - resetting everything to enabled avoids that surprise.
+    // Otherwise just keep the arrays the correct size defensively.
+    if (changedElementId === 'grid-rows' || changedElementId === 'grid-columns') {
+        gridRowLineStates = resetLineStates(gridRows - 1);
+        gridColumnLineStates = resetLineStates(gridColumns - 1);
+        circleLineStates = resetCircleStates(gridRows - 1, gridColumns - 1);
+    } else {
+        gridRowLineStates = resizeLineStates(gridRowLineStates, gridRows - 1);
+        gridColumnLineStates = resizeLineStates(gridColumnLineStates, gridColumns - 1);
+        circleLineStates = resizeCircleStates(circleLineStates, gridRows - 1, gridColumns - 1);
+    }
+    renderGridCustomisePreview();
+
     const lineColour = document.getElementById('line-colour').value;
     const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
     const renderCircle = document.getElementById('render-circle').checked;
@@ -48,19 +74,24 @@ const saveOptions = (event) => {
     const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style');
+    const previewBackgroundImage = document.getElementById('preview-background-image').checked;
 
     chrome.storage.sync.set(
         {
             renderGrid,
             gridRows,
             gridColumns,
+            gridRowLines: gridRowLineStates,
+            gridColumnLines: gridColumnLineStates,
             lineColour,
             lineOpacity,
             renderCircle,
             circleColour,
             circleOpacity,
             circleRadius,
-            circleStyle
+            circleStyle,
+            circleLines: circleLineStates,
+            previewBackgroundImage
         },
         () => {
             showToast('Options saved.');
@@ -80,6 +111,9 @@ function setOptions(options) {
     document.getElementById('render-grid').checked = options.renderGrid;
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
+    gridRowLineStates = resizeLineStates(options.gridRowLines, options.gridRows - 1);
+    gridColumnLineStates = resizeLineStates(options.gridColumnLines, options.gridColumns - 1);
+    circleLineStates = resizeCircleStates(options.circleLines, options.gridRows - 1, options.gridColumns - 1);
     document.getElementById('line-colour').value = options.lineColour;
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
@@ -91,6 +125,12 @@ function setOptions(options) {
     updateOpacityLabel('circle-opacity');
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+    document.getElementById('preview-background-image').checked = options.previewBackgroundImage;
+    // Depends on every field set above, since an accurate preview needs all
+    // of them (colours, opacity, style, both enabled toggles, and the photo
+    // toggle) - layoutGridCustomiseCanvases() sizes the canvases and then
+    // renders.
+    layoutGridCustomiseCanvases();
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native
@@ -162,6 +202,386 @@ function clampInt(value, min, fallback) {
     return Number.isNaN(parsed) ? fallback : Math.max(parsed, min);
 }
 
+// Defensively matches a line-state array to the current line count (eg
+// when loading a value saved before Rows/Columns last changed elsewhere) -
+// NOT used when the user edits Rows/Columns themselves, since that always
+// resets every line back to enabled instead (see resetLineStates).
+function resizeLineStates(states, count) {
+
+    const result = (Array.isArray(states) ? states : []).slice(0, count);
+    while (result.length < count) {
+        result.push(true);
+    }
+    return result;
+}
+
+// Every line defaults back to enabled whenever Rows/Columns itself changes,
+// since resizing the grid shifts each line's position - keeping an old
+// disabled flag at the same index would silently apply it to a different
+// line instead.
+function resetLineStates(count) {
+
+    return new Array(count).fill(true);
+}
+
+// 2D equivalents of resizeLineStates/resetLineStates, for the per-intersection
+// circle toggles - each row is just a line-state array in its own right.
+function resizeCircleStates(states, rowCount, columnCount) {
+
+    const result = [];
+    for (let ii = 0; ii < rowCount; ii++) {
+        result.push(resizeLineStates(Array.isArray(states) ? states[ii] : undefined, columnCount));
+    }
+    return result;
+}
+
+function resetCircleStates(rowCount, columnCount) {
+
+    const result = [];
+    for (let ii = 0; ii < rowCount; ii++) {
+        result.push(resetLineStates(columnCount));
+    }
+    return result;
+}
+
+// Blended most of the way back to white so the preview background stays a
+// light backdrop (rather than the harsh, sometimes near-black result of a
+// straight XOR/complement) whatever colours the user has actually picked -
+// eg white lines on a white background would otherwise be invisible.
+const GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND = 0.75;
+
+// A background derived from the two configured colours (average, then
+// XORed against white to get a contrasting complement) so the preview
+// stays visible without needing a colour picker of its own.
+function computePreviewBackground(lineColour, circleColour) {
+
+    const line = parseHexColour(lineColour);
+    const circle = parseHexColour(circleColour);
+
+    const channels = ['r', 'g', 'b'].map(channel => {
+        const average = Math.round((line[channel] + circle[channel]) / 2);
+        const complement = 255 ^ average;
+        return Math.round(complement + (255 - complement) * GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND);
+    });
+
+    return 'rgb(' + channels.join(', ') + ')';
+}
+
+function parseHexColour(hex) {
+
+    return {
+        r: parseInt(hex.substring(1, 3), 16),
+        g: parseInt(hex.substring(3, 5), 16),
+        b: parseInt(hex.substring(5, 7), 16)
+    };
+}
+
+// The full set of "live" (not-yet-saved) grid/circle options, read straight
+// from the form plus the customise-only line/circle states - everything
+// drawGridOverlay() and the Customise preview itself need.
+function buildLiveGridCustomiseOptions() {
+
+    return {
+        renderGrid: document.getElementById('render-grid').checked,
+        gridRows: clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows),
+        gridColumns: clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns),
+        gridRowLines: gridRowLineStates,
+        gridColumnLines: gridColumnLineStates,
+        lineColour: document.getElementById('line-colour').value,
+        lineOpacity: clampInt(document.getElementById('line-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity),
+        renderCircle: document.getElementById('render-circle').checked,
+        circleColour: document.getElementById('circle-colour').value,
+        circleOpacity: clampInt(document.getElementById('circle-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity),
+        circleRadius: clampInt(document.getElementById('circle-radius').value, MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius),
+        circleStyle: getSelectedOption('circle-style'),
+        circleLines: circleLineStates,
+        previewBackgroundImage: document.getElementById('preview-background-image').checked
+    };
+}
+
+// The greyscale photo used as an optional Preview background - loaded once
+// and reused on every redraw. Falls back to the plain computed background
+// colour until it's finished loading (or if it's switched off/fails).
+const PREVIEW_PHOTO_SRC = 'preview-background.webp';
+let previewPhotoImage = null;
+let previewPhotoLoaded = false;
+
+function loadPreviewPhoto() {
+
+    const image = new Image();
+    image.onload = () => {
+        previewPhotoLoaded = true;
+        renderGridCustomisePreview();
+    };
+    image.src = PREVIEW_PHOTO_SRC;
+    previewPhotoImage = image;
+}
+
+// Fills the Preview canvas's background: either the plain computed colour,
+// or (when enabled and loaded) that same colour multiplied over the
+// greyscale photo, which tints it to match without needing a colour picker
+// of its own - white areas of the photo take the full computed colour,
+// black areas stay black, since multiply can only ever darken.
+function drawPreviewBackground(ctx, w, h, options, image) {
+
+    const backgroundColour = computePreviewBackground(options.lineColour, options.circleColour);
+
+    if (options.previewBackgroundImage && image) {
+        ctx.drawImage(image, 0, 0, w, h);
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = backgroundColour;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'source-over';
+    } else {
+        ctx.fillStyle = backgroundColour;
+        ctx.fillRect(0, 0, w, h);
+    }
+}
+
+// Redraws both "Customise" canvases - called whenever anything they depend
+// on changes (on load, on a form change, or on a click in the control
+// canvas).
+//
+// "Preview" is a faithful, accurate-colour render: a hidden line or circle
+// is simply never drawn, exactly like the real overlay - it gives no clue
+// by itself that it could be turned back on, and isn't interactive.
+// "Control" exists purely to supply that clue (and the interactivity): a
+// fixed white/black/grey reference map, drawn the same way regardless of
+// the user's actual colours, so there's always an obvious, unambiguous spot
+// to click.
+function renderGridCustomisePreview() {
+
+    const previewCanvas = document.getElementById('grid-customise-preview');
+    const previewCtx = previewCanvas.getContext('2d');
+    const liveOptions = buildLiveGridCustomiseOptions();
+
+    drawPreviewBackground(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions, previewPhotoLoaded ? previewPhotoImage : null);
+    drawGridOverlay(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions);
+
+    const controlCanvas = document.getElementById('grid-customise-control');
+    renderGridCustomiseReference(controlCanvas.getContext('2d'), controlCanvas.width, controlCanvas.height, liveOptions);
+}
+
+// "Control" is a fixed 200x200 square, kept side by side with "Preview" -
+// which then claims whatever width is left in the row, up to its native
+// photo resolution (1080 wide) so it's never upscaled blurry. Both canvases
+// get their width/height *attributes* (not just CSS) set to match, so the
+// actual pixel backing store stays crisp as the window resizes rather than
+// being CSS-stretched. Re-run on load and on every resize of the row
+// itself (see the ResizeObserver setup below).
+const CONTROL_SIZE = 200;
+const PREVIEW_MAX_WIDTH = 1080;
+const PREVIEW_ASPECT_RATIO = 240 / 360;
+
+// A small buffer subtracted from the row budget below, so the two widths
+// never sum to *exactly* the row's available width - which is fragile to
+// the sub-pixel rounding clientWidth/getComputedStyle can introduce, and
+// would wrap Control onto its own line despite technically fitting.
+const LAYOUT_SAFETY_MARGIN = 4;
+
+function layoutGridCustomiseCanvases() {
+
+    const col = document.getElementById('grid-customise-col');
+    const colStyle = getComputedStyle(col);
+    const gap = parseFloat(colStyle.columnGap) || 0;
+    // clientWidth includes this element's own left/right padding (it's a
+    // ".col", which has some) - that padding isn't space available to lay
+    // the two canvases out in, so it has to come off too.
+    const paddingX = parseFloat(colStyle.paddingLeft) + parseFloat(colStyle.paddingRight);
+    const availableWidth = col.clientWidth - paddingX;
+
+    const previewWidth = Math.max(1, Math.min(availableWidth - CONTROL_SIZE - gap - LAYOUT_SAFETY_MARGIN, PREVIEW_MAX_WIDTH));
+    const previewHeight = Math.round(previewWidth * PREVIEW_ASPECT_RATIO);
+
+    setCanvasSize('grid-customise-preview', previewWidth, previewHeight);
+    setCanvasSize('grid-customise-control', CONTROL_SIZE, CONTROL_SIZE);
+
+    // Both panels start at the same top edge (see .grid-customise-col's
+    // align-items:flex-start) - nudge Control's panel down by half the
+    // height difference so its canvas lands centred against Preview's,
+    // which CSS alone can't do now Preview's own panel is taller (it has
+    // the photo toggle under its canvas that Control's doesn't).
+    const controlPanel = document.getElementById('grid-customise-control').closest('.grid-customise-panel');
+    controlPanel.style.marginTop = Math.max(0, (previewHeight - CONTROL_SIZE) / 2) + 'px';
+
+    renderGridCustomisePreview();
+}
+
+function setCanvasSize(canvasId, width, height) {
+
+    const canvas = document.getElementById(canvasId);
+    canvas.width = width;
+    canvas.height = height;
+    // Without an explicit CSS size, a canvas's box is its bitmap resolution
+    // *plus* its border on top (border-box only reinterprets an explicit
+    // width/height, and there isn't one here otherwise) - enough to tip the
+    // row a few pixels over budget and wrap when the numbers are meant to
+    // add up exactly. Setting these too keeps the border inside the box.
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+}
+
+const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';
+const GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#b0b0b0';
+
+// Draws every line/circle position the grid could have, in black when it's
+// enabled and grey when it's not - a permanently legible map of what's
+// clickable, independent of whatever colours the user has actually chosen.
+// A line/circle whose axis is disabled overall (renderGrid/renderCircle) is
+// left off entirely, same as the real preview: there's nothing to un-hide
+// if the master toggle for it is off.
+function renderGridCustomiseReference(ctx, w, h, options) {
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.lineWidth = 1;
+
+    if (options.renderGrid) {
+        options.gridRowLines.forEach((enabled, index) => {
+            const y = (index + 1) * h / options.gridRows;
+            ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+        });
+
+        options.gridColumnLines.forEach((enabled, index) => {
+            const x = (index + 1) * w / options.gridColumns;
+            ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, h);
+            ctx.stroke();
+        });
+    }
+
+    if (options.renderCircle) {
+        const radius = Math.min((w / options.gridColumns) / 2, (h / options.gridRows) / 2, options.circleRadius);
+
+        options.gridRowLines.forEach((rowEnabled, rowIndex) => {
+            if (!rowEnabled) {
+                return;
+            }
+            options.gridColumnLines.forEach((columnEnabled, columnIndex) => {
+                if (!columnEnabled) {
+                    return;
+                }
+                const enabled = options.circleLines[rowIndex][columnIndex];
+                const x = (columnIndex + 1) * w / options.gridColumns;
+                const y = (rowIndex + 1) * h / options.gridRows;
+                ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+            });
+        });
+    }
+}
+
+const GRID_CUSTOMISE_LINE_HIT_TOLERANCE = 8;
+const GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE = 10;
+
+// Pure hit-testing so it can be unit tested without a canvas/DOM: given a
+// click position (in the preview's own pixel coordinates), decides which
+// line or circle - if any - the click was meant for. Circles are checked
+// first since they sit on top of a line intersection; a circle is only ever
+// a target when both of its lines are enabled, since that's the only time
+// it's eligible to be drawn (or ghosted) at all - matching
+// drawGridCustomiseGhosts/drawGridOverlay's own rule.
+function findGridCustomiseTarget(x, y, w, h, options) {
+
+    const gridRows = options.gridRows;
+    const gridColumns = options.gridColumns;
+
+    if (options.renderCircle) {
+        for (let columnIndex = 0; columnIndex < gridColumns - 1; columnIndex++) {
+            if (!options.gridColumnLines[columnIndex]) {
+                continue;
+            }
+            for (let rowIndex = 0; rowIndex < gridRows - 1; rowIndex++) {
+                if (!options.gridRowLines[rowIndex]) {
+                    continue;
+                }
+                const cx = (columnIndex + 1) * w / gridColumns;
+                const cy = (rowIndex + 1) * h / gridRows;
+                if (Math.hypot(x - cx, y - cy) <= GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE) {
+                    return {type: 'circle', row: rowIndex, column: columnIndex};
+                }
+            }
+        }
+    }
+
+    if (options.renderGrid) {
+        for (let rowIndex = 0; rowIndex < gridRows - 1; rowIndex++) {
+            const ly = (rowIndex + 1) * h / gridRows;
+            if (Math.abs(y - ly) <= GRID_CUSTOMISE_LINE_HIT_TOLERANCE) {
+                return {type: 'row', index: rowIndex};
+            }
+        }
+        for (let columnIndex = 0; columnIndex < gridColumns - 1; columnIndex++) {
+            const lx = (columnIndex + 1) * w / gridColumns;
+            if (Math.abs(x - lx) <= GRID_CUSTOMISE_LINE_HIT_TOLERANCE) {
+                return {type: 'column', index: columnIndex};
+            }
+        }
+    }
+
+    return null;
+}
+
+// Converts a mouse event's page position into the canvas's own pixel
+// coordinates. Scales by canvas-pixels-per-CSS-pixel defensively, though
+// the two match 1:1 today.
+function gridCustomiseEventPosition(event) {
+
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+        y: (event.clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+// Only "Control" is interactive - "Preview" is purely informational, since
+// a hidden circle draws nothing there for the user to aim at (see
+// onGridCustomiseHover for the pointer feedback that keeps Control itself
+// unambiguous to click).
+function onGridCustomiseClick(event) {
+
+    const canvas = event.currentTarget;
+    const {x, y} = gridCustomiseEventPosition(event);
+
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
+    if (!target) {
+        return;
+    }
+
+    if (target.type === 'row') {
+        gridRowLineStates[target.index] = !gridRowLineStates[target.index];
+    } else if (target.type === 'column') {
+        gridColumnLineStates[target.index] = !gridColumnLineStates[target.index];
+    } else {
+        circleLineStates[target.row][target.column] = !circleLineStates[target.row][target.column];
+    }
+
+    renderGridCustomisePreview();
+    saveOptions();
+}
+
+// Switches the cursor to a pointer only while actually hovering a line or
+// circle, so the canvas doesn't look uniformly clickable when most of it
+// isn't a valid target.
+function onGridCustomiseHover(event) {
+
+    const canvas = event.currentTarget;
+    const {x, y} = gridCustomiseEventPosition(event);
+
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
+    canvas.style.cursor = target ? 'pointer' : 'default';
+}
+
 // A 1x1 grid draws no lines in either direction, so once one dimension is 1,
 // the other dimension's floor rises to 2.
 function minGridLines(otherDimensionValue) {
@@ -206,6 +626,11 @@ if (typeof document !== 'undefined') {
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
+    const gridCustomiseControl = document.getElementById('grid-customise-control');
+    gridCustomiseControl.addEventListener('click', onGridCustomiseClick);
+    gridCustomiseControl.addEventListener('mousemove', onGridCustomiseHover);
+    gridCustomiseControl.addEventListener('mouseleave', () => { gridCustomiseControl.style.cursor = 'default'; });
+
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
         document.getElementById(colourInputId).value = swatch.dataset.value;
@@ -214,8 +639,19 @@ if (typeof document !== 'undefined') {
     }));
 
     document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
+
+    loadPreviewPhoto();
+
+    // ResizeObserver rather than a plain window 'resize' listener, since
+    // what actually matters is the row's own width - which can also change
+    // from things a window resize wouldn't catch (eg a scrollbar appearing).
+    new ResizeObserver(() => layoutGridCustomiseCanvases()).observe(document.getElementById('grid-customise-col'));
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums};
+    module.exports = {
+        DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
+        resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
+        computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground
+    };
 }

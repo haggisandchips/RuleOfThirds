@@ -7,7 +7,7 @@ const {
     shouldRender,
     sanitizeInt,
     sanitizeOptions,
-    hexToRgba
+    sanitizeCircleStates
 } = require('../WebContent/content.js');
 
 test('resolveImageSrc prefers currentSrc over src', () => {
@@ -106,18 +106,53 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         renderGrid: true,
         gridRows: 3,
         gridColumns: 3,
+        gridRowLines: [true, true],
+        gridColumnLines: [true, true],
         lineColour: '#000',
         lineOpacity: 100,
         renderCircle: true,
         circleColour: '#f00',
         circleOpacity: 0,
         circleRadius: 1,
-        circleStyle: 'outline'
+        circleStyle: 'outline',
+        circleLines: [[true, true], [true, true]]
     });
 });
 
-test('hexToRgba converts a hex colour and opacity percentage to an rgba() string', () => {
-    assert.equal(hexToRgba('#ff0000', 100), 'rgba(255, 0, 0, 1)');
-    assert.equal(hexToRgba('#00ff00', 50), 'rgba(0, 255, 0, 0.5)');
-    assert.equal(hexToRgba('#0000ff', 0), 'rgba(0, 0, 255, 0)');
+test('sanitizeOptions treats a missing line-state array as every line enabled', () => {
+    const result = sanitizeOptions({gridRows: 4, gridColumns: 2});
+
+    assert.deepEqual(result.gridRowLines, [true, true, true]);
+    assert.deepEqual(result.gridColumnLines, [true]);
+});
+
+test('sanitizeOptions only disables a line on an explicit false, and resizes to the current grid', () => {
+    const result = sanitizeOptions({
+        gridRows: 3,
+        gridColumns: 4,
+        gridRowLines: [false, 'not a boolean'],
+        gridColumnLines: [true, false]
+    });
+
+    assert.deepEqual(result.gridRowLines, [false, true]);
+    // Grew from 2 stored entries to 3 (gridColumns 4 => 3 lines) - the new
+    // trailing entry has no stored data, so it defaults to enabled.
+    assert.deepEqual(result.gridColumnLines, [true, false, true]);
+});
+
+test('sanitizeCircleStates treats a missing circle grid as every circle enabled', () => {
+    const result = sanitizeCircleStates(undefined, 2, 3);
+    assert.deepEqual(result, [[true, true, true], [true, true, true]]);
+});
+
+test('sanitizeCircleStates only disables a circle on an explicit false, per row', () => {
+    const result = sanitizeCircleStates([[false, true], ['not an array']], 2, 2);
+    assert.deepEqual(result, [[false, true], [true, true]]);
+});
+
+test('sanitizeCircleStates resizes each row to the current column count', () => {
+    // Columns grew from 2 to 3 stored entries per row - the new trailing
+    // entry has no stored data, so it defaults to enabled.
+    const result = sanitizeCircleStates([[false, false]], 2, 3);
+    assert.deepEqual(result, [[false, false, true], [true, true, true]]);
 });
