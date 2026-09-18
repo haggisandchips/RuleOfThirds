@@ -200,9 +200,12 @@ priority order as time allows; none of these block day-to-day use.
 
 ## Low priority / code quality / nice-to-haves
 
-20. **Leftover `console.log` calls** — `service_worker.js:7-8,22`;
-    `content.js:78,98,163,199`. Fine for dev, noisy for a public release;
-    strip or gate behind a debug flag.
+20. ~~**Leftover `console.log` calls**~~ **Fixed.**
+    Stripped every flow-tracing `console.log` in both `service_worker.js`
+    and `content.js` (`"Previous/Current Version"`, `"Browser action
+    clicked"`, `"Injecting function"`, `"Applying/Removing grids"`, etc.).
+    Kept the one genuine error log — `console.log(e)` in
+    `service_worker.js`'s top-level `catch` block.
 
 21. **Misleading re-injection guard comment** — `content.js:76`
     (`if (typeof rotInit === 'undefined') { const rotInit = ... }`). Because

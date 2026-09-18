@@ -89,8 +89,6 @@ function sanitizeCircleStates(rows, rowCount, columnCount) {
 
 if (typeof rotInit === 'undefined') {
 
-    console.log('Injecting function');
-
     const rotInit = function () {
 
         const MIN_LONG = 100, MIN_SHORT = 50;
@@ -109,7 +107,6 @@ if (typeof rotInit === 'undefined') {
 
             chrome.storage.onChanged.addListener((changes, area) => {
                 if (area === 'sync'/* && changes.options?.newValue*/) {
-                    console.log('Options changed - refreshing overlays');
                     if (controlElement.getAttribute('active') === 'true') {
                         readOptions().then(() => {
                             removeGrids();
@@ -174,8 +171,6 @@ if (typeof rotInit === 'undefined') {
 
         function applyGrids() {
 
-            console.log('Applying grids');
-
             const images = document.getElementsByTagName('img');
             for (let ii = 0; ii < images.length; ii++) {
                 const image = images[ii];
@@ -220,8 +215,6 @@ if (typeof rotInit === 'undefined') {
         }
 
         function removeGrids() {
-
-            console.log('Removing grids');
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
             controlElement.setAttribute('active', 'false');
