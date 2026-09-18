@@ -27,14 +27,16 @@ const {
 function createColourRecordingContext() {
     let currentStrokeStyle = null;
     const strokes = [];
+    const arcRadii = [];
     return {
         strokes,
+        arcRadii,
         fillStyle: null,
         fillRect() {},
         beginPath() {},
         moveTo() {},
         lineTo() {},
-        arc() {},
+        arc(x, y, radius) { arcRadii.push(radius); },
         stroke() { strokes.push(currentStrokeStyle); },
         set strokeStyle(value) { currentStrokeStyle = value; },
         get strokeStyle() { return currentStrokeStyle; }
@@ -266,6 +268,15 @@ test('renderGridCustomiseReference draws nothing for an axis whose master toggle
     const circleOffCtx = createColourRecordingContext();
     renderGridCustomiseReference(circleOffCtx, 90, 90, baseGridOptions({renderCircle: false}));
     assert.equal(circleOffCtx.strokes.length, 4, 'only the 4 lines remain');
+});
+
+test('renderGridCustomiseReference clamps the circle radius to fit the grid cell', () => {
+    const ctx = createColourRecordingContext();
+    // A 90x90 3x3 grid gives 30x30 cells, so the largest radius that fits
+    // without overlap is 15 - circleRadius asks for far more than that.
+    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({circleRadius: 999}));
+
+    assert.ok(ctx.arcRadii.every(r => r === 15), `expected every radius clamped to 15, got ${ctx.arcRadii}`);
 });
 
 test('listGridCustomiseTargets lists every line and circle, in row/column/circle order', () => {

@@ -184,20 +184,16 @@ priority order as time allows; none of these block day-to-day use.
     an internal id/class. Also fixed the same stale wording in
     `guide/guide.html`, which had inherited it.
 
-18. **`test/content.test.js` — `sanitizeLineStates` has no direct tests.**
-    It's only exercised indirectly via `sanitizeOptions`/
-    `sanitizeCircleStates`, which do get dedicated tests (missing array,
-    explicit-false-only rule, resizing). Add the same direct tests for the
-    simpler 1D case for symmetry/coverage.
+18. ~~**`test/content.test.js` — `sanitizeLineStates` has no direct tests.**~~ **Fixed.**
+    Added the same direct tests `sanitizeCircleStates` already had (missing
+    array, explicit-false-only rule, resizing, plus a count-of-0 edge case).
 
-19. **No test verifies the circle-radius geometric clamp.**
-    `drawGridOverlay` (`grid-render.js:57-60`) and `options.js`'s
-    `renderGridCustomiseReference` (`options.js:474`) both compute
-    `radius = Math.min(w/cols/2, h/rows/2, options.circleRadius)`,
-    but `createRecordingContext.arc()` only counts calls, never records the
-    radius argument — this clamp is unverified in both places. Capture
-    `arc(x, y, r, ...)` args in the fake context and assert `r` is clamped
-    when `circleRadius` exceeds the cell size.
+19. ~~**No test verifies the circle-radius geometric clamp.**~~ **Fixed.**
+    `createRecordingContext`/`createColourRecordingContext`'s fake `arc()`
+    now records the radius argument (`arcRadii`), and a new test in each of
+    `grid-render.test.js` and `options.test.js` asserts it's clamped to fit
+    the grid cell when `circleRadius` asks for more, and left as-is when it
+    already fits.
 
 ## Low priority / code quality / nice-to-haves
 

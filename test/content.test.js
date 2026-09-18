@@ -6,6 +6,7 @@ const {
     shouldRender,
     sanitizeInt,
     sanitizeOptions,
+    sanitizeLineStates,
     sanitizeCircleStates
 } = require('../WebContent/content.js');
 
@@ -123,6 +124,27 @@ test('sanitizeOptions only disables a line on an explicit false, and resizes to 
     // Grew from 2 stored entries to 3 (gridColumns 4 => 3 lines) - the new
     // trailing entry has no stored data, so it defaults to enabled.
     assert.deepEqual(result.gridColumnLines, [true, false, true]);
+});
+
+test('sanitizeLineStates treats a missing array as every line enabled', () => {
+    const result = sanitizeLineStates(undefined, 3);
+    assert.deepEqual(result, [true, true, true]);
+});
+
+test('sanitizeLineStates only disables a line on an explicit false', () => {
+    const result = sanitizeLineStates([false, 'not a boolean', true], 3);
+    assert.deepEqual(result, [false, true, true]);
+});
+
+test('sanitizeLineStates resizes to the current count', () => {
+    // Grew from 2 stored entries to 3 - the new trailing entry has no
+    // stored data, so it defaults to enabled.
+    const result = sanitizeLineStates([false, false], 3);
+    assert.deepEqual(result, [false, false, true]);
+});
+
+test('sanitizeLineStates returns an empty array for a count of 0', () => {
+    assert.deepEqual(sanitizeLineStates([false, true], 0), []);
 });
 
 test('sanitizeCircleStates treats a missing circle grid as every circle enabled', () => {
