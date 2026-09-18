@@ -216,9 +216,16 @@ if (typeof rotInit === 'undefined') {
             }
 
             const canvas = createCanvas(w, h, image, computedStyle);
+            const ctx = canvas.getContext('2d');
+
+            // The backing store is sized up by devicePixelRatio in
+            // createCanvas() for a crisp result on HiDPI/zoomed displays -
+            // this scales the context back down so every subsequent draw
+            // call can keep using CSS-pixel coordinates (w/h) unchanged.
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
 
             // Draw Rule of Thirds grid
-            drawGridOverlay(canvas.getContext('2d'), w, h, options);
+            drawGridOverlay(ctx, w, h, options);
 
             (image.offsetParent || document.body).append(canvas);
         }
@@ -232,9 +239,17 @@ if (typeof rotInit === 'undefined') {
         function createCanvas(w, h, image, computedStyle) {
 
             const canvas = document.createElement('canvas');
+            const dpr = window.devicePixelRatio || 1;
 
-            canvas.width = w;
-            canvas.height = h;
+            // Backing store at devicePixelRatio for a crisp result on
+            // HiDPI/zoomed displays, CSS size kept at the logical w/h so it
+            // still occupies the same on-page space (see the ctx.scale()
+            // call in renderImageOverlay, which is what actually draws
+            // sharper rather than just bigger).
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
             canvas.style.overflow = 'hidden';
             canvas.style.padding = computedStyle.padding;
             canvas.style.margin = computedStyle.margin;

@@ -417,22 +417,32 @@ function drawPreviewBackground(ctx, w, h, options, image) {
 // to click.
 function renderGridCustomisePreview() {
 
+    // setTransform() (not scale()) since this function redraws the same
+    // two persistent canvases repeatedly over the page's lifetime -
+    // scale() would compound on every call instead of just re-applying
+    // the same devicePixelRatio each time.
+    const dpr = window.devicePixelRatio || 1;
+
     const previewCanvas = document.getElementById('grid-customise-preview');
     const previewCtx = previewCanvas.getContext('2d');
+    const previewSize = getCanvasLogicalSize(previewCanvas);
+    previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const liveOptions = buildLiveGridCustomiseOptions();
 
-    drawPreviewBackground(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions, previewPhotoLoaded ? previewPhotoImage : null);
-    drawGridOverlay(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions);
+    drawPreviewBackground(previewCtx, previewSize.width, previewSize.height, liveOptions, previewPhotoLoaded ? previewPhotoImage : null);
+    drawGridOverlay(previewCtx, previewSize.width, previewSize.height, liveOptions);
 
     const controlCanvas = document.getElementById('grid-customise-control');
     const controlCtx = controlCanvas.getContext('2d');
-    renderGridCustomiseReference(controlCtx, controlCanvas.width, controlCanvas.height, liveOptions);
+    const controlSize = getCanvasLogicalSize(controlCanvas);
+    controlCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderGridCustomiseReference(controlCtx, controlSize.width, controlSize.height, liveOptions);
 
     if (document.activeElement === controlCanvas) {
         const targets = listGridCustomiseTargets(liveOptions);
         if (targets.length > 0) {
             customiseFocusIndex = Math.min(customiseFocusIndex, targets.length - 1);
-            drawGridCustomiseFocus(controlCtx, controlCanvas.width, controlCanvas.height, liveOptions, targets[customiseFocusIndex]);
+            drawGridCustomiseFocus(controlCtx, controlSize.width, controlSize.height, liveOptions, targets[customiseFocusIndex]);
         }
     }
 }
@@ -485,8 +495,15 @@ function layoutGridCustomiseCanvases() {
 function setCanvasSize(canvasId, width, height) {
 
     const canvas = document.getElementById(canvasId);
-    canvas.width = width;
-    canvas.height = height;
+    const dpr = window.devicePixelRatio || 1;
+
+    // Backing store at devicePixelRatio for a crisp result on HiDPI/zoomed
+    // displays - width/height stay the logical size everywhere else (see
+    // getCanvasLogicalSize(), read back from style.width/height below,
+    // since canvas.width/height themselves are now the scaled-up backing
+    // store, not something render code should compute against directly).
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
     // Without an explicit CSS size, a canvas's box is its bitmap resolution
     // *plus* its border on top (border-box only reinterprets an explicit
     // width/height, and there isn't one here otherwise) - enough to tip the
@@ -494,6 +511,17 @@ function setCanvasSize(canvasId, width, height) {
     // add up exactly. Setting these too keeps the border inside the box.
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
+}
+
+// Recovers the logical (CSS-pixel) size set by setCanvasSize() - needed
+// since canvas.width/height are now the devicePixelRatio-scaled backing
+// store, not the size any drawing code should actually compute against.
+function getCanvasLogicalSize(canvas) {
+
+    return {
+        width: parseInt(canvas.style.width, 10),
+        height: parseInt(canvas.style.height, 10)
+    };
 }
 
 const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';

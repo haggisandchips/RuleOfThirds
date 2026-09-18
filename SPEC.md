@@ -150,12 +150,32 @@ priority order as time allows; none of these block day-to-day use.
     `<input type="color">`, which the browser itself always normalizes to
     `#rrggbb`.
 
-13. **No DPI/zoom scaling on canvases.** Both the content-script overlay
-    canvas (`content.js:205-224`, `createCanvas`) and the two Options
-    "Customise" canvases (`options.js:424-436`, `setCanvasSize`) size their
-    backing store 1:1 to CSS pixels with no `devicePixelRatio` scaling —
-    lines/circles render soft on Retina/high-DPI or zoomed displays. Scale
-    by `window.devicePixelRatio` and compensate with `ctx.scale()`.
+13. ~~**No DPI/zoom scaling on canvases.**~~ **Fixed.**
+    Both `content.js`'s overlay canvas and `options.js`'s two Customise
+    canvases now size their backing store to `devicePixelRatio`, keeping
+    CSS size at the logical dimensions.
+
+    `content.js`'s canvas is freshly created on every apply, so a plain
+    `ctx.scale(dpr, dpr)` once per canvas is enough. `options.js`'s two
+    Customise canvases are persistent and redrawn repeatedly (every option
+    change), so a relative `.scale()` would compound on each redraw -
+    used `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` instead, which resets
+    absolutely every time. Since `canvas.width`/`height` are now the scaled
+    backing store rather than the logical size, added
+    `getCanvasLogicalSize()` (reads back `canvas.style.width`/`height`) so
+    drawing code keeps computing in CSS-pixel coordinates. Click/hover
+    hit-testing needed no changes - it already scales by
+    `canvas.width / rect.width`, which generalizes to any backing-store
+    ratio including this one.
+
+    Live-verified in a browser at a simulated `devicePixelRatio` of 2:
+    backing stores measured at exactly 2x the CSS size; a real grid line
+    drawn at content.js's dpr=2 landed at the exact expected scaled pixel
+    column; clicking/toggling a line or circle in the Customise Control
+    canvas still hit-tested and rendered correctly at the right scaled
+    position; repeated clicks (stress-testing for transform compounding)
+    kept landing on the same pixel row each time; and the keyboard focus
+    ring (#5) still rendered at the correct scaled position too.
 
 14. **Options page gives no "why doesn't this do anything" affordance when a section is off.**
     Unchecking Grid's/Circles' "Enabled" doesn't disable/grey the dependent
