@@ -133,14 +133,20 @@
           <h5>Customise</h5>
           <div class="divider"></div>
         </div>
-        <div class="col s12 grid-customise-col">
+        <div class="col s12 grid-customise-col" id="grid-customise-col">
           <div class="grid-customise-panel">
             <span class="field-caption">Hide / Show</span>
-            <canvas class="grid-customise-reference" id="grid-customise-reference" width="360" height="240"></canvas>
+            <canvas class="grid-customise-control" id="grid-customise-control" width="360" height="240"></canvas>
           </div>
           <div class="grid-customise-panel">
             <span class="field-caption">Preview</span>
             <canvas class="grid-customise-preview" id="grid-customise-preview" width="360" height="240"></canvas>
+            <p class="grid-customise-photo-toggle">
+              <label>
+                <input type="checkbox" id="preview-background-image"/>
+                <span>Use background photo</span>
+              </label>
+            </p>
           </div>
           <span class="grid-customise-note">Click a line or circle to show / hide it.</span>
         </div>

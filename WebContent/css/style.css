@@ -263,17 +263,25 @@ input[type="range"] {
     border-color: var(--color-primary);
 }
 
-/* Two side-by-side canvases for the "Customise" grid. "Hide / Show" (left)
-   is a fixed white-background, black/grey reference map
+/* Two side-by-side canvases for the "Customise" grid, sized by
+   layoutGridCustomiseCanvases() in options.js rather than CSS: "Preview"
+   claims up to its native 1080px image width (so it's never upscaled
+   blurry), and "Control" - square - fills whatever width is left over in
+   the row. Both get their width/height *attributes* (not just CSS) set to
+   match, so the canvas's actual pixel backing store stays crisp as the
+   window resizes, not just CSS-stretched.
+
+   "Control" is a fixed white-background, black/grey reference map
    (renderGridCustomiseReference()) that always uses the same two colours
    regardless of what the user has actually picked, so there's never any
    ambiguity about what's enabled or where to click - it's the only one of
    the two that's actually clickable, and its cursor switches to a pointer
    only when hovering an actual line/circle (see onGridCustomiseHover in
-   options.js). "Preview" (right) is a live, to-scale, accurate-colour
-   render (drawGridOverlay(), same as the real overlay) - a hidden line/
-   circle simply isn't drawn there, exactly like the real thing - purely
-   informational, not interactive. */
+   options.js). "Preview" is a live, accurate-colour render
+   (drawGridOverlay(), same as the real overlay, optionally with the
+   tinted background photo behind it - see drawPreviewBackground) - a
+   hidden line/circle simply isn't drawn there, exactly like the real
+   thing - purely informational, not interactive. */
 .grid-customise-col {
     display: flex;
     flex-wrap: wrap;
@@ -290,13 +298,14 @@ input[type="range"] {
 }
 
 .grid-customise-preview,
-.grid-customise-reference {
+.grid-customise-control {
     display: block;
-    width: 360px;
-    max-width: 100%;
-    height: 240px;
     margin-top: 0.25rem;
     border: 1px solid var(--color-divider);
+}
+
+.grid-customise-photo-toggle {
+    margin: 0.5rem 0 0;
 }
 
 /* width:100% forces this onto its own line below both panels, since

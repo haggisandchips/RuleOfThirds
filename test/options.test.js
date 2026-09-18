@@ -14,7 +14,8 @@ const {
     resetCircleStates,
     computePreviewBackground,
     findGridCustomiseTarget,
-    renderGridCustomiseReference
+    renderGridCustomiseReference,
+    drawPreviewBackground
 } = require('../WebContent/options/options.js');
 
 // A fake canvas context that just records the strokeStyle in effect at each
@@ -240,4 +241,46 @@ test('renderGridCustomiseReference draws nothing for an axis whose master toggle
     const circleOffCtx = createColourRecordingContext();
     renderGridCustomiseReference(circleOffCtx, 90, 90, baseGridOptions({renderCircle: false}));
     assert.equal(circleOffCtx.strokes.length, 4, 'only the 4 lines remain');
+});
+
+// A fake canvas context that records drawImage/fillRect calls and the
+// globalCompositeOperation in effect at each, so drawPreviewBackground's
+// image-vs-plain-fill branching can be asserted without a real canvas.
+function createBackgroundRecordingContext() {
+    const calls = [];
+    return {
+        calls,
+        fillStyle: null,
+        globalCompositeOperation: 'source-over',
+        drawImage() { calls.push({type: 'drawImage', op: this.globalCompositeOperation}); },
+        fillRect() { calls.push({type: 'fillRect', op: this.globalCompositeOperation, colour: this.fillStyle}); }
+    };
+}
+
+test('drawPreviewBackground multiplies the computed colour over the photo when enabled and loaded', () => {
+    const ctx = createBackgroundRecordingContext();
+    const fakeImage = {};
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000'}, fakeImage);
+
+    assert.deepEqual(ctx.calls.map(c => c.type), ['drawImage', 'fillRect']);
+    assert.equal(ctx.calls[0].op, 'source-over', 'the photo itself draws normally');
+    assert.equal(ctx.calls[1].op, 'multiply', 'the tint colour multiplies over it');
+    assert.equal(ctx.calls[1].colour, computePreviewBackground('#ffffff', '#ff0000'));
+    assert.equal(ctx.globalCompositeOperation, 'source-over', 'reset afterwards for subsequent drawing');
+});
+
+test('drawPreviewBackground falls back to a plain fill when the toggle is off', () => {
+    const ctx = createBackgroundRecordingContext();
+    const fakeImage = {};
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: false, lineColour: '#ffffff', circleColour: '#ff0000'}, fakeImage);
+
+    assert.deepEqual(ctx.calls.map(c => c.type), ['fillRect']);
+    assert.equal(ctx.calls[0].op, 'source-over');
+});
+
+test('drawPreviewBackground falls back to a plain fill when the image has not loaded yet', () => {
+    const ctx = createBackgroundRecordingContext();
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000'}, null);
+
+    assert.deepEqual(ctx.calls.map(c => c.type), ['fillRect']);
 });

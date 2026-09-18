@@ -11,7 +11,8 @@ const DEFAULT_OPTIONS = {
     circleOpacity: 100,
     circleRadius: 5,
     circleStyle: 'outline',
-    circleLines: [[true, true], [true, true]]
+    circleLines: [[true, true], [true, true]],
+    previewBackgroundImage: true
 };
 
 const MIN_GRID_LINES = 1;
@@ -73,6 +74,7 @@ const saveOptions = (event) => {
     const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style');
+    const previewBackgroundImage = document.getElementById('preview-background-image').checked;
 
     chrome.storage.sync.set(
         {
@@ -88,7 +90,8 @@ const saveOptions = (event) => {
             circleOpacity,
             circleRadius,
             circleStyle,
-            circleLines: circleLineStates
+            circleLines: circleLineStates,
+            previewBackgroundImage
         },
         () => {
             showToast('Options saved.');
@@ -122,9 +125,12 @@ function setOptions(options) {
     updateOpacityLabel('circle-opacity');
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+    document.getElementById('preview-background-image').checked = options.previewBackgroundImage;
     // Depends on every field set above, since an accurate preview needs all
-    // of them (colours, opacity, style, and both enabled toggles).
-    renderGridCustomisePreview();
+    // of them (colours, opacity, style, both enabled toggles, and the photo
+    // toggle) - layoutGridCustomiseCanvases() sizes the canvases and then
+    // renders.
+    layoutGridCustomiseCanvases();
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native
@@ -288,19 +294,59 @@ function buildLiveGridCustomiseOptions() {
         circleOpacity: clampInt(document.getElementById('circle-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity),
         circleRadius: clampInt(document.getElementById('circle-radius').value, MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius),
         circleStyle: getSelectedOption('circle-style'),
-        circleLines: circleLineStates
+        circleLines: circleLineStates,
+        previewBackgroundImage: document.getElementById('preview-background-image').checked
     };
 }
 
+// The greyscale photo used as an optional Preview background - loaded once
+// and reused on every redraw. Falls back to the plain computed background
+// colour until it's finished loading (or if it's switched off/fails).
+const PREVIEW_PHOTO_SRC = 'preview-background.webp';
+let previewPhotoImage = null;
+let previewPhotoLoaded = false;
+
+function loadPreviewPhoto() {
+
+    const image = new Image();
+    image.onload = () => {
+        previewPhotoLoaded = true;
+        renderGridCustomisePreview();
+    };
+    image.src = PREVIEW_PHOTO_SRC;
+    previewPhotoImage = image;
+}
+
+// Fills the Preview canvas's background: either the plain computed colour,
+// or (when enabled and loaded) that same colour multiplied over the
+// greyscale photo, which tints it to match without needing a colour picker
+// of its own - white areas of the photo take the full computed colour,
+// black areas stay black, since multiply can only ever darken.
+function drawPreviewBackground(ctx, w, h, options, image) {
+
+    const backgroundColour = computePreviewBackground(options.lineColour, options.circleColour);
+
+    if (options.previewBackgroundImage && image) {
+        ctx.drawImage(image, 0, 0, w, h);
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = backgroundColour;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'source-over';
+    } else {
+        ctx.fillStyle = backgroundColour;
+        ctx.fillRect(0, 0, w, h);
+    }
+}
+
 // Redraws both "Customise" canvases - called whenever anything they depend
-// on changes (on load, on a form change, or on a click in the reference
+// on changes (on load, on a form change, or on a click in the control
 // canvas).
 //
 // "Preview" is a faithful, accurate-colour render: a hidden line or circle
 // is simply never drawn, exactly like the real overlay - it gives no clue
 // by itself that it could be turned back on, and isn't interactive.
-// "Hide / Show" exists purely to supply that clue (and the interactivity):
-// a fixed white/black/grey reference map, drawn the same way regardless of
+// "Control" exists purely to supply that clue (and the interactivity): a
+// fixed white/black/grey reference map, drawn the same way regardless of
 // the user's actual colours, so there's always an obvious, unambiguous spot
 // to click.
 function renderGridCustomisePreview() {
@@ -309,12 +355,44 @@ function renderGridCustomisePreview() {
     const previewCtx = previewCanvas.getContext('2d');
     const liveOptions = buildLiveGridCustomiseOptions();
 
-    previewCtx.fillStyle = computePreviewBackground(liveOptions.lineColour, liveOptions.circleColour);
-    previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+    drawPreviewBackground(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions, previewPhotoLoaded ? previewPhotoImage : null);
     drawGridOverlay(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions);
 
-    const referenceCanvas = document.getElementById('grid-customise-reference');
-    renderGridCustomiseReference(referenceCanvas.getContext('2d'), referenceCanvas.width, referenceCanvas.height, liveOptions);
+    const controlCanvas = document.getElementById('grid-customise-control');
+    renderGridCustomiseReference(controlCanvas.getContext('2d'), controlCanvas.width, controlCanvas.height, liveOptions);
+}
+
+// "Preview" claims up to its native photo resolution (1080 wide) so it's
+// never upscaled blurry; "Control" is square and fills whatever width is
+// left over in the row once Preview has taken its share. Both canvases get
+// their width/height *attributes* (not just CSS) set to match, so the
+// actual pixel backing store stays crisp as the window resizes rather than
+// being CSS-stretched. Re-run on load and on every resize of the row
+// itself (see the ResizeObserver setup below).
+const PREVIEW_MAX_WIDTH = 1080;
+const PREVIEW_ASPECT_RATIO = 240 / 360;
+
+function layoutGridCustomiseCanvases() {
+
+    const col = document.getElementById('grid-customise-col');
+    const gap = parseFloat(getComputedStyle(col).columnGap) || 0;
+    const availableWidth = col.clientWidth;
+
+    const previewWidth = Math.max(1, Math.min(availableWidth, PREVIEW_MAX_WIDTH));
+    const previewHeight = Math.round(previewWidth * PREVIEW_ASPECT_RATIO);
+    const controlSize = Math.max(1, availableWidth - previewWidth - gap);
+
+    setCanvasSize('grid-customise-preview', previewWidth, previewHeight);
+    setCanvasSize('grid-customise-control', controlSize, controlSize);
+
+    renderGridCustomisePreview();
+}
+
+function setCanvasSize(canvasId, width, height) {
+
+    const canvas = document.getElementById(canvasId);
+    canvas.width = width;
+    canvas.height = height;
 }
 
 const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';
@@ -440,10 +518,10 @@ function gridCustomiseEventPosition(event) {
     };
 }
 
-// Only the "Hide / Show" reference canvas is interactive - "Preview" is
-// purely informational, since a hidden circle draws nothing there for the
-// user to aim at (see gridCustomiseEventPosition's caller for the pointer
-// feedback that keeps the reference canvas itself unambiguous to click).
+// Only "Control" is interactive - "Preview" is purely informational, since
+// a hidden circle draws nothing there for the user to aim at (see
+// onGridCustomiseHover for the pointer feedback that keeps Control itself
+// unambiguous to click).
 function onGridCustomiseClick(event) {
 
     const canvas = event.currentTarget;
@@ -522,10 +600,10 @@ if (typeof document !== 'undefined') {
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
-    const gridCustomiseReference = document.getElementById('grid-customise-reference');
-    gridCustomiseReference.addEventListener('click', onGridCustomiseClick);
-    gridCustomiseReference.addEventListener('mousemove', onGridCustomiseHover);
-    gridCustomiseReference.addEventListener('mouseleave', () => { gridCustomiseReference.style.cursor = 'default'; });
+    const gridCustomiseControl = document.getElementById('grid-customise-control');
+    gridCustomiseControl.addEventListener('click', onGridCustomiseClick);
+    gridCustomiseControl.addEventListener('mousemove', onGridCustomiseHover);
+    gridCustomiseControl.addEventListener('mouseleave', () => { gridCustomiseControl.style.cursor = 'default'; });
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
@@ -535,12 +613,19 @@ if (typeof document !== 'undefined') {
     }));
 
     document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
+
+    loadPreviewPhoto();
+
+    // ResizeObserver rather than a plain window 'resize' listener, since
+    // what actually matters is the row's own width - which can also change
+    // from things a window resize wouldn't catch (eg a scrollbar appearing).
+    new ResizeObserver(() => layoutGridCustomiseCanvases()).observe(document.getElementById('grid-customise-col'));
 }
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
         resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
-        computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference
+        computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground
     };
 }
