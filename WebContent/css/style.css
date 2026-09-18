@@ -263,15 +263,27 @@ input[type="range"] {
     border-color: var(--color-primary);
 }
 
-/* Two stacked canvases for the "Customise" grid. The top one is a live,
-   to-scale, accurate-colour preview (drawGridOverlay(), same as the real
-   overlay) - a hidden line/circle simply isn't drawn there, exactly like
-   the real thing. The bottom one is a fixed white/black/grey reference map
-   (renderGridCustomiseReference()) that always shows exactly where every
-   line/circle is and whether it's on, independent of the user's actual
-   colours, so there's never any ambiguity about what's clickable. Both
-   canvases handle clicks and toggle the same state. */
+/* Two side-by-side canvases for the "Customise" grid. "Hide / Show" (left)
+   is a fixed white-background, black/grey reference map
+   (renderGridCustomiseReference()) that always uses the same two colours
+   regardless of what the user has actually picked, so there's never any
+   ambiguity about what's enabled or where to click - it's the only one of
+   the two that's actually clickable, and its cursor switches to a pointer
+   only when hovering an actual line/circle (see onGridCustomiseHover in
+   options.js). "Preview" (right) is a live, to-scale, accurate-colour
+   render (drawGridOverlay(), same as the real overlay) - a hidden line/
+   circle simply isn't drawn there, exactly like the real thing - purely
+   informational, not interactive. */
 .grid-customise-col {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.grid-customise-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -280,23 +292,18 @@ input[type="range"] {
 .grid-customise-preview,
 .grid-customise-reference {
     display: block;
-    width: 420px;
+    width: 360px;
     max-width: 100%;
-    height: 280px;
+    height: 240px;
+    margin-top: 0.25rem;
     border: 1px solid var(--color-divider);
-    cursor: pointer;
 }
 
-.grid-customise-preview {
-    margin-top: 0.5rem;
-}
-
-.grid-customise-reference {
-    margin-top: 0.75rem;
-}
-
+/* width:100% forces this onto its own line below both panels, since
+   .grid-customise-col is a wrapping flex row. */
 .grid-customise-note {
     display: block;
+    width: 100%;
     margin-top: 0.4rem;
     font-size: 0.75rem;
     line-height: 1.4;

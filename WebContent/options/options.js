@@ -293,14 +293,16 @@ function buildLiveGridCustomiseOptions() {
 }
 
 // Redraws both "Customise" canvases - called whenever anything they depend
-// on changes (on load, on a form change, or on a click in either one).
+// on changes (on load, on a form change, or on a click in the reference
+// canvas).
 //
-// The top canvas is a faithful, accurate-colour preview: a hidden line or
-// circle is simply never drawn, exactly like the real overlay - it gives no
-// clue by itself that it could be turned back on. The bottom canvas exists
-// purely to supply that clue: a fixed white/black/grey reference map, drawn
-// the same way regardless of the user's actual colours, so there's always
-// an obvious, unambiguous spot to click.
+// "Preview" is a faithful, accurate-colour render: a hidden line or circle
+// is simply never drawn, exactly like the real overlay - it gives no clue
+// by itself that it could be turned back on, and isn't interactive.
+// "Hide / Show" exists purely to supply that clue (and the interactivity):
+// a fixed white/black/grey reference map, drawn the same way regardless of
+// the user's actual colours, so there's always an obvious, unambiguous spot
+// to click.
 function renderGridCustomisePreview() {
 
     const previewCanvas = document.getElementById('grid-customise-preview');
@@ -424,17 +426,28 @@ function findGridCustomiseTarget(x, y, w, h, options) {
     return null;
 }
 
-// Translates a click on either Customise canvas into a line/circle toggle -
-// both canvases are the same size and represent the same grid, so whichever
-// one was actually clicked (event.currentTarget) is used for the hit test.
-// Scales by canvas-pixels-per-CSS-pixel defensively, though the two match
-// 1:1 today.
-function onGridCustomiseClick(event) {
+// Converts a mouse event's page position into the canvas's own pixel
+// coordinates. Scales by canvas-pixels-per-CSS-pixel defensively, though
+// the two match 1:1 today.
+function gridCustomiseEventPosition(event) {
 
     const canvas = event.currentTarget;
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+
+    return {
+        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+        y: (event.clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+// Only the "Hide / Show" reference canvas is interactive - "Preview" is
+// purely informational, since a hidden circle draws nothing there for the
+// user to aim at (see gridCustomiseEventPosition's caller for the pointer
+// feedback that keeps the reference canvas itself unambiguous to click).
+function onGridCustomiseClick(event) {
+
+    const canvas = event.currentTarget;
+    const {x, y} = gridCustomiseEventPosition(event);
 
     const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
     if (!target) {
@@ -451,6 +464,18 @@ function onGridCustomiseClick(event) {
 
     renderGridCustomisePreview();
     saveOptions();
+}
+
+// Switches the cursor to a pointer only while actually hovering a line or
+// circle, so the canvas doesn't look uniformly clickable when most of it
+// isn't a valid target.
+function onGridCustomiseHover(event) {
+
+    const canvas = event.currentTarget;
+    const {x, y} = gridCustomiseEventPosition(event);
+
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
+    canvas.style.cursor = target ? 'pointer' : 'default';
 }
 
 // A 1x1 grid draws no lines in either direction, so once one dimension is 1,
@@ -497,8 +522,10 @@ if (typeof document !== 'undefined') {
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
-    document.getElementById('grid-customise-preview').addEventListener('click', onGridCustomiseClick);
-    document.getElementById('grid-customise-reference').addEventListener('click', onGridCustomiseClick);
+    const gridCustomiseReference = document.getElementById('grid-customise-reference');
+    gridCustomiseReference.addEventListener('click', onGridCustomiseClick);
+    gridCustomiseReference.addEventListener('mousemove', onGridCustomiseHover);
+    gridCustomiseReference.addEventListener('mouseleave', () => { gridCustomiseReference.style.cursor = 'default'; });
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
