@@ -24,7 +24,7 @@ try {
         chrome.scripting.executeScript({
             target: {tabId: tab.id}, files: ['grid-render.js', 'content.js']
         }).catch(() => {
-            showToast("Sorry, this page doesn't allow the Rule of Thirds grid to be added.");
+            showRefusalBadge(tab.id);
         });
     });
 
@@ -60,12 +60,24 @@ function setActionIcon(tabId, active) {
     });
 }
 
-function showToast(message) {
+// Refuses to request the "notifications" permission for this one edge case
+// (CSP/chrome:// pages that reject script injection) - a badge + tooltip on
+// the tab's own toolbar icon gives the same feedback without widening the
+// extension's permission footprint.
+const REFUSAL_BADGE_TEXT = '!';
+const REFUSAL_BADGE_COLOR = '#d32f2f';
+const REFUSAL_BADGE_DURATION_MS = 4000;
+const REFUSAL_TITLE = "Sorry, this page doesn't allow the Rule of Thirds grid to be added.";
+const DEFAULT_TITLE = chrome.runtime.getManifest().action.default_title;
 
-    chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icon48.png',
-        title: 'Rule of Thirds',
-        message
-    });
+function showRefusalBadge(tabId) {
+
+    chrome.action.setBadgeText({tabId, text: REFUSAL_BADGE_TEXT});
+    chrome.action.setBadgeBackgroundColor({tabId, color: REFUSAL_BADGE_COLOR});
+    chrome.action.setTitle({tabId, title: REFUSAL_TITLE});
+
+    setTimeout(() => {
+        chrome.action.setBadgeText({tabId, text: ''});
+        chrome.action.setTitle({tabId, title: DEFAULT_TITLE});
+    }, REFUSAL_BADGE_DURATION_MS);
 }

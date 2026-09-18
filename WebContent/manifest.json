@@ -18,8 +18,7 @@
     "permissions": [
         "scripting",
         "activeTab",
-        "storage",
-        "notifications"
+        "storage"
     ],
 
     "options_page": "options/options.html",

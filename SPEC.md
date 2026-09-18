@@ -22,11 +22,14 @@ priority order as time allows; none of these block day-to-day use.
    and `removeUndersizedImages` were both removed as dead code, along with
    their now-obsolete tests, since nothing else called them.
 
-3. **`manifest.json:18-23` — `notifications` permission for one low-value toast.**
-   Its only use is an OS notification when `executeScript` is refused
-   (CSP/`chrome://` pages) — a fairly visible permission in the CWS listing
-   for one edge case. Consider `chrome.action.setBadgeText`/`setTitle`
-   instead, to shrink the permission surface store reviewers and users see.
+3. ~~**`manifest.json:18-23` — `notifications` permission for one low-value toast.**~~ **Fixed.**
+   Replaced `chrome.notifications` with a badge + tooltip on the tab's own
+   toolbar icon (`showRefusalBadge` in `service_worker.js`) and dropped the
+   `notifications` permission from `manifest.json` entirely. Not click-
+   verified live in a browser — `chrome://` pages are blocked from browser-
+   automation navigation, so this couldn't be reloaded and tested end to
+   end; the logic reuses the same `chrome.action.*` calls `setActionIcon`
+   already relies on.
 
 4. **`manifest.json:6` — stale store-listing description.**
    Still reads "Simple extension to draw a 3 x 3 grid on an image..." — the
