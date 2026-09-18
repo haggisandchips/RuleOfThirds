@@ -106,7 +106,10 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        promise.then(toggleGrids);
+        promise.then(() => {
+            toggleGrids();
+            reportState();
+        });
 
         async function readOptions() {
 
@@ -142,6 +145,17 @@ if (typeof rotInit === 'undefined') {
             } else {
                 removeGrids();
             }
+        }
+
+        // Lets the service worker reflect this tab's on/off state on the
+        // toolbar icon - it has no other way to know, since applying and
+        // removing the grid only ever changes DOM state inside this page.
+        function reportState() {
+
+            chrome.runtime.sendMessage({
+                type: 'rule-of-thirds-state',
+                active: controlElement.getAttribute('active') === 'true'
+            });
         }
 
         function applyGrids() {
