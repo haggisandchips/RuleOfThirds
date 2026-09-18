@@ -165,9 +165,18 @@ priority order as time allows; none of these block day-to-day use.
     `Click a line or circle in the map below to show or hide it -
     "Preview" shows the result.`
 
-16. **`options.js:103-107` (`restoreDefaultOptions`, bound at `options.js:655`) has no confirmation or undo.**
-    One click immediately overwrites and saves all customization with no
-    way back. Add a confirm step, or an Undo action on the toast.
+16. ~~**`options.js:103-107` (`restoreDefaultOptions`, bound at `options.js:655`) has no confirmation or undo.**~~ **Fixed.**
+    Went with the Undo-toast option rather than a confirm step.
+    `restoreDefaultOptions` snapshots the current options before
+    overwriting, and its toast now reads "Options reset to defaults." with
+    an "Undo" button that restores the snapshot and re-saves. `showToast`
+    gained an optional `action` parameter (`{label, onClick}`) and stays up
+    longer (6s vs 2s) when one is present, and `saveOptions` gained
+    optional `successMessage`/`successAction` parameters so a caller other
+    than a plain field edit can show something other than "Options saved."
+    Live-tested in a browser: restored defaults over custom values, then
+    clicked Undo and confirmed both the UI and `chrome.storage.sync`
+    itself were back to the exact pre-reset values.
 
 17. ~~**`versions/history.html` — "Control" label doesn't match the shipped UI.**~~ **Fixed.**
     Updated the changelog wording to "Hide / Show" to match the actual

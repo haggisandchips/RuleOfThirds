@@ -384,6 +384,9 @@ input[type="range"] {
 }
 
 .toast {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
     background: #323232;
     color: #fff;
     padding: 0.75rem 1.5rem;
@@ -398,4 +401,24 @@ input[type="range"] {
 .toast.show {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* eg the "Undo" button on restoreDefaultOptions's toast (see options.js). */
+.toast-action {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--color-primary-light);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+}
+
+.toast-action:hover,
+.toast-action:focus-visible {
+    text-decoration: underline;
 }

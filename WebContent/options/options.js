@@ -39,8 +39,10 @@ const loadOptions = () => {
     );
 };
 
-// Saves options to chrome.storage
-const saveOptions = (event) => {
+// Saves options to chrome.storage. successMessage/successAction let a
+// caller other than a plain field edit (eg restoreDefaultOptions) show
+// something other than the default "Options saved." toast.
+const saveOptions = (event, successMessage = 'Options saved.', successAction) => {
 
     const renderGrid = document.getElementById('render-grid').checked;
 
@@ -100,16 +102,27 @@ const saveOptions = (event) => {
         () => {
             showToast(chrome.runtime.lastError
                 ? 'Could not save options: ' + chrome.runtime.lastError.message
-                : 'Options saved.');
+                : successMessage, successAction);
         }
     );
 };
 
-// Saves options to chrome.storage
+// Resets to defaults, but keeps a snapshot of whatever was configured a
+// moment ago so the save toast's "Undo" action can put it straight back -
+// cheaper than a confirmation prompt, and just as safe since nothing is
+// actually lost.
 const restoreDefaultOptions = () => {
 
+    const previousOptions = buildLiveGridCustomiseOptions();
+
     setOptions(DEFAULT_OPTIONS);
-    saveOptions();
+    saveOptions(undefined, 'Options reset to defaults.', {
+        label: 'Undo',
+        onClick: () => {
+            setOptions(previousOptions);
+            saveOptions();
+        }
+    });
 };
 
 function setOptions(options) {
@@ -160,8 +173,13 @@ function syncQuickPickSelection(colourInputId) {
 }
 
 const TOAST_DISPLAY_MS = 2000;
+// An actionable toast (eg "Undo") stays up longer, so there's a realistic
+// chance to click it before it's gone.
+const TOAST_ACTION_DISPLAY_MS = 6000;
 
-function showToast(message) {
+// `action`, if given, is {label, onClick} - eg restoreDefaultOptions's
+// Undo button.
+function showToast(message, action) {
 
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -177,15 +195,36 @@ function showToast(message) {
 
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.textContent = message;
+
+    const text = document.createElement('span');
+    text.textContent = message;
+    toast.appendChild(text);
+
+    let dismissTimeoutId;
+
+    function dismiss() {
+        clearTimeout(dismissTimeoutId);
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove(), {once: true});
+    }
+
+    if (action) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'toast-action';
+        button.textContent = action.label;
+        button.addEventListener('click', () => {
+            action.onClick();
+            dismiss();
+        });
+        toast.appendChild(button);
+    }
+
     container.appendChild(toast);
 
     requestAnimationFrame(() => toast.classList.add('show'));
 
-    setTimeout(() => {
-        toast.classList.remove('show');
-        toast.addEventListener('transitionend', () => toast.remove(), {once: true});
-    }, TOAST_DISPLAY_MS);
+    dismissTimeoutId = setTimeout(dismiss, action ? TOAST_ACTION_DISPLAY_MS : TOAST_DISPLAY_MS);
 }
 
 // Reads a number input, clamping it to `min` and falling back to `fallback`
