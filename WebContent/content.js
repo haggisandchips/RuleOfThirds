@@ -163,7 +163,12 @@ if (typeof rotInit === 'undefined') {
             const images = document.getElementsByTagName('img');
             for (let ii = 0; ii < images.length; ii++) {
                 const image = images[ii];
-                if (!image.offsetParent) {
+                // getClientRects() is empty whenever the image generates no
+                // box at all (display:none on itself or an ancestor, or not
+                // actually in the rendered tree) - unlike offsetParent,
+                // which is also null for a position:fixed image even though
+                // it's fully visible, wrongly skipping it.
+                if (image.getClientRects().length === 0) {
                     continue;
                 }
 
@@ -190,13 +195,12 @@ if (typeof rotInit === 'undefined') {
                 return;
             }
 
-            const imageParent = image.offsetParent;
             const canvas = createCanvas(w, h, image, computedStyle);
 
             // Draw Rule of Thirds grid
             drawGridOverlay(canvas.getContext('2d'), w, h, options);
 
-            imageParent.append(canvas);
+            (image.offsetParent || document.body).append(canvas);
         }
 
         function removeGrids() {
@@ -214,16 +218,29 @@ if (typeof rotInit === 'undefined') {
             canvas.width = w;
             canvas.height = h;
             canvas.style.overflow = 'hidden';
-            canvas.style.position = 'absolute';
-
-            if (image.style['margin'] !== 'auto') {
-                canvas.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
-                canvas.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
-            }
             canvas.style.padding = computedStyle.padding;
             canvas.style.margin = computedStyle.margin;
-            canvas.style.overflow = 'hidden';
             canvas.setAttribute('data-extension', 'rule-of-thirds');
+
+            if (image.offsetParent) {
+                canvas.style.position = 'absolute';
+                if (image.style['margin'] !== 'auto') {
+                    canvas.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
+                    canvas.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
+                }
+            } else {
+                // offsetParent is null exactly when the image's own position
+                // is `fixed` (the only case that reaches here - the
+                // getClientRects() check above already filters out images
+                // that aren't rendered at all). There's no positioned
+                // ancestor to measure an offset against, so the canvas is
+                // fixed-positioned too, using the image's on-screen
+                // (viewport-relative) rect instead.
+                const rect = image.getBoundingClientRect();
+                canvas.style.position = 'fixed';
+                canvas.style.left = rect.left + 'px';
+                canvas.style.top = rect.top + 'px';
+            }
 
             return canvas;
         }

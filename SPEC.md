@@ -7,13 +7,25 @@ priority order as time allows; none of these block day-to-day use.
 
 ## High priority
 
-1. **`content.js:168` — `offsetParent` check skips fixed-position images.**
-   `if (!image.offsetParent) continue;` is also `null` for `position: fixed`
-   elements (and any fixed-ancestor image), not just hidden ones — common in
-   lightboxes/modals/fixed heroes. Those images silently never get a grid.
-   Fix: check visibility via `getClientRects().length` / computed
-   `display`/`visibility` and use `getBoundingClientRect()` for positioning
-   instead of `offsetLeft`/`offsetTop` (also wrong under `position: fixed`).
+1. ~~**`content.js:168` — `offsetParent` check skips fixed-position images.**~~ **Fixed.**
+   Reproduced first with a demo page (three images: normal flow, `<img>`
+   itself `position: fixed`, and an image inside a `position: fixed`
+   *ancestor*) before touching the code. That narrowed the actual bug: only
+   the second case is affected — `offsetParent` is `null` only when the
+   image's *own* computed position is `fixed`; an image merely nested
+   inside a fixed ancestor (the common lightbox/modal pattern) already
+   resolves `offsetParent` to that ancestor and was never broken. The
+   original audit note overstated the blast radius.
+
+   `applyGrids()` now checks `image.getClientRects().length === 0` instead
+   of `!image.offsetParent` to decide whether an image is actually
+   rendered (still correctly skips `display:none` on the image or any
+   ancestor). `createCanvas()` now branches: with an `offsetParent`, it
+   positions/appends exactly as before (unchanged, still scrolls with the
+   page); without one, it appends the canvas to `document.body` as
+   `position: fixed` itself, positioned via `image.getBoundingClientRect()`.
+   Live-verified in the browser: the fixed-position image now gets its
+   grid, and it stays correctly aligned on scroll, same as the other two.
 
 2. ~~**`content.js:228-242` (`removeUndersizedImages`) — redundant image fetch on every toggle.**~~ **Fixed.**
    Replaced the `new Image()` re-fetch with a direct `image.naturalWidth`/
