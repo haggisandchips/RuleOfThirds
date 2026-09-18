@@ -34,14 +34,6 @@
             A circle can be hidden independently of the lines it sits on, for a crossing point
             with no dot on top of it.
           </p>
-          <h5>Line Colour</h5>
-          <div class="divider"></div>
-          <p class="flow-text">
-            Line Colour now has its own section on the Options page, instead of living inside
-            the Grid section.
-          </p>
-        </div>
-        <div class="col s12 l6">
           <h5>Live Preview</h5>
           <div class="divider"></div>
           <p class="flow-text">
@@ -54,34 +46,6 @@
             with the configured colours, for a better sense of how the overlay will sit on a
             real image. Turn it off via the "Use background photo" checkbox if you'd rather not.
           </p>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col s12">
-          <h4>Technical Changes</h4>
-          <div class="divider"></div>
-        </div>
-        <div class="col s12">
-          <p class="flow-text">
-            Grid and Circles now sit side by side on the Options page rather than stacked, so
-            more of the page - including the Customise preview - fits on screen without
-            scrolling.
-          </p>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col s12">
-          <h3 class="version-heading">v1.7.1 - 16 Sep 2026</h3>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col s12">
-          <h4>New Features</h4>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col s12 l6">
           <h5>Grid Dimensions</h5>
           <div class="divider"></div>
           <p class="flow-text">
@@ -92,19 +56,17 @@
             Rows and columns can't both be set to 1 at the same time, since that would draw no
             lines at all.
           </p>
-          <h5>Circle Style</h5>
-          <div class="divider"></div>
-          <p class="flow-text">
-            The intersection circles can now be drawn filled instead of as outlines, via the new
-            Outline/Filled option on the Options page. Outline remains the default.
-          </p>
         </div>
         <div class="col s12 l6">
-          <h5>Restricted Pages</h5>
+          <h5>Toolbar Icon</h5>
           <div class="divider"></div>
           <p class="flow-text">
-            A notification is now shown when the grid can't be added to a page, rather than
-            failing silently.
+            The extension's toolbar icon now shows a greyscale version when the grid isn't
+            currently active on the page, and switches to full colour as soon as it's turned on.
+          </p>
+          <p class="flow-text">
+            Since the grid always starts off on a freshly loaded page, the icon resets to
+            greyscale on navigation too.
           </p>
           <h5>Colour Picker</h5>
           <div class="divider"></div>
@@ -119,8 +81,15 @@
           <p class="flow-text">
             Both colours also gained an opacity slider, for translucent grid lines and circles.
           </p>
+          <h5>Circle Style</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            The intersection circles can now be drawn filled instead of as outlines, via the new
+            Outline/Filled option on the Options page. Outline remains the default.
+          </p>
         </div>
       </div>
+
       <div class="row">
         <div class="col s12">
           <h4>Technical Changes</h4>
@@ -143,6 +112,19 @@
           <p class="flow-text">
             Saved options are now re-validated whenever they're read, guarding against invalid
             values left behind by older versions of the extension.
+          </p>
+          <p class="flow-text">
+            Grid and Circles now sit side by side on the Options page rather than stacked, so
+            more of the page fits on screen without
+            scrolling.
+          </p>
+          <p class="flow-text">
+            A notification is now shown when the grid can't be added to a page, rather than
+            failing silently.
+          </p>
+          <p class="flow-text">
+            Line Colour now has its own section on the Options page, instead of living inside
+            the Grid section.
           </p>
         </div>
       </div>
