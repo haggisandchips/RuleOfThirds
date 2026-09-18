@@ -362,28 +362,39 @@ function renderGridCustomisePreview() {
     renderGridCustomiseReference(controlCanvas.getContext('2d'), controlCanvas.width, controlCanvas.height, liveOptions);
 }
 
-// "Preview" claims up to its native photo resolution (1080 wide) so it's
-// never upscaled blurry; "Control" is square and fills whatever width is
-// left over in the row once Preview has taken its share. Both canvases get
-// their width/height *attributes* (not just CSS) set to match, so the
+// "Control" is a fixed 200x200 square, kept side by side with "Preview" -
+// which then claims whatever width is left in the row, up to its native
+// photo resolution (1080 wide) so it's never upscaled blurry. Both canvases
+// get their width/height *attributes* (not just CSS) set to match, so the
 // actual pixel backing store stays crisp as the window resizes rather than
 // being CSS-stretched. Re-run on load and on every resize of the row
 // itself (see the ResizeObserver setup below).
+const CONTROL_SIZE = 200;
 const PREVIEW_MAX_WIDTH = 1080;
 const PREVIEW_ASPECT_RATIO = 240 / 360;
+
+// A small buffer subtracted from the row budget below, so the two widths
+// never sum to *exactly* the row's available width - which is fragile to
+// the sub-pixel rounding clientWidth/getComputedStyle can introduce, and
+// would wrap Control onto its own line despite technically fitting.
+const LAYOUT_SAFETY_MARGIN = 4;
 
 function layoutGridCustomiseCanvases() {
 
     const col = document.getElementById('grid-customise-col');
-    const gap = parseFloat(getComputedStyle(col).columnGap) || 0;
-    const availableWidth = col.clientWidth;
+    const colStyle = getComputedStyle(col);
+    const gap = parseFloat(colStyle.columnGap) || 0;
+    // clientWidth includes this element's own left/right padding (it's a
+    // ".col", which has some) - that padding isn't space available to lay
+    // the two canvases out in, so it has to come off too.
+    const paddingX = parseFloat(colStyle.paddingLeft) + parseFloat(colStyle.paddingRight);
+    const availableWidth = col.clientWidth - paddingX;
 
-    const previewWidth = Math.max(1, Math.min(availableWidth, PREVIEW_MAX_WIDTH));
+    const previewWidth = Math.max(1, Math.min(availableWidth - CONTROL_SIZE - gap - LAYOUT_SAFETY_MARGIN, PREVIEW_MAX_WIDTH));
     const previewHeight = Math.round(previewWidth * PREVIEW_ASPECT_RATIO);
-    const controlSize = Math.max(1, availableWidth - previewWidth - gap);
 
     setCanvasSize('grid-customise-preview', previewWidth, previewHeight);
-    setCanvasSize('grid-customise-control', controlSize, controlSize);
+    setCanvasSize('grid-customise-control', CONTROL_SIZE, CONTROL_SIZE);
 
     renderGridCustomisePreview();
 }
@@ -393,6 +404,13 @@ function setCanvasSize(canvasId, width, height) {
     const canvas = document.getElementById(canvasId);
     canvas.width = width;
     canvas.height = height;
+    // Without an explicit CSS size, a canvas's box is its bitmap resolution
+    // *plus* its border on top (border-box only reinterprets an explicit
+    // width/height, and there isn't one here otherwise) - enough to tip the
+    // row a few pixels over budget and wrap when the numbers are meant to
+    // add up exactly. Setting these too keeps the border inside the box.
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
 }
 
 const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';

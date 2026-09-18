@@ -264,12 +264,13 @@ input[type="range"] {
 }
 
 /* Two side-by-side canvases for the "Customise" grid, sized by
-   layoutGridCustomiseCanvases() in options.js rather than CSS: "Preview"
-   claims up to its native 1080px image width (so it's never upscaled
-   blurry), and "Control" - square - fills whatever width is left over in
-   the row. Both get their width/height *attributes* (not just CSS) set to
+   layoutGridCustomiseCanvases() in options.js rather than CSS: "Control" is
+   a fixed 200x200 square, and "Preview" claims whatever width is left in
+   the row, up to its native 1080px image width (so it's never upscaled
+   blurry). Both get their width/height *attributes* (not just CSS) set to
    match, so the canvas's actual pixel backing store stays crisp as the
-   window resizes, not just CSS-stretched.
+   window resizes, not just CSS-stretched. align-items:center keeps the
+   shorter Control panel vertically centred against the taller Preview one.
 
    "Control" is a fixed white-background, black/grey reference map
    (renderGridCustomiseReference()) that always uses the same two colours
@@ -286,7 +287,7 @@ input[type="range"] {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     gap: 1.5rem;
     margin-top: 0.5rem;
 }
@@ -304,12 +305,17 @@ input[type="range"] {
     border: 1px solid var(--color-divider);
 }
 
+/* width:100% forces these onto their own line below both panels (rather
+   than sitting inside Preview's own panel), since .grid-customise-col is a
+   wrapping flex row - keeps both panels symmetric (just a caption + canvas
+   each) so align-items:center centres canvas-to-canvas, not just panel-to-
+   panel with Preview's panel taller than its own canvas. */
 .grid-customise-photo-toggle {
+    width: 100%;
     margin: 0.5rem 0 0;
+    text-align: center;
 }
 
-/* width:100% forces this onto its own line below both panels, since
-   .grid-customise-col is a wrapping flex row. */
 .grid-customise-note {
     display: block;
     width: 100%;
