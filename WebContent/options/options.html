@@ -139,7 +139,11 @@
         <div class="col s12 grid-customise-col" id="grid-customise-col">
           <div class="grid-customise-panel">
             <span class="field-caption">Hide / Show</span>
-            <canvas class="grid-customise-control" id="grid-customise-control" width="360" height="240"></canvas>
+            <canvas class="grid-customise-control" id="grid-customise-control" width="360" height="240"
+                    tabindex="0" role="application"
+                    aria-label="Grid line and circle visibility. Use the arrow keys to select a line or circle, then Enter or Space to show or hide it."
+                    aria-describedby="grid-customise-status"></canvas>
+            <div id="grid-customise-status" class="sr-only" aria-live="polite"></div>
           </div>
           <div class="grid-customise-panel">
             <span class="field-caption">Preview</span>

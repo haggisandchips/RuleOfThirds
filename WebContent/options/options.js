@@ -379,7 +379,16 @@ function renderGridCustomisePreview() {
     drawGridOverlay(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions);
 
     const controlCanvas = document.getElementById('grid-customise-control');
-    renderGridCustomiseReference(controlCanvas.getContext('2d'), controlCanvas.width, controlCanvas.height, liveOptions);
+    const controlCtx = controlCanvas.getContext('2d');
+    renderGridCustomiseReference(controlCtx, controlCanvas.width, controlCanvas.height, liveOptions);
+
+    if (document.activeElement === controlCanvas) {
+        const targets = listGridCustomiseTargets(liveOptions);
+        if (targets.length > 0) {
+            customiseFocusIndex = Math.min(customiseFocusIndex, targets.length - 1);
+            drawGridCustomiseFocus(controlCtx, controlCanvas.width, controlCanvas.height, liveOptions, targets[customiseFocusIndex]);
+        }
+    }
 }
 
 // "Control" is a fixed 200x200 square, kept side by side with "Preview" -
@@ -553,6 +562,101 @@ function findGridCustomiseTarget(x, y, w, h, options) {
     return null;
 }
 
+// Enumerates every line/circle the Control canvas can currently toggle, in
+// the same reading order (rows, then columns, then circles) and the same
+// eligibility rules as findGridCustomiseTarget (a circle only counts once
+// both of its crossing lines are enabled) - drives keyboard navigation,
+// since a canvas has no DOM children of its own to tab between.
+function listGridCustomiseTargets(options) {
+
+    const targets = [];
+
+    if (options.renderGrid) {
+        options.gridRowLines.forEach((enabled, index) => {
+            targets.push({type: 'row', index, enabled, label: 'Row line ' + (index + 1)});
+        });
+        options.gridColumnLines.forEach((enabled, index) => {
+            targets.push({type: 'column', index, enabled, label: 'Column line ' + (index + 1)});
+        });
+    }
+
+    if (options.renderCircle) {
+        options.gridRowLines.forEach((rowEnabled, rowIndex) => {
+            if (!rowEnabled) {
+                return;
+            }
+            options.gridColumnLines.forEach((columnEnabled, columnIndex) => {
+                if (!columnEnabled) {
+                    return;
+                }
+                targets.push({
+                    type: 'circle', row: rowIndex, column: columnIndex,
+                    enabled: options.circleLines[rowIndex][columnIndex],
+                    label: 'Circle at row ' + (rowIndex + 1) + ', column ' + (columnIndex + 1)
+                });
+            });
+        });
+    }
+
+    return targets;
+}
+
+// Shared by the click handler and the keyboard Enter/Space handler - the
+// same toggle findGridCustomiseTarget's and listGridCustomiseTargets'
+// results both feed into.
+function toggleGridCustomiseTarget(target) {
+
+    if (target.type === 'row') {
+        gridRowLineStates[target.index] = !gridRowLineStates[target.index];
+    } else if (target.type === 'column') {
+        gridColumnLineStates[target.index] = !gridColumnLineStates[target.index];
+    } else {
+        circleLineStates[target.row][target.column] = !circleLineStates[target.row][target.column];
+    }
+}
+
+const GRID_CUSTOMISE_FOCUS_COLOUR = '#26a69a'; // matches --color-primary in css/style.css
+
+const GRID_CUSTOMISE_FOCUS_MARKER_SIZE = 10;
+
+// Draws the Control canvas's only visible focus indicator - a canvas gets
+// no native browser focus ring of its own the way a real form control
+// would. A row/column line gets a small chevron at the canvas edge instead
+// of a highlight traced along its whole length, so the line's own black/
+// grey colour - its actual shown/hidden state - stays fully visible rather
+// than being painted over; a circle gets a ring drawn around it instead of
+// over it, for the same reason.
+function drawGridCustomiseFocus(ctx, w, h, options, target) {
+
+    if (!target) {
+        return;
+    }
+
+    const marker = GRID_CUSTOMISE_FOCUS_MARKER_SIZE;
+    ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+
+    if (target.type === 'row') {
+        const y = (target.index + 1) * h / options.gridRows;
+        ctx.moveTo(marker, y - marker);
+        ctx.lineTo(0, y);
+        ctx.lineTo(marker, y + marker);
+    } else if (target.type === 'column') {
+        const x = (target.index + 1) * w / options.gridColumns;
+        ctx.moveTo(x - marker, marker);
+        ctx.lineTo(x, 0);
+        ctx.lineTo(x + marker, marker);
+    } else {
+        const radius = Math.min((w / options.gridColumns) / 2, (h / options.gridRows) / 2, options.circleRadius) + 4;
+        const x = (target.column + 1) * w / options.gridColumns;
+        const y = (target.row + 1) * h / options.gridRows;
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    }
+
+    ctx.stroke();
+}
+
 // Converts a mouse event's page position into the canvas's own pixel
 // coordinates. Scales by canvas-pixels-per-CSS-pixel defensively, though
 // the two match 1:1 today.
@@ -575,22 +679,85 @@ function onGridCustomiseClick(event) {
 
     const canvas = event.currentTarget;
     const {x, y} = gridCustomiseEventPosition(event);
+    const options = buildLiveGridCustomiseOptions();
 
-    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, options);
     if (!target) {
         return;
     }
 
-    if (target.type === 'row') {
-        gridRowLineStates[target.index] = !gridRowLineStates[target.index];
-    } else if (target.type === 'column') {
-        gridColumnLineStates[target.index] = !gridColumnLineStates[target.index];
-    } else {
-        circleLineStates[target.row][target.column] = !circleLineStates[target.row][target.column];
+    toggleGridCustomiseTarget(target);
+
+    // Keeps keyboard focus in step with the mouse, so switching to the
+    // keyboard afterwards continues from the line/circle just clicked
+    // rather than wherever the focus ring last was.
+    const targets = listGridCustomiseTargets(buildLiveGridCustomiseOptions());
+    const clickedIndex = targets.findIndex(candidate =>
+        candidate.type === target.type && candidate.index === target.index &&
+        candidate.row === target.row && candidate.column === target.column);
+    if (clickedIndex !== -1) {
+        customiseFocusIndex = clickedIndex;
     }
 
     renderGridCustomisePreview();
     saveOptions();
+}
+
+// Index into listGridCustomiseTargets() of the line/circle keyboard focus
+// currently sits on - clamped defensively wherever it's read, since Rows/
+// Columns can change the target list's length at any time.
+let customiseFocusIndex = 0;
+
+const GRID_CUSTOMISE_NAVIGATION_KEYS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End', 'Enter', ' '];
+
+function onGridCustomiseKeyDown(event) {
+
+    if (!GRID_CUSTOMISE_NAVIGATION_KEYS.includes(event.key)) {
+        return;
+    }
+
+    const targets = listGridCustomiseTargets(buildLiveGridCustomiseOptions());
+    if (targets.length === 0) {
+        return;
+    }
+    event.preventDefault();
+    customiseFocusIndex = Math.min(customiseFocusIndex, targets.length - 1);
+
+    switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            customiseFocusIndex = (customiseFocusIndex + 1) % targets.length;
+            break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            customiseFocusIndex = (customiseFocusIndex - 1 + targets.length) % targets.length;
+            break;
+        case 'Home':
+            customiseFocusIndex = 0;
+            break;
+        case 'End':
+            customiseFocusIndex = targets.length - 1;
+            break;
+        case 'Enter':
+        case ' ':
+            toggleGridCustomiseTarget(targets[customiseFocusIndex]);
+            saveOptions();
+            break;
+    }
+
+    renderGridCustomisePreview();
+    announceGridCustomiseFocus(listGridCustomiseTargets(buildLiveGridCustomiseOptions())[customiseFocusIndex]);
+}
+
+// The Control canvas has no DOM children a screen reader can read, so its
+// current keyboard-selected line/circle - and whether toggling it would
+// show or hide it - is announced through this live region instead.
+function announceGridCustomiseFocus(target) {
+
+    const liveRegion = document.getElementById('grid-customise-status');
+    if (liveRegion && target) {
+        liveRegion.textContent = target.label + ': ' + (target.enabled ? 'shown' : 'hidden') + '. Press Enter or Space to toggle.';
+    }
 }
 
 // Switches the cursor to a pointer only while actually hovering a line or
@@ -653,6 +820,19 @@ if (typeof document !== 'undefined') {
     gridCustomiseControl.addEventListener('click', onGridCustomiseClick);
     gridCustomiseControl.addEventListener('mousemove', onGridCustomiseHover);
     gridCustomiseControl.addEventListener('mouseleave', () => { gridCustomiseControl.style.cursor = 'default'; });
+    gridCustomiseControl.addEventListener('keydown', onGridCustomiseKeyDown);
+    gridCustomiseControl.addEventListener('focus', () => {
+        const targets = listGridCustomiseTargets(buildLiveGridCustomiseOptions());
+        if (targets.length === 0) {
+            return;
+        }
+        customiseFocusIndex = Math.min(customiseFocusIndex, targets.length - 1);
+        renderGridCustomisePreview();
+        announceGridCustomiseFocus(targets[customiseFocusIndex]);
+    });
+    // Re-renders on blur too, purely to erase the focus ring - it has no
+    // reason to still show once keyboard focus has left the canvas.
+    gridCustomiseControl.addEventListener('blur', () => renderGridCustomisePreview());
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
@@ -675,6 +855,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         DEFAULT_OPTIONS, MIN_GRID_LINES, MAX_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
         resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
-        computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground
+        computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground,
+        listGridCustomiseTargets, drawGridCustomiseFocus
     };
 }

@@ -109,6 +109,23 @@ h5 {
     color: #424242;
 }
 
+/* Visually hides text while keeping it readable to screen readers - used
+   for the Customise Control canvas's live status announcements (see
+   #grid-customise-status in options.html / announceGridCustomiseFocus in
+   options.js), since that feedback has no useful on-screen presentation
+   of its own (the canvas's focus ring already shows it visually). */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Field captions (labels with a `for`, placed before their input, or a
    plain span above a widget that has no single bound input). */
 label[for],
@@ -317,6 +334,16 @@ input[type="range"] {
 .grid-customise-photo-toggle {
     align-self: flex-start;
     margin: 0.5rem 0 0;
+}
+
+/* The canvas draws its own focus indicator around the selected line/circle
+   (see drawGridCustomiseFocus in options.js), but it still needs a native
+   focus outline around the canvas itself so keyboard users can tell it's
+   the active element at all, consistent with the rest of the page's
+   :focus styling. */
+.grid-customise-control:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 .btn-large {

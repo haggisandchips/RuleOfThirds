@@ -16,7 +16,9 @@ const {
     computePreviewBackground,
     findGridCustomiseTarget,
     renderGridCustomiseReference,
-    drawPreviewBackground
+    drawPreviewBackground,
+    listGridCustomiseTargets,
+    drawGridCustomiseFocus
 } = require('../WebContent/options/options.js');
 
 // A fake canvas context that just records the strokeStyle in effect at each
@@ -264,6 +266,68 @@ test('renderGridCustomiseReference draws nothing for an axis whose master toggle
     const circleOffCtx = createColourRecordingContext();
     renderGridCustomiseReference(circleOffCtx, 90, 90, baseGridOptions({renderCircle: false}));
     assert.equal(circleOffCtx.strokes.length, 4, 'only the 4 lines remain');
+});
+
+test('listGridCustomiseTargets lists every line and circle, in row/column/circle order', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions());
+
+    assert.deepEqual(targets.map(t => t.type), ['row', 'row', 'column', 'column', 'circle', 'circle', 'circle', 'circle']);
+    assert.deepEqual(targets.map(t => t.label), [
+        'Row line 1', 'Row line 2', 'Column line 1', 'Column line 2',
+        'Circle at row 1, column 1', 'Circle at row 1, column 2',
+        'Circle at row 2, column 1', 'Circle at row 2, column 2'
+    ]);
+});
+
+test('listGridCustomiseTargets still lists a disabled line as a target (to re-enable it)', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({gridRowLines: [false, true]}));
+    const rowTargets = targets.filter(t => t.type === 'row');
+
+    assert.equal(rowTargets[0].enabled, false);
+    assert.equal(rowTargets[1].enabled, true);
+});
+
+test('listGridCustomiseTargets omits a circle whose crossing line is disabled, even though the line itself is still listed', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({gridRowLines: [false, true]}));
+
+    assert.equal(targets.filter(t => t.type === 'row').length, 2, 'both row lines remain valid targets');
+    assert.equal(targets.filter(t => t.type === 'circle').length, 2, 'row 0 has no crossing to hang a circle on, so only row 1\'s 2 circles remain');
+});
+
+test('listGridCustomiseTargets returns no line targets when Grid is disabled, independent of Circles', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({renderGrid: false}));
+
+    assert.equal(targets.some(t => t.type === 'row' || t.type === 'column'), false);
+    assert.equal(targets.filter(t => t.type === 'circle').length, 4, 'circle visibility does not depend on renderGrid');
+});
+
+test('listGridCustomiseTargets returns no circle targets when Circles is disabled', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({renderCircle: false}));
+
+    assert.equal(targets.some(t => t.type === 'circle'), false);
+});
+
+test('drawGridCustomiseFocus does nothing when there is no target', () => {
+    const ctx = createColourRecordingContext();
+    drawGridCustomiseFocus(ctx, 90, 90, baseGridOptions(), null);
+
+    assert.equal(ctx.strokes.length, 0);
+});
+
+test('drawGridCustomiseFocus strokes a single highlight in the focus colour for a row, column or circle target', () => {
+    const options = baseGridOptions();
+
+    const rowCtx = createColourRecordingContext();
+    drawGridCustomiseFocus(rowCtx, 90, 90, options, {type: 'row', index: 0});
+    assert.deepEqual(rowCtx.strokes, ['#26a69a']);
+
+    const columnCtx = createColourRecordingContext();
+    drawGridCustomiseFocus(columnCtx, 90, 90, options, {type: 'column', index: 0});
+    assert.deepEqual(columnCtx.strokes, ['#26a69a']);
+
+    const circleCtx = createColourRecordingContext();
+    drawGridCustomiseFocus(circleCtx, 90, 90, options, {type: 'circle', row: 0, column: 0});
+    assert.deepEqual(circleCtx.strokes, ['#26a69a']);
 });
 
 // A fake canvas context that records drawImage/fillRect calls and the

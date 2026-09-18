@@ -48,15 +48,42 @@ priority order as time allows; none of these block day-to-day use.
    Rule of Thirds - adjustable rows, columns, colours and opacity." (122
    chars, under the Chrome Web Store's 132-char manifest description limit).
 
-5. **`WebContent/options/options.js` — Customise "Control" canvas has no keyboard access.**
-   `grid-customise-control` (`options.html:142`, listeners added
-   `options.js:643-646`) only has `click`/`mousemove`/`mouseleave`
-   listeners — no `tabindex`, no keyboard handler, no `role`/`aria-label`.
-   A keyboard-only user cannot reach or operate per-line/per-circle
-   show-hide at all (WCAG 2.1.1 + 1.1.1 failure on a core feature). Fix:
-   `tabindex="0"`, an appropriate `role`/`aria-label`, visible `:focus`
-   styling, and either keyboard-driven target traversal or an equivalent
-   non-canvas control list.
+5. ~~**`WebContent/options/options.js` — Customise "Control" canvas has no keyboard access.**~~ **Fixed.**
+   Went with keyboard-driven target traversal on the canvas itself, rather
+   than a parallel list of real controls — up to 9 rows/columns (SPEC #6)
+   can mean 8 row lines + 8 column lines + up to 64 circles, too many to
+   usefully lay out as individual buttons.
+
+   `listGridCustomiseTargets(options)` (new, pure, tested) enumerates every
+   line/circle in the same reading order and eligibility rules as the
+   existing `findGridCustomiseTarget` hit-testing. The canvas is now
+   `tabindex="0"` with `role="application"` (deliberate: its own Arrow/
+   Enter/Space handling needs to take priority over a screen reader's
+   default browse-mode key handling) and an `aria-label` explaining the
+   controls. Arrow keys move a "keyboard focus index" through that list
+   (wrapping; Home/End jump to the ends), Enter/Space toggles the current
+   target via a `toggleGridCustomiseTarget` helper now shared with the
+   click handler. A screen-reader-only `aria-live` region
+   (`#grid-customise-status`, `.sr-only` in `style.css`) announces the
+   current target and its shown/hidden state on every focus and move.
+
+   For sighted keyboard users, `drawGridCustomiseFocus` (new, pure, tested)
+   draws a teal indicator on the canvas itself (there's no native focus
+   ring for canvas content), plus a `:focus-visible` outline around the
+   canvas via CSS. First attempt traced the highlight directly over the
+   focused line/circle, which completely hid whether it was actually
+   shown or hidden (its black-vs-grey colour) — caught by re-reading my
+   own diff, not by testing. Fixed by drawing a small edge chevron for
+   lines and a ring *around* (not over) a circle instead, confirmed by
+   sampling the actual canvas pixels afterward. Mouse clicks now also sync
+   the keyboard focus index to whatever was clicked, so switching input
+   methods mid-session doesn't leave the focus ring somewhere unrelated.
+
+   Live-tested in a browser: real Tab key reaches the canvas in the
+   natural tab order; Arrow/Enter/Space navigate and toggle correctly;
+   the live region text and `role`/`aria-label` are present and accurate;
+   pixel-sampled the canvas to confirm the disabled line still renders in
+   its actual grey, not painted over by the focus indicator.
 
 6. ~~**`options.js:saveOptions` — no upper bound on Rows/Columns/Radius, and save failures are silent.**~~ **Fixed.**
    Rows/Columns are now capped at 9 (`MAX_GRID_LINES` in `options.js`, `max="9"`
