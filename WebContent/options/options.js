@@ -295,8 +295,8 @@ function resetCircleStates(rowCount, columnCount) {
 // eg white lines on a white background would otherwise be invisible.
 const GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND = 0.75;
 
-// A background derived from the configured colours (average, then XORed
-// against white to get a contrasting complement) so the preview stays
+// A background derived from the configured colours (average, then
+// inverted to get a contrasting complement) so the preview stays
 // visible without needing a colour picker of its own. Only colours that are
 // actually enabled feed into it - a disabled line/circle's colour never
 // renders anywhere, so it shouldn't be able to tint the background either.
@@ -319,7 +319,7 @@ function computePreviewBackground(lineColour, circleColour, renderGrid, renderCi
     const channels = ['r', 'g', 'b'].map(channel => {
         const sum = activeColours.reduce((total, colour) => total + colour[channel], 0);
         const average = Math.round(sum / activeColours.length);
-        const complement = 255 ^ average;
+        const complement = 255 - average;
         return Math.round(complement + (255 - complement) * GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND);
     });
 

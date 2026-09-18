@@ -231,9 +231,11 @@ priority order as time allows; none of these block day-to-day use.
     JS constant - so added a comment next to `MIN_LONG`/`MIN_SHORT` in
     `content.js` flagging that they need to stay in sync by hand.
 
-25. **`options.js:277` — `255 ^ average`** in `computePreviewBackground` is
-    an obscure way to write `255 - average` for an 8-bit channel. Behaviour
-    is correct; readability nit only.
+25. ~~**`options.js:277` — `255 ^ average`**~~ **Fixed.**
+    Replaced with `255 - average` (equivalent for an 8-bit channel).
+    Existing `computePreviewBackground` tests, including the exact
+    deterministic `rgb(191, 223, 223)` expectation, still pass unchanged,
+    confirming this was behaviour-preserving.
 
 26. **Inconsistent focus styling.** Quick-swatch buttons and "Restore
     Defaults" (`style.css`) rely on the default browser focus outline,
