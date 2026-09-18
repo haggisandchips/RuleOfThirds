@@ -372,6 +372,13 @@ function loadPreviewPhoto() {
         previewPhotoLoaded = true;
         renderGridCustomisePreview();
     };
+    // previewPhotoLoaded simply never becomes true on failure, so the
+    // preview already falls back to a plain colour fill (see
+    // drawPreviewBackground) - this is just so a failure is discoverable
+    // in devtools instead of silently leaving the toggle looking broken.
+    image.onerror = () => {
+        console.warn('Rule of Thirds: failed to load the Customise preview background photo (' + PREVIEW_PHOTO_SRC + ')');
+    };
     image.src = PREVIEW_PHOTO_SRC;
     previewPhotoImage = image;
 }

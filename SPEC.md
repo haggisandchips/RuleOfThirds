@@ -260,9 +260,14 @@ priority order as time allows; none of these block day-to-day use.
 29. ~~**Field caption text is small**~~ **Fixed.**
     `label[for]`/`.field-caption` bumped from `0.8rem` to `0.875rem`.
 
-30. **`options.js:323-332` (`loadPreviewPhoto`) has no `image.onerror` handler.**
-    A failed webp load fails silently — the background photo toggle does
-    nothing with no feedback.
+30. ~~**`options.js:323-332` (`loadPreviewPhoto`) has no `image.onerror` handler.**~~ **Fixed.**
+    Added an `onerror` handler that logs a `console.warn` - the existing
+    fallback (plain computed-colour fill, since `previewPhotoLoaded` just
+    stays `false`) already handles the UI gracefully, so this is purely
+    about making the failure discoverable instead of silent. Live-verified
+    in a browser by temporarily removing `preview-background.webp`: the
+    warning fires and the preview still renders correctly via the
+    fallback, no broken image or crash.
 
 ## Found during testing (not in the original audit)
 
