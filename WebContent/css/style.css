@@ -269,8 +269,11 @@ input[type="range"] {
    the row, up to its native 1080px image width (so it's never upscaled
    blurry). Both get their width/height *attributes* (not just CSS) set to
    match, so the canvas's actual pixel backing store stays crisp as the
-   window resizes, not just CSS-stretched. align-items:center keeps the
-   shorter Control panel vertically centred against the taller Preview one.
+   window resizes, not just CSS-stretched. align-items:flex-start, with
+   Control's own panel given a matching margin-top in JS, keeps Control's
+   canvas vertically centred against Preview's - plain CSS centring would
+   centre the whole *panels* instead, throwing that off by the photo
+   toggle's height under Preview's canvas alone.
 
    "Control" is a fixed white-background, black/grey reference map
    (renderGridCustomiseReference()) that always uses the same two colours
@@ -287,7 +290,7 @@ input[type="range"] {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     gap: 1.5rem;
     margin-top: 0.5rem;
 }
@@ -305,25 +308,12 @@ input[type="range"] {
     border: 1px solid var(--color-divider);
 }
 
-/* width:100% forces these onto their own line below both panels (rather
-   than sitting inside Preview's own panel), since .grid-customise-col is a
-   wrapping flex row - keeps both panels symmetric (just a caption + canvas
-   each) so align-items:center centres canvas-to-canvas, not just panel-to-
-   panel with Preview's panel taller than its own canvas. */
+/* align-self:flex-start overrides the panel's own centring just for this,
+   so it lines up with Preview's left edge instead of sitting centred
+   under it. */
 .grid-customise-photo-toggle {
-    width: 100%;
+    align-self: flex-start;
     margin: 0.5rem 0 0;
-    text-align: center;
-}
-
-.grid-customise-note {
-    display: block;
-    width: 100%;
-    margin-top: 0.4rem;
-    font-size: 0.75rem;
-    line-height: 1.4;
-    color: #9e9e9e;
-    text-align: center;
 }
 
 .btn-large {

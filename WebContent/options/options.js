@@ -396,6 +396,14 @@ function layoutGridCustomiseCanvases() {
     setCanvasSize('grid-customise-preview', previewWidth, previewHeight);
     setCanvasSize('grid-customise-control', CONTROL_SIZE, CONTROL_SIZE);
 
+    // Both panels start at the same top edge (see .grid-customise-col's
+    // align-items:flex-start) - nudge Control's panel down by half the
+    // height difference so its canvas lands centred against Preview's,
+    // which CSS alone can't do now Preview's own panel is taller (it has
+    // the photo toggle under its canvas that Control's doesn't).
+    const controlPanel = document.getElementById('grid-customise-control').closest('.grid-customise-panel');
+    controlPanel.style.marginTop = Math.max(0, (previewHeight - CONTROL_SIZE) / 2) + 'px';
+
     renderGridCustomisePreview();
 }
 
