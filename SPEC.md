@@ -247,6 +247,25 @@ priority order as time allows; none of these block day-to-day use.
     A failed webp load fails silently — the background photo toggle does
     nothing with no feedback.
 
+## Found during testing (not in the original audit)
+
+31. ~~**`options.js:801-804` (`getSelectedOption`) throws if called before a radio group has anything checked.**~~ **Fixed.**
+    Reported live from Chrome's own "Errors" panel on the Manage Extensions
+    page: `Uncaught TypeError: Cannot read properties of null (reading
+    'value')` at `options.js:803`. Root cause: the `circle-style` radios
+    have no `checked` attribute in the static HTML, so
+    `document.querySelector('input[name="circle-style"]:checked')` is
+    `null` until `setOptions()` runs after `chrome.storage.sync.get`
+    resolves — and `renderGridCustomisePreview()` can run before that,
+    triggered independently by the background photo's `onload` or
+    `ResizeObserver`'s own first callback, both of which can win the race
+    against a real storage round-trip. Reproduced locally first (delayed
+    a mocked `chrome.storage.sync.get` to simulate that race, hit the
+    identical stack trace), then fixed `getSelectedOption` to take a
+    `fallback` parameter (matching the pattern `clampInt` already uses)
+    instead of assuming something is always checked, and re-ran the same
+    reproduction to confirm it no longer throws.
+
 ## Already checked and solid (no action needed)
 
 - Minimal permission footprint otherwise (`activeTab` + `scripting`, no

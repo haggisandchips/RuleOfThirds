@@ -77,7 +77,7 @@ const saveOptions = (event) => {
     const circleColour = document.getElementById('circle-colour').value;
     const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
-    const circleStyle = getSelectedOption('circle-style');
+    const circleStyle = getSelectedOption('circle-style', DEFAULT_OPTIONS.circleStyle);
     const previewBackgroundImage = document.getElementById('preview-background-image').checked;
 
     chrome.storage.sync.set(
@@ -313,7 +313,7 @@ function buildLiveGridCustomiseOptions() {
         circleColour: document.getElementById('circle-colour').value,
         circleOpacity: clampInt(document.getElementById('circle-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity),
         circleRadius: clampInt(document.getElementById('circle-radius').value, MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius),
-        circleStyle: getSelectedOption('circle-style'),
+        circleStyle: getSelectedOption('circle-style', DEFAULT_OPTIONS.circleStyle),
         circleLines: circleLineStates,
         previewBackgroundImage: document.getElementById('preview-background-image').checked
     };
@@ -798,9 +798,15 @@ function selectOption(elementName, value) {
     });
 }
 
-function getSelectedOption(elementName) {
+// Falls back rather than throwing when nothing in the group is checked yet
+// - the static HTML marks no radio `checked` by default, so this can
+// briefly be true if a render is triggered (eg by the background photo's
+// `onload`, or ResizeObserver's own first callback) before
+// chrome.storage.sync.get resolves and setOptions() has run.
+function getSelectedOption(elementName, fallback) {
 
-    return document.querySelector('input[name="' + elementName + '"]:checked').value;
+    const checked = document.querySelector('input[name="' + elementName + '"]:checked');
+    return checked ? checked.value : fallback;
 }
 
 // Guards Node (used by /test) where there's no page to attach to.
