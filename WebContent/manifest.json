@@ -18,7 +18,8 @@
     "permissions": [
         "scripting",
         "activeTab",
-        "storage"
+        "storage",
+        "contextMenus"
     ],
 
     "options_page": "options/options.html",

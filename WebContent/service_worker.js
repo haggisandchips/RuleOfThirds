@@ -15,6 +15,23 @@ try {
                 break;
         }
 
+        // removeAll() first since onInstalled can fire more than once in a
+        // dev/reload cycle (and again on every browser update) - create()
+        // alone would then fail with a "duplicate id" error on the second
+        // and later calls.
+        chrome.contextMenus.removeAll(() => {
+            chrome.contextMenus.create({
+                id: 'rule-of-thirds-guide',
+                title: 'How to Use',
+                contexts: ['action']
+            });
+        });
+    });
+
+    chrome.contextMenus.onClicked.addListener((info) => {
+        if (info.menuItemId === 'rule-of-thirds-guide') {
+            chrome.tabs.create({url: 'guide/guide.html'});
+        }
     });
 
     chrome.action.onClicked.addListener(tab => {
