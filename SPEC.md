@@ -169,12 +169,11 @@ priority order as time allows; none of these block day-to-day use.
     One click immediately overwrites and saves all customization with no
     way back. Add a confirm step, or an Undo action on the toast.
 
-17. **`versions/history.html` — "Control" label doesn't match the shipped UI.**
-    The v1.8 entry describes "a 'Control' map for clicking lines and
-    circles on or off", but the actual on-page caption
-    (`options.html:141`) is "Hide / Show" — "Control" only exists as an
-    internal id/class. Update the changelog wording to match ("Hide /
-    Show"), or rename the UI caption.
+17. ~~**`versions/history.html` — "Control" label doesn't match the shipped UI.**~~ **Fixed.**
+    Updated the changelog wording to "Hide / Show" to match the actual
+    on-page caption (`options.html:141`) — "Control" only ever existed as
+    an internal id/class. Also fixed the same stale wording in
+    `guide/guide.html`, which had inherited it.
 
 18. **`test/content.test.js` — `sanitizeLineStates` has no direct tests.**
     It's only exercised indirectly via `sanitizeOptions`/
