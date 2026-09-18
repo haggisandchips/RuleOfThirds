@@ -31,11 +31,10 @@ priority order as time allows; none of these block day-to-day use.
    end; the logic reuses the same `chrome.action.*` calls `setActionIcon`
    already relies on.
 
-4. **`manifest.json:6` — stale store-listing description.**
-   Still reads "Simple extension to draw a 3 x 3 grid on an image..." — the
-   extension now supports configurable rows/columns, circles (outline/
-   filled), full colour/opacity pickers, per-line/circle show-hide, and a
-   preview background photo. Rewrite to reflect the actual v1.8 feature set.
+4. ~~**`manifest.json:6` — stale store-listing description.**~~ **Fixed.**
+   Now reads "A customisable grid and circle overlay for visualising the
+   Rule of Thirds - adjustable rows, columns, colours and opacity." (122
+   chars, under the Chrome Web Store's 132-char manifest description limit).
 
 5. **`WebContent/options/options.js` — Customise "Control" canvas has no keyboard access.**
    `grid-customise-control` (`options.html:142`, listeners added
