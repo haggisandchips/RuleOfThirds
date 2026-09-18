@@ -337,6 +337,16 @@ input[type="range"] {
     background: var(--color-divider);
 }
 
+.grid-customise-circle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
 .grid-customise-note {
     display: block;
     margin-top: 0.4rem;

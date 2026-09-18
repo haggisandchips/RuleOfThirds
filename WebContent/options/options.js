@@ -105,7 +105,6 @@ function setOptions(options) {
     document.getElementById('grid-columns').value = options.gridColumns;
     gridRowLineStates = resizeLineStates(options.gridRowLines, options.gridRows - 1);
     gridColumnLineStates = resizeLineStates(options.gridColumnLines, options.gridColumns - 1);
-    renderGridCustomisePreview();
     document.getElementById('line-colour').value = options.lineColour;
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
@@ -117,6 +116,9 @@ function setOptions(options) {
     updateOpacityLabel('circle-opacity');
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
+    // Depends on render-circle already being set above, since it decides
+    // whether the preview's intersection circles are drawn at all.
+    renderGridCustomisePreview();
     updateGridCustomiseNote();
 }
 
@@ -237,6 +239,37 @@ function renderGridCustomisePreview() {
             saveOptions();
         }));
     });
+
+    // Mirrors drawGrid's own rule - a circle only exists where an enabled
+    // row line and an enabled column line actually cross. Purely a preview:
+    // not clickable, and shouldn't sit in the way of clicking a line.
+    if (document.getElementById('render-circle').checked) {
+        gridRowLineStates.forEach((rowEnabled, rowIndex) => {
+            if (!rowEnabled) {
+                return;
+            }
+            const top = (rowIndex + 1) / (gridRowLineStates.length + 1) * 100;
+
+            gridColumnLineStates.forEach((columnEnabled, columnIndex) => {
+                if (!columnEnabled) {
+                    return;
+                }
+                const left = (columnIndex + 1) / (gridColumnLineStates.length + 1) * 100;
+                preview.appendChild(createGridCustomiseCircle(top, left));
+            });
+        });
+    }
+}
+
+function createGridCustomiseCircle(topPercent, leftPercent) {
+
+    const circle = document.createElement('span');
+    circle.className = 'grid-customise-circle';
+    circle.style.top = topPercent + '%';
+    circle.style.left = leftPercent + '%';
+    circle.setAttribute('aria-hidden', 'true');
+
+    return circle;
 }
 
 // The circle clause only makes sense while Circles are actually enabled -
