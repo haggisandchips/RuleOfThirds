@@ -109,6 +109,15 @@ h5 {
     color: #424242;
 }
 
+/* A short explanatory line under a section heading - smaller and quieter
+   than .flow-text, which is sized for the changelog/guide pages rather
+   than a compact options form. */
+.help-text {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin: 0 0 0.75rem;
+}
+
 /* Visually hides text while keeping it readable to screen readers - used
    for the Customise Control canvas's live status announcements (see
    #grid-customise-status in options.html / announceGridCustomiseFocus in

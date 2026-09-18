@@ -160,10 +160,10 @@ priority order as time allows; none of these block day-to-day use.
     interactive despite being inert. Toggle a `disabled`/dimmed state on
     dependent fields based on the section's Enabled checkbox.
 
-15. **Customise feature has weak discoverability.** Two side-by-side
-    canvases captioned only "Hide / Show" / "Preview" — nothing explains
-    that the left one is clickable. Add one line of help text under the
-    heading.
+15. ~~**Customise feature has weak discoverability.**~~ **Fixed.**
+    Added a one-line `.help-text` note under the "Customise" heading:
+    `Click a line or circle in the map below to show or hide it -
+    "Preview" shows the result.`
 
 16. **`options.js:103-107` (`restoreDefaultOptions`, bound at `options.js:655`) has no confirmation or undo.**
     One click immediately overwrites and saves all customization with no
