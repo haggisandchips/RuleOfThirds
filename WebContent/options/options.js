@@ -1,4 +1,5 @@
 const DEFAULT_OPTIONS = {
+    overlayStyle: 'grid',
     renderGrid: true,
     gridRows: 3,
     gridColumns: 3,
@@ -12,7 +13,9 @@ const DEFAULT_OPTIONS = {
     circleRadius: 5,
     circleStyle: 'outline',
     circleLines: [[true, true], [true, true]],
-    previewBackgroundImage: true
+    previewBackgroundImage: true,
+    goldenRatioDirection: 'clockwise',
+    goldenRatioStart: 'bottom-left'
 };
 
 const MIN_GRID_LINES = 1;
@@ -38,6 +41,7 @@ const loadOptions = () => {
 // Saves options to chrome.storage
 const saveOptions = (event) => {
 
+    const overlayStyle = getSelectedOption('overlay-style');
     const renderGrid = document.getElementById('render-grid').checked;
 
     // The field the user is actively editing has its minimum raised to 2
@@ -75,9 +79,12 @@ const saveOptions = (event) => {
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style');
     const previewBackgroundImage = document.getElementById('preview-background-image').checked;
+    const goldenRatioDirection = getSelectedOption('golden-ratio-direction');
+    const goldenRatioStart = getSelectedOption('golden-ratio-start');
 
     chrome.storage.sync.set(
         {
+            overlayStyle,
             renderGrid,
             gridRows,
             gridColumns,
@@ -91,7 +98,9 @@ const saveOptions = (event) => {
             circleRadius,
             circleStyle,
             circleLines: circleLineStates,
-            previewBackgroundImage
+            previewBackgroundImage,
+            goldenRatioDirection,
+            goldenRatioStart
         },
         () => {
             showToast('Options saved.');
@@ -108,6 +117,7 @@ const restoreDefaultOptions = () => {
 
 function setOptions(options) {
 
+    selectOption('overlay-style', options.overlayStyle);
     document.getElementById('render-grid').checked = options.renderGrid;
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
@@ -126,11 +136,59 @@ function setOptions(options) {
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
     document.getElementById('preview-background-image').checked = options.previewBackgroundImage;
+    selectOption('golden-ratio-direction', options.goldenRatioDirection);
+    selectOption('golden-ratio-start', options.goldenRatioStart);
+    syncGoldenRatioThumbnailSelection();
+    syncOverlayStyleVisibility();
     // Depends on every field set above, since an accurate preview needs all
     // of them (colours, opacity, style, both enabled toggles, and the photo
     // toggle) - layoutGridCustomiseCanvases() sizes the canvases and then
     // renders.
     layoutGridCustomiseCanvases();
+}
+
+// Each thumbnail is a clickable preview of one direction/starting-point
+// combination - drawn once since they don't depend on saved options, only
+// on the fixed direction/start pair baked into their data attributes.
+function drawGoldenRatioThumbnails() {
+
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
+        const canvas = button.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#666';
+        traceGoldenSpiralPath(ctx, canvas.width, canvas.height, button.dataset.direction, button.dataset.start);
+        ctx.stroke();
+    });
+}
+
+// Highlights whichever thumbnail matches the current direction/starting-
+// point radios, whether they were just set by a thumbnail click or the
+// radios themselves.
+function syncGoldenRatioThumbnailSelection() {
+
+    const direction = getSelectedOption('golden-ratio-direction');
+    const start = getSelectedOption('golden-ratio-start');
+
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
+        button.classList.toggle('selected', button.dataset.direction === direction && button.dataset.start === start);
+    });
+}
+
+// Grid/Circles and Golden Ratio are mutually-exclusive "modes" - only the
+// active mode's settings are shown, though both remain saved in storage so
+// switching back and forth doesn't lose either mode's configuration.
+function syncOverlayStyleVisibility() {
+
+    const overlayStyle = getSelectedOption('overlay-style');
+
+    document.querySelectorAll('.grid-mode-row').forEach(row => {
+        row.style.display = overlayStyle === 'grid' ? '' : 'none';
+    });
+    document.querySelectorAll('.golden-ratio-mode-row').forEach(row => {
+        row.style.display = overlayStyle === 'golden-ratio' ? '' : 'none';
+    });
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native
@@ -660,6 +718,19 @@ if (typeof document !== 'undefined') {
     // what actually matters is the row's own width - which can also change
     // from things a window resize wouldn't catch (eg a scrollbar appearing).
     new ResizeObserver(() => layoutGridCustomiseCanvases()).observe(document.getElementById('grid-customise-col'));
+
+    document.querySelectorAll('input[name="overlay-style"]').forEach(input => input.addEventListener('change', syncOverlayStyleVisibility));
+
+    drawGoldenRatioThumbnails();
+
+    document.querySelectorAll('input[name="golden-ratio-direction"], input[name="golden-ratio-start"]').forEach(input => input.addEventListener('change', syncGoldenRatioThumbnailSelection));
+
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => button.addEventListener('click', () => {
+        selectOption('golden-ratio-direction', button.dataset.direction);
+        selectOption('golden-ratio-start', button.dataset.start);
+        syncGoldenRatioThumbnailSelection();
+        saveOptions();
+    }));
 }
 
 if (typeof module !== 'undefined' && module.exports) {

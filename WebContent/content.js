@@ -116,6 +116,7 @@ if (typeof rotInit === 'undefined') {
             return new Promise((resolve) => {
                 chrome.storage.sync.get(
                     {
+                        overlayStyle: 'grid',
                         renderGrid: true,
                         gridRows: 3,
                         gridColumns: 3,
@@ -128,7 +129,9 @@ if (typeof rotInit === 'undefined') {
                         circleOpacity: 100,
                         circleRadius: 5,
                         circleStyle: 'outline',
-                        circleLines: [[true, true], [true, true]]
+                        circleLines: [[true, true], [true, true]],
+                        goldenRatioDirection: 'clockwise',
+                        goldenRatioStart: 'bottom-left'
                     },
                     (data) => {
                         options = sanitizeOptions(data);
@@ -185,13 +188,30 @@ if (typeof rotInit === 'undefined') {
 
             const imageParent = image.offsetParent;
             const canvas = createCanvas(w, h, image, computedStyle);
+            const ctx = canvas.getContext('2d');
 
-            // Draw Rule of Thirds grid
-            drawGridOverlay(canvas.getContext('2d'), w, h, options);
+            if (options.overlayStyle === 'golden-ratio') {
+                drawGoldenSpiral(ctx, w, h);
+            } else {
+                drawGridOverlay(ctx, w, h, options);
+            }
 
             imageParent.append(canvas);
 
             removeUndersizedImages(canvas, image);
+        }
+
+        // Golden Ratio and Grid/Circles are mutually-exclusive overlay
+        // "modes" (see Overlay Style on the Options page) - only ever one
+        // or the other, never both at once.
+        function drawGoldenSpiral(ctx, w, h) {
+
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
+
+            traceGoldenSpiralPath(ctx, w, h, options.goldenRatioDirection, options.goldenRatioStart);
+
+            ctx.stroke();
         }
 
         function removeGrids() {

@@ -22,7 +22,7 @@ try {
         console.log("Browser action clicked");
 
         chrome.scripting.executeScript({
-            target: {tabId: tab.id}, files: ['grid-render.js', 'content.js']
+            target: {tabId: tab.id}, files: ['grid-render.js', 'golden-ratio.js', 'content.js']
         }).catch(() => {
             showToast("Sorry, this page doesn't allow the Rule of Thirds grid to be added.");
         });

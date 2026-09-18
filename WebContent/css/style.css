@@ -91,6 +91,17 @@ h5 {
     .row > .m9 { flex-basis: 75%; max-width: 75%; }
     .row > .offset-m1 { margin-left: 8.3333%; }
 
+    /* The direction/starting-point radio columns are much narrower than
+       their fixed m3/m4 widths, which left a large dead gap before the
+       thumbnails. Sizing just those columns to their content instead
+       closes that gap (the heading/divider column above them keeps the
+       full-width s12 base rule so the divider still spans the row). */
+    .golden-ratio-mode-row > .m3,
+    .golden-ratio-mode-row > .m4,
+    .golden-ratio-mode-row > .m5 {
+        flex: 0 1 auto;
+        max-width: none;
+    }
 }
 
 .divider {
@@ -317,6 +328,41 @@ input[type="range"] {
 .grid-customise-photo-toggle {
     align-self: flex-start;
     margin: 0.5rem 0 0;
+}
+
+/* Direction/starting-point radios have a visual twin in each thumbnail -
+   either method selects both underlying radios, so they're kept in sync. */
+.golden-ratio-thumbnails {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    align-items: center;
+    justify-items: center;
+    gap: 0.4rem;
+    margin: 0;
+}
+
+.golden-ratio-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.golden-ratio-thumb:hover {
+    border-color: var(--color-divider);
+}
+
+.golden-ratio-thumb.selected {
+    border-color: var(--color-primary);
+}
+
+.golden-ratio-thumb canvas {
+    display: block;
 }
 
 .btn-large {
