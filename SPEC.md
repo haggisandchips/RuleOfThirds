@@ -62,12 +62,11 @@ priority order as time allows; none of these block day-to-day use.
    9-row grid; a simulated `chrome.storage.sync.set` failure surfaces the
    `lastError` message in the toast instead of a false success.
 
-7. **`grid-render.test.js` — the v1.8 "filled circle" feature has zero test assertions.**
-   `createRecordingContext()` tracks a `fill` counter but no test ever reads
-   `calls.fill`; every test hardcodes `circleStyle: 'outline'`. The
-   `circleStyle === 'filled'` branch in `grid-render.js`'s `drawGridOverlay`
-   (`grid-render.js:72-76`) is completely untested. Add a test asserting `calls.fill > 0` for
-   `circleStyle: 'filled'` and that filled circles don't also `stroke()`.
+7. ~~**`grid-render.test.js` — the v1.8 "filled circle" feature has zero test assertions.**~~ **Fixed.**
+   Added a test asserting `circleStyle: 'filled'` calls `fill()` once per
+   intersection and never `stroke()` for a circle, and added a
+   complementary assertion to the existing outline test confirming the
+   reverse (`fill` stays at 0).
 
 8. ~~**`options.js:438-439` — low-contrast "disabled" indicator on the Control canvas.**~~ **Fixed.**
    `GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR` changed from `#b0b0b0`

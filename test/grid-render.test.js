@@ -48,6 +48,16 @@ test('drawGridOverlay draws a circle at every intersection when everything is en
 
     assert.equal(ctx.calls.arc, 4, 'a 3x3 grid has 4 intersections');
     assert.equal(ctx.calls.stroke > 0, true);
+    assert.equal(ctx.calls.fill, 0, 'outline circles use stroke, not fill');
+});
+
+test('drawGridOverlay fills circles instead of stroking them when circleStyle is filled', () => {
+    const ctx = createRecordingContext();
+    drawGridOverlay(ctx, 90, 90, baseOptions({circleStyle: 'filled'}));
+
+    assert.equal(ctx.calls.arc, 4, 'a 3x3 grid has 4 intersections');
+    assert.equal(ctx.calls.fill, 4, 'every circle is filled');
+    assert.equal(ctx.calls.stroke, 1, 'only the grid lines stroke - the filled circles do not');
 });
 
 test('drawGridOverlay skips a circle whose own circleLines entry is disabled', () => {
