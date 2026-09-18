@@ -151,12 +151,29 @@ test('resetCircleStates always returns every circle enabled, regardless of prior
 test('computePreviewBackground stays light even when both colours are white', () => {
     // A full XOR/complement of white would be solid black - blended back
     // toward white instead so the preview never goes dark.
-    const [r, g, b] = computePreviewBackground('#ffffff', '#ffffff').match(/\d+/g).map(Number);
+    const [r, g, b] = computePreviewBackground('#ffffff', '#ffffff', true, true).match(/\d+/g).map(Number);
     assert.ok(r > 150 && g > 150 && b > 150, 'background should read as light, not dark');
 });
 
 test('computePreviewBackground is deterministic for the default line/circle colours', () => {
-    assert.equal(computePreviewBackground('#ffffff', '#ff0000'), 'rgb(191, 223, 223)');
+    assert.equal(computePreviewBackground('#ffffff', '#ff0000', true, true), 'rgb(191, 223, 223)');
+});
+
+test('computePreviewBackground ignores a disabled circle colour entirely', () => {
+    // With circles off, the background should match what a line-only
+    // average would give - ie the same as if both colours were the line
+    // colour - not be pulled toward the (irrelevant) circle colour.
+    const lineOnly = computePreviewBackground('#ffffff', '#ffffff', true, true);
+    assert.equal(computePreviewBackground('#ffffff', '#ff0000', true, false), lineOnly);
+});
+
+test('computePreviewBackground ignores a disabled line colour entirely', () => {
+    const circleOnly = computePreviewBackground('#ff0000', '#ff0000', true, true);
+    assert.equal(computePreviewBackground('#ffffff', '#ff0000', false, true), circleOnly);
+});
+
+test('computePreviewBackground falls back to plain white when neither is enabled', () => {
+    assert.equal(computePreviewBackground('#ffffff', '#ff0000', false, false), '#ffffff');
 });
 
 test('findGridCustomiseTarget prefers a circle over its own crossing lines when both are within range', () => {
@@ -260,19 +277,19 @@ function createBackgroundRecordingContext() {
 test('drawPreviewBackground multiplies the computed colour over the photo when enabled and loaded', () => {
     const ctx = createBackgroundRecordingContext();
     const fakeImage = {};
-    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000'}, fakeImage);
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000', renderGrid: true, renderCircle: true}, fakeImage);
 
     assert.deepEqual(ctx.calls.map(c => c.type), ['drawImage', 'fillRect']);
     assert.equal(ctx.calls[0].op, 'source-over', 'the photo itself draws normally');
     assert.equal(ctx.calls[1].op, 'multiply', 'the tint colour multiplies over it');
-    assert.equal(ctx.calls[1].colour, computePreviewBackground('#ffffff', '#ff0000'));
+    assert.equal(ctx.calls[1].colour, computePreviewBackground('#ffffff', '#ff0000', true, true));
     assert.equal(ctx.globalCompositeOperation, 'source-over', 'reset afterwards for subsequent drawing');
 });
 
 test('drawPreviewBackground falls back to a plain fill when the toggle is off', () => {
     const ctx = createBackgroundRecordingContext();
     const fakeImage = {};
-    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: false, lineColour: '#ffffff', circleColour: '#ff0000'}, fakeImage);
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: false, lineColour: '#ffffff', circleColour: '#ff0000', renderGrid: true, renderCircle: true}, fakeImage);
 
     assert.deepEqual(ctx.calls.map(c => c.type), ['fillRect']);
     assert.equal(ctx.calls[0].op, 'source-over');
@@ -280,7 +297,16 @@ test('drawPreviewBackground falls back to a plain fill when the toggle is off', 
 
 test('drawPreviewBackground falls back to a plain fill when the image has not loaded yet', () => {
     const ctx = createBackgroundRecordingContext();
-    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000'}, null);
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000', renderGrid: true, renderCircle: true}, null);
 
     assert.deepEqual(ctx.calls.map(c => c.type), ['fillRect']);
+});
+
+test('drawPreviewBackground does not let a disabled circle colour influence the tint', () => {
+    const ctx = createBackgroundRecordingContext();
+    const fakeImage = {};
+    drawPreviewBackground(ctx, 90, 90, {previewBackgroundImage: true, lineColour: '#ffffff', circleColour: '#ff0000', renderGrid: true, renderCircle: false}, fakeImage);
+
+    assert.equal(ctx.calls[1].colour, computePreviewBackground('#ffffff', '#ff0000', true, false));
+    assert.equal(ctx.calls[1].colour, computePreviewBackground('#ffffff', '#ffffff', true, true), 'should match a line-only average, unaffected by the disabled circle colour');
 });

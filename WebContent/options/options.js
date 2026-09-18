@@ -250,16 +250,30 @@ function resetCircleStates(rowCount, columnCount) {
 // eg white lines on a white background would otherwise be invisible.
 const GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND = 0.75;
 
-// A background derived from the two configured colours (average, then
-// XORed against white to get a contrasting complement) so the preview
-// stays visible without needing a colour picker of its own.
-function computePreviewBackground(lineColour, circleColour) {
+// A background derived from the configured colours (average, then XORed
+// against white to get a contrasting complement) so the preview stays
+// visible without needing a colour picker of its own. Only colours that are
+// actually enabled feed into it - a disabled line/circle's colour never
+// renders anywhere, so it shouldn't be able to tint the background either.
+// With neither enabled there's nothing on the canvas to contrast with, so
+// it just falls back to plain white.
+function computePreviewBackground(lineColour, circleColour, renderGrid, renderCircle) {
 
-    const line = parseHexColour(lineColour);
-    const circle = parseHexColour(circleColour);
+    const activeColours = [];
+    if (renderGrid) {
+        activeColours.push(parseHexColour(lineColour));
+    }
+    if (renderCircle) {
+        activeColours.push(parseHexColour(circleColour));
+    }
+
+    if (activeColours.length === 0) {
+        return '#ffffff';
+    }
 
     const channels = ['r', 'g', 'b'].map(channel => {
-        const average = Math.round((line[channel] + circle[channel]) / 2);
+        const sum = activeColours.reduce((total, colour) => total + colour[channel], 0);
+        const average = Math.round(sum / activeColours.length);
         const complement = 255 ^ average;
         return Math.round(complement + (255 - complement) * GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND);
     });
@@ -324,7 +338,7 @@ function loadPreviewPhoto() {
 // black areas stay black, since multiply can only ever darken.
 function drawPreviewBackground(ctx, w, h, options, image) {
 
-    const backgroundColour = computePreviewBackground(options.lineColour, options.circleColour);
+    const backgroundColour = computePreviewBackground(options.lineColour, options.circleColour, options.renderGrid, options.renderCircle);
 
     if (options.previewBackgroundImage && image) {
         ctx.drawImage(image, 0, 0, w, h);
