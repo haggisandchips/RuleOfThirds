@@ -288,8 +288,24 @@ input[type="range"] {
     transform: scale(1.1);
 }
 
+/* The white swatch's own border is transparent like every other swatch's,
+   which makes it nearly invisible against the page's own off-white
+   background when unselected - give it a permanent light border instead.
+   Placed before .selected below, which has equal specificity, so .selected
+   still wins via source order when the white swatch is also selected. */
+.quick-swatch[data-value="#ffffff"] {
+    border-color: #d0d0d0;
+}
+
 .quick-swatch.selected {
     border-color: var(--color-primary);
+}
+
+/* An outline rather than a border-colour change, so keyboard focus stays
+   visually distinct from .selected instead of looking the same. */
+.quick-swatch:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 /* Two side-by-side canvases for the "Customise" grid, sized by
@@ -371,6 +387,11 @@ input[type="range"] {
 
 .btn-large:hover {
     background: var(--color-primary-dark);
+}
+
+.btn-large:focus-visible {
+    outline: 3px solid var(--color-primary-dark);
+    outline-offset: 2px;
 }
 
 #toast-container {

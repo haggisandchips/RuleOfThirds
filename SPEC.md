@@ -237,13 +237,19 @@ priority order as time allows; none of these block day-to-day use.
     deterministic `rgb(191, 223, 223)` expectation, still pass unchanged,
     confirming this was behaviour-preserving.
 
-26. **Inconsistent focus styling.** Quick-swatch buttons and "Restore
-    Defaults" (`style.css`) rely on the default browser focus outline,
-    unlike `input[type=number]:focus`'s custom style. Add matching
-    `:focus`/`:focus-visible` styling for consistency.
+26. ~~**Inconsistent focus styling.**~~ **Fixed.**
+    Added `:focus-visible` outlines to `.quick-swatch` (teal, distinct from
+    `.selected`'s border-colour change so the two states don't look the
+    same) and `.btn-large` (the darker `--color-primary-dark`, for contrast
+    against the button's own teal fill). Live-verified with real Tab-key
+    focus in a browser (not just a programmatic `.focus()`, which doesn't
+    trigger `:focus-visible` at all).
 
-27. **White quick-swatch (`#ffffff`) has no static border** — nearly
-    invisible against the `#fafafa` page background when unselected.
+27. ~~**White quick-swatch (`#ffffff`) has no static border**~~ **Fixed.**
+    Added a permanent light grey border (`#d0d0d0`) via
+    `[data-value="#ffffff"]`, ordered so `.selected` (equal specificity)
+    still wins via source order when the white swatch is the selected one.
+    Verified both states via computed style in a browser.
 
 28. **Narrow-viewport Customise layout degrades before it visibly "breaks".**
     Control is a fixed 200×200 square; Preview shrinks via
