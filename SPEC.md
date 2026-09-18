@@ -114,13 +114,21 @@ priority order as time allows; none of these block day-to-day use.
 
 ## Medium priority
 
-9. **`service_worker.js:44-48` — icon state can desync on SPA navigation.**
-   Icon reset relies on `tabs.onUpdated` with `status === 'loading'`, which
-   doesn't fire for client-side (pushState) navigations — common on exactly
-   the kind of sites (Instagram, Pinterest, X) this extension targets. The
-   toolbar icon can keep showing "active" after the framework has wiped the
-   DOM (and the `#rule-of-thirds` control element with it). Not a crash;
-   worth a known-limitations note if not fixed.
+9. ~~**`service_worker.js:44-48` — icon state can desync on SPA navigation.**~~ **Fixed.**
+   `tabs.onUpdated` now also resets the icon on `changeInfo.url` (which
+   Chrome fires for client-side/pushState route changes, unlike
+   `status: 'loading'`), not just a full page load.
+
+   Note this only fixes the *icon* lying about state after an SPA route
+   change - it doesn't make the grid itself survive one. Investigated
+   `business.pinterest.com` directly (DOM inspection, not the loaded
+   extension - `chrome://extensions` can't be automated): its real content
+   images (eg the ~1027x874 hero photo) have normal `offsetParent`/sizing
+   and should already be picked up fine by the existing detection logic;
+   no CSP was found that would block script injection either. So if the
+   grid still doesn't appear there after this fix, the cause is something
+   else - worth trying the main pin-browsing app (pinterest.com) too,
+   where images are more likely lazy/virtualized (see #10).
 
 10. **`content.js:161-182` (`applyGrids`) — no live updates for lazy-loaded/infinite-scroll images.**
     Images are snapshotted once per click; anything added afterward never

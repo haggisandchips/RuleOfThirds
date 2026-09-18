@@ -54,12 +54,17 @@ try {
         }
     });
 
-    // A page load always drops the content script's own state (a fresh
-    // document has no #rule-of-thirds element to read), so the icon needs
-    // to reset in step with it - otherwise it would keep showing "active"
-    // for a page the grid was never (re-)added to since the last load.
+    // A full page load always drops the content script's own state (a
+    // fresh document has no #rule-of-thirds element to read), so the icon
+    // needs to reset in step with it - otherwise it would keep showing
+    // "active" for a page the grid was never (re-)added to since the last
+    // load. `changeInfo.url` also covers client-side (pushState) route
+    // changes on single-page sites (Instagram, Pinterest, X, ...), which
+    // never go through a 'loading'/'complete' status at all - the SPA's
+    // own re-render on a route change just as often wipes out the grid
+    // without the icon ever finding out.
     chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-        if (changeInfo.status === 'loading') {
+        if (changeInfo.status === 'loading' || changeInfo.url) {
             setActionIcon(tabId, false);
         }
     });
