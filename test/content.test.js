@@ -2,34 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-    resolveImageSrc,
     isMinSize,
     shouldRender,
     sanitizeInt,
     sanitizeOptions,
     sanitizeCircleStates
 } = require('../WebContent/content.js');
-
-test('resolveImageSrc prefers currentSrc over src', () => {
-    assert.equal(
-        resolveImageSrc({currentSrc: 'https://example.com/a.jpg', src: 'https://example.com/b.jpg'}),
-        'https://example.com/a.jpg'
-    );
-});
-
-test('resolveImageSrc falls back to src when currentSrc is empty', () => {
-    assert.equal(
-        resolveImageSrc({currentSrc: '', src: 'https://example.com/b.jpg'}),
-        'https://example.com/b.jpg'
-    );
-});
-
-test('resolveImageSrc never throws for an image with no src at all', () => {
-    // This is the bug that used to crash applyGrids() partway through the
-    // page whenever an <img> had no literal `src` attribute (srcset-only,
-    // lazy-loaded placeholders, etc).
-    assert.doesNotThrow(() => resolveImageSrc({currentSrc: '', src: ''}));
-});
 
 test('isMinSize accepts either orientation', () => {
     assert.equal(isMinSize(100, 50, 100, 50), true, 'exact landscape minimum');

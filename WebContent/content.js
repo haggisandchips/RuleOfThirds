@@ -3,11 +3,6 @@
 // `function` declarations (unlike rotInit's `const`) are safe to redeclare
 // if this file is injected into the same page more than once.
 
-function resolveImageSrc(image) {
-
-    return image.currentSrc || image.src;
-}
-
 function isMinSize(w, h, minLong, minShort) {
 
     return (w >= minLong && h >= minShort) || (h >= minLong && w >= minShort);
@@ -183,6 +178,15 @@ if (typeof rotInit === 'undefined') {
 
         function renderImageOverlay(image, computedStyle, w, h) {
 
+            // The displayed size can pass shouldRender()'s check while the
+            // image's actual source is much smaller (eg a small icon
+            // stretched via CSS/HTML width/height) - naturalWidth/Height
+            // reflect the real, already-loaded source, so no extra fetch is
+            // needed to catch that case.
+            if (!isMinSize(image.naturalWidth, image.naturalHeight, MIN_LONG, MIN_SHORT)) {
+                return;
+            }
+
             const imageParent = image.offsetParent;
             const canvas = createCanvas(w, h, image, computedStyle);
 
@@ -190,8 +194,6 @@ if (typeof rotInit === 'undefined') {
             drawGridOverlay(canvas.getContext('2d'), w, h, options);
 
             imageParent.append(canvas);
-
-            removeUndersizedImages(canvas, image);
         }
 
         function removeGrids() {
@@ -223,23 +225,6 @@ if (typeof rotInit === 'undefined') {
             return canvas;
         }
 
-        // TODO It would be better to use this approach before adding the canvas
-        //      Also, when does this actually apply?
-        function removeUndersizedImages(canvas, image) {
-
-            const actualImage = new Image();
-
-            actualImage.onload = function () {
-                return function () {
-                    const minSize = isMinSize(actualImage.width, actualImage.height, MIN_LONG, MIN_SHORT);
-                    if (!minSize) {
-                        canvas.remove();
-                    }
-                }
-            }();
-
-            actualImage.src = resolveImageSrc(image);
-        }
     }
 
     // Guards Node (used by /test) where there's no page to attach to.
@@ -249,5 +234,5 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {resolveImageSrc, isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates};
+    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates};
 }

@@ -15,11 +15,12 @@ priority order as time allows; none of these block day-to-day use.
    `display`/`visibility` and use `getBoundingClientRect()` for positioning
    instead of `offsetLeft`/`offsetTop` (also wrong under `position: fixed`).
 
-2. **`content.js:228-242` (`removeUndersizedImages`) — redundant image fetch on every toggle.**
-   Creates a fresh `new Image()` and re-requests the image purely to re-read
-   its natural size, duplicating network/cache work on every apply for every
-   image. `image.naturalWidth`/`naturalHeight` on the already-loaded DOM
-   image gives the same answer for free.
+2. ~~**`content.js:228-242` (`removeUndersizedImages`) — redundant image fetch on every toggle.**~~ **Fixed.**
+   Replaced the `new Image()` re-fetch with a direct `image.naturalWidth`/
+   `naturalHeight` check in `renderImageOverlay`, done before the canvas is
+   even created (per the original TODO) rather than after. `resolveImageSrc`
+   and `removeUndersizedImages` were both removed as dead code, along with
+   their now-obsolete tests, since nothing else called them.
 
 3. **`manifest.json:18-23` — `notifications` permission for one low-value toast.**
    Its only use is an OS notification when `executeScript` is refused
@@ -159,11 +160,8 @@ priority order as time allows; none of these block day-to-day use.
     production; `chrome.*.addListener` essentially never throws
     synchronously. Likely vestigial — consider removing or narrowing.
 
-23. **Awkward IIFE in `removeUndersizedImages`** — `content.js:232-239`
-    (`actualImage.onload = function(){ return function(){...} }()`) is
-    unnecessarily indirect; a plain function expression is equivalent and
-    clearer. Also has no `onerror` handler, so a failed re-fetch leaves the
-    cleanup check permanently pending (folds into finding #2's fix).
+23. ~~**Awkward IIFE in `removeUndersizedImages`**~~ **Fixed by #2's rewrite** —
+    the function (and its IIFE/`onerror` gap) no longer exists.
 
 24. **`manifest.json:32` hardcodes "100 x 50"**, duplicating `MIN_LONG`/
     `MIN_SHORT` in `content.js:82` with nothing keeping them in sync — a
