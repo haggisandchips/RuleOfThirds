@@ -87,6 +87,12 @@ function sanitizeCircleStates(rows, rowCount, columnCount) {
     return result;
 }
 
+// This check is always true: `rotInit` is declared with `const` *inside*
+// this block, so it's block-scoped and never persists between separate
+// injections of this file into the same tab (each toolbar click re-runs
+// chrome.scripting.executeScript). What actually stops setup - and the
+// chrome.storage.onChanged listener below - from running twice is the
+// `document.getElementById('rule-of-thirds')` check inside rotInit itself.
 if (typeof rotInit === 'undefined') {
 
     const rotInit = function () {

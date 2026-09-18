@@ -207,15 +207,13 @@ priority order as time allows; none of these block day-to-day use.
     Kept the one genuine error log — `console.log(e)` in
     `service_worker.js`'s top-level `catch` block.
 
-21. **Misleading re-injection guard comment** — `content.js:76`
-    (`if (typeof rotInit === 'undefined') { const rotInit = ... }`). Because
-    `const rotInit` is block-scoped, this `typeof` check is always true on
-    every injection — it doesn't actually prevent re-running `rotInit()`.
-    The real double-registration protection is the
-    `document.getElementById('rule-of-thirds')` check inside `rotInit`
-    itself. Harmless today, but the header comment claiming this makes the
-    `const` "safe to redeclare" is misleading for future maintainers —
-    clarify or remove the dead guard.
+21. ~~**Misleading re-injection guard comment**~~ **Fixed.**
+    Went with clarifying rather than removing the (harmless, always-true)
+    dead guard, to avoid restructuring the file's outer scope without a
+    way to live-test the result. Added a comment right at the
+    `if (typeof rotInit === 'undefined')` check explaining it's always
+    true and why, and pointing at the `document.getElementById`
+    check inside `rotInit` as the real double-registration protection.
 
 22. **Blanket top-level `try/catch` in `service_worker.js:1-51`** swallows
     listener-registration errors into a `console.log` nobody sees in
