@@ -257,9 +257,8 @@ priority order as time allows; none of these block day-to-day use.
     600px breakpoint kicks in. Consider stacking Control above Preview
     below some width.
 
-29. **Field caption text is small** — `0.8rem` (~12.8px). Passes contrast
-    (~5.7:1) but is on the small side; ~0.85–0.9rem would read more
-    comfortably.
+29. ~~**Field caption text is small**~~ **Fixed.**
+    `label[for]`/`.field-caption` bumped from `0.8rem` to `0.875rem`.
 
 30. **`options.js:323-332` (`loadPreviewPhoto`) has no `image.onerror` handler.**
     A failed webp load fails silently — the background photo toggle does
