@@ -88,15 +88,6 @@ h5 {
     .row > .m7 { flex-basis: 58.3333%; max-width: 58.3333%; }
     .row > .offset-m1 { margin-left: 8.3333%; }
 
-    /* The customise preview grows to fill whatever space is left in the
-       row (up to a cap so it doesn't get absurd on very wide screens),
-       rather than a fixed m-width column that would either crop a large
-       preview or leave a dead gap around a small one. The cap is wide
-       enough that the note (see .grid-customise-note) never needs to wrap. */
-    .row > .grid-customise-col {
-        flex: 1 1 400px;
-        max-width: 620px;
-    }
 }
 
 .divider {
@@ -272,79 +263,25 @@ input[type="range"] {
     border-color: var(--color-primary);
 }
 
-/* A schematic preview of the current grid - not to scale with any real
-   image, just enough of a grid to make each line's position obvious. Each
-   line is its own clickable button so individual lines can be left out of
-   the overlay (and any circle at their intersections) without touching
-   Rows/Columns. */
-.grid-customise-preview {
-    position: relative;
-    display: block;
-    width: 100%;
-    height: 140px;
-    margin-top: 2px;
-    border: 1px solid var(--color-divider);
-    background: #fff;
-}
-
-.grid-customise-line {
-    position: absolute;
+/* A live, to-scale preview of the actual grid/circle settings, rendered
+   with the same drawGridOverlay() used for the real overlay - lines and
+   circles the user has switched off still show as a faint "ghost" so
+   there's something to click to bring them back (see
+   drawGridCustomiseGhosts in options.js). */
+.grid-customise-col {
     display: flex;
-    padding: 0;
-    margin: 0;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-}
-
-.grid-customise-line-row {
-    left: 0;
-    width: 100%;
-    height: 18px;
+    flex-direction: column;
     align-items: center;
-    transform: translateY(-50%);
 }
 
-.grid-customise-line-column {
-    top: 0;
-    height: 100%;
-    width: 18px;
-    justify-content: center;
-    transform: translateX(-50%);
-}
-
-.grid-customise-line::after {
-    content: "";
-    background: var(--color-text);
-    transition: background-color 0.15s ease;
-}
-
-.grid-customise-line-row::after {
-    width: 100%;
-    height: 2px;
-}
-
-.grid-customise-line-column::after {
-    width: 2px;
-    height: 100%;
-}
-
-.grid-customise-line:hover::after {
-    background: var(--color-primary);
-}
-
-.grid-customise-line.disabled::after {
-    background: var(--color-divider);
-}
-
-.grid-customise-circle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--color-text);
-    transform: translate(-50%, -50%);
-    pointer-events: none;
+.grid-customise-preview {
+    display: block;
+    width: 420px;
+    max-width: 100%;
+    height: 280px;
+    margin-top: 0.5rem;
+    border: 1px solid var(--color-divider);
+    cursor: pointer;
 }
 
 .grid-customise-note {
@@ -353,7 +290,7 @@ input[type="range"] {
     font-size: 0.75rem;
     line-height: 1.4;
     color: #9e9e9e;
-    white-space: nowrap;
+    text-align: center;
 }
 
 .btn-large {

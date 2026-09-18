@@ -37,7 +37,8 @@ function sanitizeOptions(data) {
         gridColumnLines: sanitizeLineStates(data.gridColumnLines, gridColumns - 1),
         circleRadius: sanitizeInt(data.circleRadius, 1, 5),
         lineOpacity: sanitizeInt(data.lineOpacity, 0, 100, 100),
-        circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100)
+        circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100),
+        circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1)
     };
 }
 
@@ -60,15 +61,16 @@ function sanitizeLineStates(lines, count) {
     return result;
 }
 
-// Converts a "#rrggbb" colour plus a 0-100 opacity percentage into an
-// rgba() string a canvas context can use directly as a strokeStyle/fillStyle.
-function hexToRgba(hex, opacityPercent) {
+// Same "explicit false only" rule as sanitizeLineStates, applied per row, so
+// a saved circle grid that's short/long (or from before this option
+// existed) still resizes cleanly to the current row/column counts.
+function sanitizeCircleStates(rows, rowCount, columnCount) {
 
-    const r = parseInt(hex.substring(1, 3), 16);
-    const g = parseInt(hex.substring(3, 5), 16);
-    const b = parseInt(hex.substring(5, 7), 16);
-
-    return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + (opacityPercent / 100) + ')';
+    const result = [];
+    for (let ii = 0; ii < rowCount; ii++) {
+        result.push(sanitizeLineStates(Array.isArray(rows) ? rows[ii] : undefined, columnCount));
+    }
+    return result;
 }
 
 if (typeof rotInit === 'undefined') {
@@ -122,7 +124,8 @@ if (typeof rotInit === 'undefined') {
                         circleColour: '#ff0000',
                         circleOpacity: 100,
                         circleRadius: 5,
-                        circleStyle: 'outline'
+                        circleStyle: 'outline',
+                        circleLines: [[true, true], [true, true]]
                     },
                     (data) => {
                         options = sanitizeOptions(data);
@@ -170,7 +173,7 @@ if (typeof rotInit === 'undefined') {
             const canvas = createCanvas(w, h, image, computedStyle);
 
             // Draw Rule of Thirds grid
-            drawGrid(canvas.getContext('2d'), w, h);
+            drawGridOverlay(canvas.getContext('2d'), w, h, options);
 
             imageParent.append(canvas);
 
@@ -223,62 +226,6 @@ if (typeof rotInit === 'undefined') {
 
             actualImage.src = resolveImageSrc(image);
         }
-
-        function drawGrid(ctx, w, h, sections) {
-
-            const gridRows = options.gridRows;
-            const gridColumns = options.gridColumns;
-            const rowLines = options.gridRowLines;
-            const columnLines = options.gridColumnLines;
-
-            if (options.renderGrid) {
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
-
-                ctx.beginPath();
-                for (let y = 1; y < gridRows; y++) {
-                    if (rowLines[y - 1]) {
-                        ctx.moveTo(0, y * h / gridRows);
-                        ctx.lineTo(w, y * h / gridRows);
-                    }
-                }
-                for (let x = 1; x < gridColumns; x++) {
-                    if (columnLines[x - 1]) {
-                        ctx.moveTo(x * w / gridColumns, 0);
-                        ctx.lineTo(x * w / gridColumns, h);
-                    }
-                }
-                ctx.stroke();
-            }
-
-            if (options.renderCircle) {
-                // A circle only exists where a row line and a column line
-                // actually cross, so both need to be enabled - independent
-                // of whether the grid lines themselves are being rendered.
-                const radius = Math.min(
-                    (w / options.gridColumns) / 2,
-                    (h / options.gridRows) / 2,
-                    options.circleRadius);
-                ctx.strokeStyle = hexToRgba(options.circleColour, options.circleOpacity);
-                ctx.fillStyle = hexToRgba(options.circleColour, options.circleOpacity);
-
-                for (let x = 1; x < gridColumns; x++) {
-                    for (let y = 1; y < gridRows; y++) {
-                        if (!columnLines[x - 1] || !rowLines[y - 1]) {
-                            continue;
-                        }
-
-                        ctx.beginPath();
-                        ctx.arc(x * w / gridColumns, y * h / gridRows, radius, 0, 2 * Math.PI, true);
-                        if (options.circleStyle === 'filled') {
-                            ctx.fill();
-                        } else {
-                            ctx.stroke();
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // Guards Node (used by /test) where there's no page to attach to.
@@ -288,5 +235,5 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {resolveImageSrc, isMinSize, shouldRender, sanitizeInt, sanitizeOptions, hexToRgba};
+    module.exports = {resolveImageSrc, isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates};
 }

@@ -9,7 +9,11 @@ const {
     minGridLines,
     computeGridLineMinimums,
     resizeLineStates,
-    resetLineStates
+    resetLineStates,
+    resizeCircleStates,
+    resetCircleStates,
+    computePreviewBackground,
+    findGridCustomiseTarget
 } = require('../WebContent/options/options.js');
 
 test('clampInt parses a valid numeric string', () => {
@@ -89,4 +93,75 @@ test('resizeLineStates treats a missing or non-array value as no existing lines'
 test('resetLineStates always returns every line enabled, regardless of prior state', () => {
     assert.deepEqual(resetLineStates(3), [true, true, true]);
     assert.deepEqual(resetLineStates(0), []);
+});
+
+test('resizeCircleStates pads a shorter grid with enabled (true) circles', () => {
+    assert.deepEqual(resizeCircleStates([[false]], 2, 2), [[false, true], [true, true]]);
+});
+
+test('resizeCircleStates truncates a larger grid, keeping the surviving circles\' states', () => {
+    assert.deepEqual(resizeCircleStates([[false, true, false], [true, true, true]], 1, 1), [[false]]);
+});
+
+test('resizeCircleStates treats a missing or non-array value as no existing circles', () => {
+    assert.deepEqual(resizeCircleStates(undefined, 2, 1), [[true], [true]]);
+    assert.deepEqual(resizeCircleStates(null, 0, 0), []);
+});
+
+test('resetCircleStates always returns every circle enabled, regardless of prior state', () => {
+    assert.deepEqual(resetCircleStates(2, 2), [[true, true], [true, true]]);
+    assert.deepEqual(resetCircleStates(0, 0), []);
+});
+
+test('computePreviewBackground stays light even when both colours are white', () => {
+    // A full XOR/complement of white would be solid black - blended back
+    // toward white instead so the preview never goes dark.
+    const [r, g, b] = computePreviewBackground('#ffffff', '#ffffff').match(/\d+/g).map(Number);
+    assert.ok(r > 150 && g > 150 && b > 150, 'background should read as light, not dark');
+});
+
+test('computePreviewBackground is deterministic for the default line/circle colours', () => {
+    assert.equal(computePreviewBackground('#ffffff', '#ff0000'), 'rgb(191, 223, 223)');
+});
+
+test('findGridCustomiseTarget prefers a circle over its own crossing lines when both are within range', () => {
+    const options = {
+        gridRows: 3, gridColumns: 3,
+        gridRowLines: [true, true], gridColumnLines: [true, true],
+        renderGrid: true, renderCircle: true
+    };
+    // A 90x90 preview puts the (1,1) intersection at (30, 30).
+    const target = findGridCustomiseTarget(30, 30, 90, 90, options);
+    assert.deepEqual(target, {type: 'circle', row: 0, column: 0});
+});
+
+test('findGridCustomiseTarget falls back to a line when the click is away from any intersection', () => {
+    const options = {
+        gridRows: 3, gridColumns: 3,
+        gridRowLines: [true, true], gridColumnLines: [true, true],
+        renderGrid: true, renderCircle: true
+    };
+    // x=5 is far from both column lines (30, 60), y=60 matches row index 1.
+    const target = findGridCustomiseTarget(5, 60, 90, 90, options);
+    assert.deepEqual(target, {type: 'row', index: 1});
+});
+
+test('findGridCustomiseTarget still targets a disabled line itself (to re-enable it), just never a circle sitting on one', () => {
+    const options = {
+        gridRows: 3, gridColumns: 3,
+        gridRowLines: [false, true], gridColumnLines: [true, true],
+        renderGrid: true, renderCircle: true
+    };
+    // Row 0's line is disabled, so there's no circle to click at (30, 30) -
+    // but the (disabled) line itself is still a valid target to re-enable.
+    assert.deepEqual(findGridCustomiseTarget(30, 30, 90, 90, options), {type: 'row', index: 0});
+});
+
+test('findGridCustomiseTarget finds nothing when both Grid and Circles are disabled', () => {
+    const options = {
+        gridRows: 3, gridColumns: 3,
+        gridRowLines: [true, true], gridColumnLines: [true, true],
+        renderGrid: false, renderCircle: false
+    };
+    assert.equal(findGridCustomiseTarget(30, 30, 90, 90, options), null);
 });

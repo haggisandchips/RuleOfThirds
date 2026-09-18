@@ -10,18 +10,20 @@ const DEFAULT_OPTIONS = {
     circleColour: '#ff0000',
     circleOpacity: 100,
     circleRadius: 5,
-    circleStyle: 'outline'
+    circleStyle: 'outline',
+    circleLines: [[true, true], [true, true]]
 };
 
 const MIN_GRID_LINES = 1;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_OPACITY = 0;
 
-// Per-line enabled state for the "Customise" preview - kept as plain module
-// state (rather than re-read from the DOM) since there's no input element
-// backing each line, only the preview's own buttons.
+// Per-line/per-circle enabled state for the "Customise" preview - kept as
+// plain module state (rather than re-read from the DOM) since there's no
+// input element backing each one, only the preview canvas itself.
 let gridRowLineStates = DEFAULT_OPTIONS.gridRowLines.slice();
 let gridColumnLineStates = DEFAULT_OPTIONS.gridColumnLines.slice();
+let circleLineStates = DEFAULT_OPTIONS.circleLines.map(row => row.slice());
 
 // Restores options from chrome.storage
 const loadOptions = () => {
@@ -49,16 +51,18 @@ const saveOptions = (event) => {
     const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows);
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns);
 
-    // Resizing the grid shifts every line's position, so a line left
-    // disabled at its old position would silently apply to a different
-    // line - resetting both arrays to fully enabled avoids that surprise.
-    // Otherwise just keep the arrays the correct length defensively.
+    // Resizing the grid shifts every line's (and circle's) position, so one
+    // left disabled at its old position would silently apply to a different
+    // line/circle - resetting everything to enabled avoids that surprise.
+    // Otherwise just keep the arrays the correct size defensively.
     if (changedElementId === 'grid-rows' || changedElementId === 'grid-columns') {
         gridRowLineStates = resetLineStates(gridRows - 1);
         gridColumnLineStates = resetLineStates(gridColumns - 1);
+        circleLineStates = resetCircleStates(gridRows - 1, gridColumns - 1);
     } else {
         gridRowLineStates = resizeLineStates(gridRowLineStates, gridRows - 1);
         gridColumnLineStates = resizeLineStates(gridColumnLineStates, gridColumns - 1);
+        circleLineStates = resizeCircleStates(circleLineStates, gridRows - 1, gridColumns - 1);
     }
     renderGridCustomisePreview();
 
@@ -83,7 +87,8 @@ const saveOptions = (event) => {
             circleColour,
             circleOpacity,
             circleRadius,
-            circleStyle
+            circleStyle,
+            circleLines: circleLineStates
         },
         () => {
             showToast('Options saved.');
@@ -105,6 +110,7 @@ function setOptions(options) {
     document.getElementById('grid-columns').value = options.gridColumns;
     gridRowLineStates = resizeLineStates(options.gridRowLines, options.gridRows - 1);
     gridColumnLineStates = resizeLineStates(options.gridColumnLines, options.gridColumns - 1);
+    circleLineStates = resizeCircleStates(options.circleLines, options.gridRows - 1, options.gridColumns - 1);
     document.getElementById('line-colour').value = options.lineColour;
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
@@ -116,10 +122,9 @@ function setOptions(options) {
     updateOpacityLabel('circle-opacity');
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
-    // Depends on render-circle already being set above, since it decides
-    // whether the preview's intersection circles are drawn at all.
+    // Depends on every field set above, since an accurate preview needs all
+    // of them (colours, opacity, style, and both enabled toggles).
     renderGridCustomisePreview();
-    updateGridCustomiseNote();
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native
@@ -213,87 +218,229 @@ function resetLineStates(count) {
     return new Array(count).fill(true);
 }
 
-// Rebuilds the "Customise" preview from gridRowLineStates/gridColumnLineStates -
-// called whenever those arrays change (on load, on Rows/Columns change, or
-// on a line click) since there's no cheaper way to patch just one button's
-// position when the count itself may have changed.
+// 2D equivalents of resizeLineStates/resetLineStates, for the per-intersection
+// circle toggles - each row is just a line-state array in its own right.
+function resizeCircleStates(states, rowCount, columnCount) {
+
+    const result = [];
+    for (let ii = 0; ii < rowCount; ii++) {
+        result.push(resizeLineStates(Array.isArray(states) ? states[ii] : undefined, columnCount));
+    }
+    return result;
+}
+
+function resetCircleStates(rowCount, columnCount) {
+
+    const result = [];
+    for (let ii = 0; ii < rowCount; ii++) {
+        result.push(resetLineStates(columnCount));
+    }
+    return result;
+}
+
+// Blended most of the way back to white so the preview background stays a
+// light backdrop (rather than the harsh, sometimes near-black result of a
+// straight XOR/complement) whatever colours the user has actually picked -
+// eg white lines on a white background would otherwise be invisible.
+const GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND = 0.75;
+
+// A background derived from the two configured colours (average, then
+// XORed against white to get a contrasting complement) so the preview
+// stays visible without needing a colour picker of its own.
+function computePreviewBackground(lineColour, circleColour) {
+
+    const line = parseHexColour(lineColour);
+    const circle = parseHexColour(circleColour);
+
+    const channels = ['r', 'g', 'b'].map(channel => {
+        const average = Math.round((line[channel] + circle[channel]) / 2);
+        const complement = 255 ^ average;
+        return Math.round(complement + (255 - complement) * GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND);
+    });
+
+    return 'rgb(' + channels.join(', ') + ')';
+}
+
+function parseHexColour(hex) {
+
+    return {
+        r: parseInt(hex.substring(1, 3), 16),
+        g: parseInt(hex.substring(3, 5), 16),
+        b: parseInt(hex.substring(5, 7), 16)
+    };
+}
+
+// The full set of "live" (not-yet-saved) grid/circle options, read straight
+// from the form plus the customise-only line/circle states - everything
+// drawGridOverlay() and the Customise preview itself need.
+function buildLiveGridCustomiseOptions() {
+
+    return {
+        renderGrid: document.getElementById('render-grid').checked,
+        gridRows: clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows),
+        gridColumns: clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns),
+        gridRowLines: gridRowLineStates,
+        gridColumnLines: gridColumnLineStates,
+        lineColour: document.getElementById('line-colour').value,
+        lineOpacity: clampInt(document.getElementById('line-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity),
+        renderCircle: document.getElementById('render-circle').checked,
+        circleColour: document.getElementById('circle-colour').value,
+        circleOpacity: clampInt(document.getElementById('circle-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity),
+        circleRadius: clampInt(document.getElementById('circle-radius').value, MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius),
+        circleStyle: getSelectedOption('circle-style'),
+        circleLines: circleLineStates
+    };
+}
+
+// Redraws the "Customise" preview canvas - called whenever anything it
+// depends on changes (on load, on a form change, or on a click in the
+// preview itself).
 function renderGridCustomisePreview() {
 
-    const preview = document.getElementById('grid-customise-preview');
-    preview.replaceChildren();
+    const canvas = document.getElementById('grid-customise-preview');
+    const ctx = canvas.getContext('2d');
+    const liveOptions = buildLiveGridCustomiseOptions();
 
-    gridRowLineStates.forEach((enabled, index) => {
-        const position = (index + 1) / (gridRowLineStates.length + 1) * 100;
-        preview.appendChild(createGridCustomiseLineButton('row', enabled, position, () => {
-            gridRowLineStates[index] = !gridRowLineStates[index];
-            renderGridCustomisePreview();
-            saveOptions();
-        }));
-    });
+    ctx.fillStyle = computePreviewBackground(liveOptions.lineColour, liveOptions.circleColour);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    gridColumnLineStates.forEach((enabled, index) => {
-        const position = (index + 1) / (gridColumnLineStates.length + 1) * 100;
-        preview.appendChild(createGridCustomiseLineButton('column', enabled, position, () => {
-            gridColumnLineStates[index] = !gridColumnLineStates[index];
-            renderGridCustomisePreview();
-            saveOptions();
-        }));
-    });
+    drawGridCustomiseGhosts(ctx, canvas.width, canvas.height, liveOptions);
+    drawGridOverlay(ctx, canvas.width, canvas.height, liveOptions);
+}
 
-    // Mirrors drawGrid's own rule - a circle only exists where an enabled
-    // row line and an enabled column line actually cross. Purely a preview:
-    // not clickable, and shouldn't sit in the way of clicking a line.
-    if (document.getElementById('render-circle').checked) {
-        gridRowLineStates.forEach((rowEnabled, rowIndex) => {
+const GRID_CUSTOMISE_GHOST_COLOUR = 'rgba(0, 0, 0, 0.35)';
+
+// Everything the user has switched off still gets a faint outline, so
+// there's something to click to bring it back - drawGridOverlay() itself
+// only ever draws what's actually enabled, since it's shared with the real
+// overlay. This is purely "would this line/circle exist at all if it were
+// switched on" - a line/circle whose axis is disabled overall doesn't get a
+// ghost either, since there'd be nothing to un-hide.
+function drawGridCustomiseGhosts(ctx, w, h, options) {
+
+    ctx.strokeStyle = GRID_CUSTOMISE_GHOST_COLOUR;
+    ctx.lineWidth = 1;
+
+    if (options.renderGrid) {
+        options.gridRowLines.forEach((enabled, index) => {
+            if (enabled) {
+                return;
+            }
+            const y = (index + 1) * h / options.gridRows;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+        });
+
+        options.gridColumnLines.forEach((enabled, index) => {
+            if (enabled) {
+                return;
+            }
+            const x = (index + 1) * w / options.gridColumns;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, h);
+            ctx.stroke();
+        });
+    }
+
+    if (options.renderCircle) {
+        const radius = Math.min((w / options.gridColumns) / 2, (h / options.gridRows) / 2, options.circleRadius);
+
+        options.gridRowLines.forEach((rowEnabled, rowIndex) => {
             if (!rowEnabled) {
                 return;
             }
-            const top = (rowIndex + 1) / (gridRowLineStates.length + 1) * 100;
-
-            gridColumnLineStates.forEach((columnEnabled, columnIndex) => {
-                if (!columnEnabled) {
+            options.gridColumnLines.forEach((columnEnabled, columnIndex) => {
+                if (!columnEnabled || options.circleLines[rowIndex][columnIndex]) {
                     return;
                 }
-                const left = (columnIndex + 1) / (gridColumnLineStates.length + 1) * 100;
-                preview.appendChild(createGridCustomiseCircle(top, left));
+                const x = (columnIndex + 1) * w / options.gridColumns;
+                const y = (rowIndex + 1) * h / options.gridRows;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                ctx.stroke();
             });
         });
     }
 }
 
-function createGridCustomiseCircle(topPercent, leftPercent) {
+const GRID_CUSTOMISE_LINE_HIT_TOLERANCE = 8;
+const GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE = 10;
 
-    const circle = document.createElement('span');
-    circle.className = 'grid-customise-circle';
-    circle.style.top = topPercent + '%';
-    circle.style.left = leftPercent + '%';
-    circle.setAttribute('aria-hidden', 'true');
+// Pure hit-testing so it can be unit tested without a canvas/DOM: given a
+// click position (in the preview's own pixel coordinates), decides which
+// line or circle - if any - the click was meant for. Circles are checked
+// first since they sit on top of a line intersection; a circle is only ever
+// a target when both of its lines are enabled, since that's the only time
+// it's eligible to be drawn (or ghosted) at all - matching
+// drawGridCustomiseGhosts/drawGridOverlay's own rule.
+function findGridCustomiseTarget(x, y, w, h, options) {
 
-    return circle;
+    const gridRows = options.gridRows;
+    const gridColumns = options.gridColumns;
+
+    if (options.renderCircle) {
+        for (let columnIndex = 0; columnIndex < gridColumns - 1; columnIndex++) {
+            if (!options.gridColumnLines[columnIndex]) {
+                continue;
+            }
+            for (let rowIndex = 0; rowIndex < gridRows - 1; rowIndex++) {
+                if (!options.gridRowLines[rowIndex]) {
+                    continue;
+                }
+                const cx = (columnIndex + 1) * w / gridColumns;
+                const cy = (rowIndex + 1) * h / gridRows;
+                if (Math.hypot(x - cx, y - cy) <= GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE) {
+                    return {type: 'circle', row: rowIndex, column: columnIndex};
+                }
+            }
+        }
+    }
+
+    if (options.renderGrid) {
+        for (let rowIndex = 0; rowIndex < gridRows - 1; rowIndex++) {
+            const ly = (rowIndex + 1) * h / gridRows;
+            if (Math.abs(y - ly) <= GRID_CUSTOMISE_LINE_HIT_TOLERANCE) {
+                return {type: 'row', index: rowIndex};
+            }
+        }
+        for (let columnIndex = 0; columnIndex < gridColumns - 1; columnIndex++) {
+            const lx = (columnIndex + 1) * w / gridColumns;
+            if (Math.abs(x - lx) <= GRID_CUSTOMISE_LINE_HIT_TOLERANCE) {
+                return {type: 'column', index: columnIndex};
+            }
+        }
+    }
+
+    return null;
 }
 
-// The circle clause only makes sense while Circles are actually enabled -
-// otherwise a line click only ever shows/hides the line itself.
-function updateGridCustomiseNote() {
+// Translates a preview-canvas click into a line/circle toggle. Scales by
+// canvas-pixels-per-CSS-pixel defensively, though the two match 1:1 today.
+function onGridCustomiseClick(event) {
 
-    const circlesEnabled = document.getElementById('render-circle').checked;
-    const note = document.querySelector('.grid-customise-note');
+    const canvas = document.getElementById('grid-customise-preview');
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (event.clientY - rect.top) * (canvas.height / rect.height);
 
-    note.textContent = 'Click a line to show / hide it' +
-        (circlesEnabled ? ', and its associated intersection circles.' : '.');
-}
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
+    if (!target) {
+        return;
+    }
 
-function createGridCustomiseLineButton(axis, enabled, positionPercent, onClick) {
+    if (target.type === 'row') {
+        gridRowLineStates[target.index] = !gridRowLineStates[target.index];
+    } else if (target.type === 'column') {
+        gridColumnLineStates[target.index] = !gridColumnLineStates[target.index];
+    } else {
+        circleLineStates[target.row][target.column] = !circleLineStates[target.row][target.column];
+    }
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'grid-customise-line grid-customise-line-' + axis + (enabled ? '' : ' disabled');
-    button.style[axis === 'row' ? 'top' : 'left'] = positionPercent + '%';
-    button.setAttribute('aria-pressed', String(enabled));
-    button.setAttribute('aria-label', (axis === 'row' ? 'Row' : 'Column') + ' line, ' + (enabled ? 'enabled' : 'disabled'));
-    button.addEventListener('click', onClick);
-
-    return button;
+    renderGridCustomisePreview();
+    saveOptions();
 }
 
 // A 1x1 grid draws no lines in either direction, so once one dimension is 1,
@@ -340,7 +487,7 @@ if (typeof document !== 'undefined') {
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
-    document.getElementById('render-circle').addEventListener('change', updateGridCustomiseNote);
+    document.getElementById('grid-customise-preview').addEventListener('click', onGridCustomiseClick);
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
@@ -353,5 +500,9 @@ if (typeof document !== 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums, resizeLineStates, resetLineStates};
+    module.exports = {
+        DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
+        resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
+        computePreviewBackground, findGridCustomiseTarget
+    };
 }
