@@ -223,11 +223,13 @@ priority order as time allows; none of these block day-to-day use.
 23. ~~**Awkward IIFE in `removeUndersizedImages`**~~ **Fixed by #2's rewrite** —
     the function (and its IIFE/`onerror` gap) no longer exists.
 
-24. **`manifest.json:32` hardcodes "100 x 50"**, duplicating `MIN_LONG`/
-    `MIN_SHORT` in `content.js:82` with nothing keeping them in sync — a
-    silent-drift trap if those constants ever change. The same title also
-    only describes the "add" direction, not that clicking again removes the
-    grid (`toggleGrids()`'s actual behaviour) — minor wording nice-to-have.
+24. ~~**`manifest.json:32` hardcodes "100 x 50"**~~ **Partly fixed.**
+    The title now says "Toggle..." instead of "Add...", so it describes the
+    actual click-to-toggle behaviour instead of just the "add" direction.
+    The "100 x 50"/`MIN_LONG`/`MIN_SHORT` duplication itself can't really
+    be fixed - `manifest.json` is static JSON with no way to reference a
+    JS constant - so added a comment next to `MIN_LONG`/`MIN_SHORT` in
+    `content.js` flagging that they need to stay in sync by hand.
 
 25. **`options.js:277` — `255 ^ average`** in `computePreviewBackground` is
     an obscure way to write `255 - average` for an 8-bit channel. Behaviour

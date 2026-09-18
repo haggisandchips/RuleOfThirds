@@ -97,6 +97,9 @@ if (typeof rotInit === 'undefined') {
 
     const rotInit = function () {
 
+        // manifest.json's action.default_title mentions "100 x 50" too -
+        // nothing enforces it, so keep them in sync by hand if these ever
+        // change (manifest.json can't reference a JS constant directly).
         const MIN_LONG = 100, MIN_SHORT = 50;
 
         let options;
