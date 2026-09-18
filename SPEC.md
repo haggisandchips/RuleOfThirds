@@ -140,12 +140,15 @@ priority order as time allows; none of these block day-to-day use.
     same-origin iframe content (embeds/widgets) is silently skipped. Likely
     fine given `activeTab` scoping — confirm as intentional.
 
-12. **`content.js` `sanitizeOptions` / `grid-render.js` `hexToRgba` — colour values aren't sanitized.**
-    Numeric options are defensively re-validated but `lineColour`/
-    `circleColour` pass straight through. A malformed stored value makes
-    `hexToRgba` emit `rgba(NaN, NaN, NaN, …)`, which canvas silently no-ops
-    — the grid can render as nothing with no error. Add the same kind of
-    defensive check already used for the numeric fields.
+12. ~~**`content.js` `sanitizeOptions` / `grid-render.js` `hexToRgba` — colour values aren't sanitized.**~~ **Fixed.**
+    Added `sanitizeColour(value, fallback)` to `content.js`, falling back
+    to the same defaults `readOptions()` already uses (`#ffffff`/`#ff0000`)
+    for anything that isn't a full 6-digit `#rrggbb` string - `hexToRgba`
+    hard-codes 6-digit substring offsets, so even a technically-valid CSS
+    shorthand like `#000` would already have parsed into garbage. Only
+    `content.js`'s path needed it: `options.js`'s colour inputs are native
+    `<input type="color">`, which the browser itself always normalizes to
+    `#rrggbb`.
 
 13. **No DPI/zoom scaling on canvases.** Both the content-script overlay
     canvas (`content.js:205-224`, `createCanvas`) and the two Options

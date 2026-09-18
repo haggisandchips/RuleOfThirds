@@ -7,7 +7,8 @@ const {
     sanitizeInt,
     sanitizeOptions,
     sanitizeLineStates,
-    sanitizeCircleStates
+    sanitizeCircleStates,
+    sanitizeColour
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation', () => {
@@ -72,10 +73,10 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         renderGrid: true,
         gridRows: '3',
         gridColumns: '',
-        lineColour: '#000',
+        lineColour: '#000000',
         lineOpacity: '150',
         renderCircle: true,
-        circleColour: '#f00',
+        circleColour: '#ff0000',
         circleOpacity: '-10',
         circleRadius: '-1',
         circleStyle: 'outline'
@@ -87,15 +88,38 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         gridColumns: 3,
         gridRowLines: [true, true],
         gridColumnLines: [true, true],
-        lineColour: '#000',
+        lineColour: '#000000',
         lineOpacity: 100,
         renderCircle: true,
-        circleColour: '#f00',
+        circleColour: '#ff0000',
         circleOpacity: 0,
         circleRadius: 1,
         circleStyle: 'outline',
         circleLines: [[true, true], [true, true]]
     });
+});
+
+test('sanitizeColour passes through a valid #rrggbb value unchanged', () => {
+    assert.equal(sanitizeColour('#a1b2c3', '#ffffff'), '#a1b2c3');
+});
+
+test('sanitizeColour falls back for anything that is not a valid 6-digit hex colour', () => {
+    // hexToRgba() hard-codes 6-digit substring offsets, so even a
+    // technically-valid CSS shorthand like #000 would parse into garbage -
+    // only a full #rrggbb value is actually safe to pass through.
+    assert.equal(sanitizeColour('#000', '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour('red', '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour('#gggggg', '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour(undefined, '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour(null, '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour(12, '#ffffff'), '#ffffff');
+});
+
+test('sanitizeOptions falls back to the default colours for malformed stored values', () => {
+    const result = sanitizeOptions({lineColour: 'not-a-colour', circleColour: null});
+
+    assert.equal(result.lineColour, '#ffffff');
+    assert.equal(result.circleColour, '#ff0000');
 });
 
 test('sanitizeOptions caps gridRows/gridColumns at 9', () => {

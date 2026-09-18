@@ -36,7 +36,9 @@ function sanitizeOptions(data) {
         circleRadius: sanitizeInt(data.circleRadius, 1, 5),
         lineOpacity: sanitizeInt(data.lineOpacity, 0, 100, 100),
         circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100),
-        circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1)
+        circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1),
+        lineColour: sanitizeColour(data.lineColour, '#ffffff'),
+        circleColour: sanitizeColour(data.circleColour, '#ff0000')
     };
 }
 
@@ -44,6 +46,20 @@ function sanitizeInt(value, min, fallback, max = Infinity) {
 
     const parsed = parseInt(value, 10);
     return Number.isNaN(parsed) ? fallback : Math.min(Math.max(parsed, min), max);
+}
+
+// `var`, not `const` - like every other top-level declaration in this file,
+// it must be safe to redeclare when this file is injected into the same
+// page more than once (see the file-header comment above).
+var HEX_COLOUR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
+// A malformed stored colour (eg from external tampering, a future format
+// change, or plain corruption) would otherwise reach hexToRgba() as-is,
+// which turns it into rgba(NaN, NaN, NaN, ...) - canvas silently draws
+// nothing for that, so the grid can vanish with no error or explanation.
+function sanitizeColour(value, fallback) {
+
+    return typeof value === 'string' && HEX_COLOUR_PATTERN.test(value) ? value : fallback;
 }
 
 // Storage may hold a shorter/longer array than the current grid size (eg
@@ -254,5 +270,5 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates};
+    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour};
 }
