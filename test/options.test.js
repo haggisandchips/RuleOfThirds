@@ -241,7 +241,7 @@ test('renderGridCustomiseReference draws a disabled line in grey, everything els
     // skipped entirely (no crossing to sit on): 2 rows + 2 columns + 2
     // circles (row 1's only) = 6 strokes.
     assert.equal(ctx.strokes.length, 6);
-    assert.deepEqual(ctx.strokes, ['#b0b0b0', '#000000', '#000000', '#000000', '#000000', '#000000']);
+    assert.deepEqual(ctx.strokes, ['#787878', '#000000', '#000000', '#000000', '#000000', '#000000']);
 });
 
 test('renderGridCustomiseReference draws a disabled circle in grey without affecting its crossing lines', () => {
@@ -253,7 +253,7 @@ test('renderGridCustomiseReference draws a disabled circle in grey without affec
     // row-major order (rowIndex outer, columnIndex inner), the first of
     // which is the disabled one.
     assert.deepEqual(ctx.strokes.slice(0, 4), ['#000000', '#000000', '#000000', '#000000']);
-    assert.deepEqual(ctx.strokes.slice(4), ['#b0b0b0', '#000000', '#000000', '#000000']);
+    assert.deepEqual(ctx.strokes.slice(4), ['#787878', '#000000', '#000000', '#000000']);
 });
 
 test('renderGridCustomiseReference draws nothing for an axis whose master toggle is off', () => {

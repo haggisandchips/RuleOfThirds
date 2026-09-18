@@ -442,7 +442,10 @@ function setCanvasSize(canvasId, width, height) {
 }
 
 const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';
-const GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#b0b0b0';
+// #b0b0b0 on white was only ~2.2:1 contrast, under WCAG 1.4.11's 3:1
+// minimum for this UI component - #787878 gets ~4.4:1, comfortably clear
+// of it, while staying visibly lighter than the enabled colour.
+const GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#787878';
 
 // Draws every line/circle position the grid could have, in black when it's
 // enabled and grey when it's not - a permanently legible map of what's

@@ -69,11 +69,10 @@ priority order as time allows; none of these block day-to-day use.
    (`grid-render.js:72-76`) is completely untested. Add a test asserting `calls.fill > 0` for
    `circleStyle: 'filled'` and that filled circles don't also `stroke()`.
 
-8. **`options.js:438-439` — low-contrast "disabled" indicator on the Control canvas.**
-   `GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#b0b0b0'` on white is only
-   ~2.2:1 contrast, under WCAG 1.4.11's 3:1 minimum — and it's the only
-   signal distinguishing hidden vs. shown on the sole interactive control.
-   Darken to ~`#787878` or darker for 3:1+.
+8. ~~**`options.js:438-439` — low-contrast "disabled" indicator on the Control canvas.**~~ **Fixed.**
+   `GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR` changed from `#b0b0b0`
+   (~2.2:1 on white) to `#787878` (~4.4:1), clear of WCAG 1.4.11's 3:1
+   minimum.
 
 ## Medium priority
 
