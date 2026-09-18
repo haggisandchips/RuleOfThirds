@@ -292,41 +292,48 @@ function buildLiveGridCustomiseOptions() {
     };
 }
 
-// Redraws the "Customise" preview canvas - called whenever anything it
-// depends on changes (on load, on a form change, or on a click in the
-// preview itself).
+// Redraws both "Customise" canvases - called whenever anything they depend
+// on changes (on load, on a form change, or on a click in either one).
+//
+// The top canvas is a faithful, accurate-colour preview: a hidden line or
+// circle is simply never drawn, exactly like the real overlay - it gives no
+// clue by itself that it could be turned back on. The bottom canvas exists
+// purely to supply that clue: a fixed white/black/grey reference map, drawn
+// the same way regardless of the user's actual colours, so there's always
+// an obvious, unambiguous spot to click.
 function renderGridCustomisePreview() {
 
-    const canvas = document.getElementById('grid-customise-preview');
-    const ctx = canvas.getContext('2d');
+    const previewCanvas = document.getElementById('grid-customise-preview');
+    const previewCtx = previewCanvas.getContext('2d');
     const liveOptions = buildLiveGridCustomiseOptions();
 
-    ctx.fillStyle = computePreviewBackground(liveOptions.lineColour, liveOptions.circleColour);
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    previewCtx.fillStyle = computePreviewBackground(liveOptions.lineColour, liveOptions.circleColour);
+    previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+    drawGridOverlay(previewCtx, previewCanvas.width, previewCanvas.height, liveOptions);
 
-    drawGridCustomiseGhosts(ctx, canvas.width, canvas.height, liveOptions);
-    drawGridOverlay(ctx, canvas.width, canvas.height, liveOptions);
+    const referenceCanvas = document.getElementById('grid-customise-reference');
+    renderGridCustomiseReference(referenceCanvas.getContext('2d'), referenceCanvas.width, referenceCanvas.height, liveOptions);
 }
 
-const GRID_CUSTOMISE_GHOST_COLOUR = 'rgba(0, 0, 0, 0.35)';
+const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';
+const GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#b0b0b0';
 
-// Everything the user has switched off still gets a faint outline, so
-// there's something to click to bring it back - drawGridOverlay() itself
-// only ever draws what's actually enabled, since it's shared with the real
-// overlay. This is purely "would this line/circle exist at all if it were
-// switched on" - a line/circle whose axis is disabled overall doesn't get a
-// ghost either, since there'd be nothing to un-hide.
-function drawGridCustomiseGhosts(ctx, w, h, options) {
+// Draws every line/circle position the grid could have, in black when it's
+// enabled and grey when it's not - a permanently legible map of what's
+// clickable, independent of whatever colours the user has actually chosen.
+// A line/circle whose axis is disabled overall (renderGrid/renderCircle) is
+// left off entirely, same as the real preview: there's nothing to un-hide
+// if the master toggle for it is off.
+function renderGridCustomiseReference(ctx, w, h, options) {
 
-    ctx.strokeStyle = GRID_CUSTOMISE_GHOST_COLOUR;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
     ctx.lineWidth = 1;
 
     if (options.renderGrid) {
         options.gridRowLines.forEach((enabled, index) => {
-            if (enabled) {
-                return;
-            }
             const y = (index + 1) * h / options.gridRows;
+            ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(w, y);
@@ -334,10 +341,8 @@ function drawGridCustomiseGhosts(ctx, w, h, options) {
         });
 
         options.gridColumnLines.forEach((enabled, index) => {
-            if (enabled) {
-                return;
-            }
             const x = (index + 1) * w / options.gridColumns;
+            ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, h);
@@ -353,11 +358,13 @@ function drawGridCustomiseGhosts(ctx, w, h, options) {
                 return;
             }
             options.gridColumnLines.forEach((columnEnabled, columnIndex) => {
-                if (!columnEnabled || options.circleLines[rowIndex][columnIndex]) {
+                if (!columnEnabled) {
                     return;
                 }
+                const enabled = options.circleLines[rowIndex][columnIndex];
                 const x = (columnIndex + 1) * w / options.gridColumns;
                 const y = (rowIndex + 1) * h / options.gridRows;
+                ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, 2 * Math.PI);
                 ctx.stroke();
@@ -417,11 +424,14 @@ function findGridCustomiseTarget(x, y, w, h, options) {
     return null;
 }
 
-// Translates a preview-canvas click into a line/circle toggle. Scales by
-// canvas-pixels-per-CSS-pixel defensively, though the two match 1:1 today.
+// Translates a click on either Customise canvas into a line/circle toggle -
+// both canvases are the same size and represent the same grid, so whichever
+// one was actually clicked (event.currentTarget) is used for the hit test.
+// Scales by canvas-pixels-per-CSS-pixel defensively, though the two match
+// 1:1 today.
 function onGridCustomiseClick(event) {
 
-    const canvas = document.getElementById('grid-customise-preview');
+    const canvas = event.currentTarget;
     const rect = canvas.getBoundingClientRect();
     const x = (event.clientX - rect.left) * (canvas.width / rect.width);
     const y = (event.clientY - rect.top) * (canvas.height / rect.height);
@@ -488,6 +498,7 @@ if (typeof document !== 'undefined') {
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
     document.getElementById('grid-customise-preview').addEventListener('click', onGridCustomiseClick);
+    document.getElementById('grid-customise-reference').addEventListener('click', onGridCustomiseClick);
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
         const colourInputId = swatch.closest('.quick-swatch-group').dataset.for;
@@ -503,6 +514,6 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         DEFAULT_OPTIONS, MIN_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
         resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
-        computePreviewBackground, findGridCustomiseTarget
+        computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference
     };
 }

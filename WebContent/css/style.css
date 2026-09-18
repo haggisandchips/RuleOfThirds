@@ -263,25 +263,36 @@ input[type="range"] {
     border-color: var(--color-primary);
 }
 
-/* A live, to-scale preview of the actual grid/circle settings, rendered
-   with the same drawGridOverlay() used for the real overlay - lines and
-   circles the user has switched off still show as a faint "ghost" so
-   there's something to click to bring them back (see
-   drawGridCustomiseGhosts in options.js). */
+/* Two stacked canvases for the "Customise" grid. The top one is a live,
+   to-scale, accurate-colour preview (drawGridOverlay(), same as the real
+   overlay) - a hidden line/circle simply isn't drawn there, exactly like
+   the real thing. The bottom one is a fixed white/black/grey reference map
+   (renderGridCustomiseReference()) that always shows exactly where every
+   line/circle is and whether it's on, independent of the user's actual
+   colours, so there's never any ambiguity about what's clickable. Both
+   canvases handle clicks and toggle the same state. */
 .grid-customise-col {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.grid-customise-preview {
+.grid-customise-preview,
+.grid-customise-reference {
     display: block;
     width: 420px;
     max-width: 100%;
     height: 280px;
-    margin-top: 0.5rem;
     border: 1px solid var(--color-divider);
     cursor: pointer;
+}
+
+.grid-customise-preview {
+    margin-top: 0.5rem;
+}
+
+.grid-customise-reference {
+    margin-top: 0.75rem;
 }
 
 .grid-customise-note {

@@ -13,8 +13,42 @@ const {
     resizeCircleStates,
     resetCircleStates,
     computePreviewBackground,
-    findGridCustomiseTarget
+    findGridCustomiseTarget,
+    renderGridCustomiseReference
 } = require('../WebContent/options/options.js');
+
+// A fake canvas context that just records the strokeStyle in effect at each
+// stroke() call, in order, so renderGridCustomiseReference's black/grey
+// choice can be asserted without a real canvas.
+function createColourRecordingContext() {
+    let currentStrokeStyle = null;
+    const strokes = [];
+    return {
+        strokes,
+        fillStyle: null,
+        fillRect() {},
+        beginPath() {},
+        moveTo() {},
+        lineTo() {},
+        arc() {},
+        stroke() { strokes.push(currentStrokeStyle); },
+        set strokeStyle(value) { currentStrokeStyle = value; },
+        get strokeStyle() { return currentStrokeStyle; }
+    };
+}
+
+function baseGridOptions(overrides) {
+    return Object.assign({
+        renderGrid: true,
+        gridRows: 3,
+        gridColumns: 3,
+        gridRowLines: [true, true],
+        gridColumnLines: [true, true],
+        renderCircle: true,
+        circleRadius: 5,
+        circleLines: [[true, true], [true, true]]
+    }, overrides);
+}
 
 test('clampInt parses a valid numeric string', () => {
     assert.equal(clampInt('3', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows), 3);
@@ -164,4 +198,46 @@ test('findGridCustomiseTarget finds nothing when both Grid and Circles are disab
         renderGrid: false, renderCircle: false
     };
     assert.equal(findGridCustomiseTarget(30, 30, 90, 90, options), null);
+});
+
+test('renderGridCustomiseReference draws everything in the enabled colour when nothing is hidden', () => {
+    const ctx = createColourRecordingContext();
+    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions());
+
+    // 2 row lines + 2 column lines + 4 circles (a 3x3 grid).
+    assert.equal(ctx.strokes.length, 8);
+    assert.ok(ctx.strokes.every(colour => colour === '#000000'));
+});
+
+test('renderGridCustomiseReference draws a disabled line in grey, everything else unaffected', () => {
+    const ctx = createColourRecordingContext();
+    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({gridRowLines: [false, true]}));
+
+    // Both row lines are still drawn (one grey), but row 0's circles are
+    // skipped entirely (no crossing to sit on): 2 rows + 2 columns + 2
+    // circles (row 1's only) = 6 strokes.
+    assert.equal(ctx.strokes.length, 6);
+    assert.deepEqual(ctx.strokes, ['#b0b0b0', '#000000', '#000000', '#000000', '#000000', '#000000']);
+});
+
+test('renderGridCustomiseReference draws a disabled circle in grey without affecting its crossing lines', () => {
+    const ctx = createColourRecordingContext();
+    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({circleLines: [[false, true], [true, true]]}));
+
+    assert.equal(ctx.strokes.length, 8);
+    // 2 row + 2 column strokes (all enabled), then 4 circle strokes in
+    // row-major order (rowIndex outer, columnIndex inner), the first of
+    // which is the disabled one.
+    assert.deepEqual(ctx.strokes.slice(0, 4), ['#000000', '#000000', '#000000', '#000000']);
+    assert.deepEqual(ctx.strokes.slice(4), ['#b0b0b0', '#000000', '#000000', '#000000']);
+});
+
+test('renderGridCustomiseReference draws nothing for an axis whose master toggle is off', () => {
+    const gridOffCtx = createColourRecordingContext();
+    renderGridCustomiseReference(gridOffCtx, 90, 90, baseGridOptions({renderGrid: false}));
+    assert.equal(gridOffCtx.strokes.length, 4, 'only the 4 circles remain');
+
+    const circleOffCtx = createColourRecordingContext();
+    renderGridCustomiseReference(circleOffCtx, 90, 90, baseGridOptions({renderCircle: false}));
+    assert.equal(circleOffCtx.strokes.length, 4, 'only the 4 lines remain');
 });
