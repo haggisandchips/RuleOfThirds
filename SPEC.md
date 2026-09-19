@@ -293,13 +293,17 @@ priority order as time allows; none of these block day-to-day use.
 23. ~~**Awkward IIFE in `removeUndersizedImages`**~~ **Fixed by #2's rewrite** —
     the function (and its IIFE/`onerror` gap) no longer exists.
 
-24. ~~**`manifest.json:32` hardcodes "100 x 50"**~~ **Partly fixed.**
+24. ~~**`manifest.json:32` hardcodes "100 x 50"**~~ **Fixed.**
     The title now says "Toggle..." instead of "Add...", so it describes the
     actual click-to-toggle behaviour instead of just the "add" direction.
-    The "100 x 50"/`MIN_LONG`/`MIN_SHORT` duplication itself can't really
-    be fixed - `manifest.json` is static JSON with no way to reference a
-    JS constant - so added a comment next to `MIN_LONG`/`MIN_SHORT` in
-    `content.js` flagging that they need to stay in sync by hand.
+
+    The "100 x 50"/`MIN_LONG`/`MIN_SHORT` duplication this item was really
+    about is now moot: the minimum size is a configurable option (see the
+    new "Minimum Image Size" writeup below), not a hardcoded JS constant
+    with a hand-synced copy in the manifest title - so there's nothing left
+    to drift out of sync. The badge title no longer mentions a specific
+    size at all, since it's user-configurable now: "Toggle the Rule of
+    Thirds grid on this page's images".
 
 25. ~~**`options.js:277` — `255 ^ average`**~~ **Fixed.**
     Replaced with `255 - average` (equivalent for an 8-bit channel).
@@ -364,6 +368,48 @@ priority order as time allows; none of these block day-to-day use.
     `fallback` parameter (matching the pattern `clampInt` already uses)
     instead of assuming something is always checked, and re-ran the same
     reproduction to confirm it no longer throws.
+
+32. ~~**Minimum image size (100 x 50, either orientation) was hardcoded.**~~ **Fixed.**
+    Requested directly (not from the original audit): made the "100 x 50 in
+    either orientation" eligibility check a configurable option instead of
+    a fixed `content.js` constant.
+
+    Added a new "Minimum Image Size" section at the bottom of the Options
+    page: **Minimum width (px)** and **Minimum height (px)** number fields
+    (defaulting to 100/50, matching the old hardcoded values exactly), and
+    an **Either orientation** checkbox (on by default) controlling whether
+    an image can also qualify with those two sizes swapped - eg a tall
+    portrait photo using its height to meet the width minimum. Off, the
+    minimums apply exactly as given, which in practice restricts the grid
+    to clearly landscape-shaped images.
+
+    `isMinSize`/`shouldRender` (`content.js`) take the new
+    `eitherOrientation` flag as a parameter (defaulting to `true`, so
+    existing callers/tests are unaffected), and `content.js` now reads
+    `minImageWidth`/`minImageHeight`/`eitherOrientation` from
+    `chrome.storage.sync` instead of the old hardcoded `MIN_LONG`/
+    `MIN_SHORT` constants - `sanitizeOptions` clamps the two numeric
+    fields to a minimum of 1, same defensive treatment as the other
+    numeric options. Removed the badge tooltip's mention of the size
+    entirely (`manifest.json`'s `default_title` no longer says "100 x 50 in
+    either orientation") since it's user-configurable now, not a fixed
+    fact worth stating there - also finally resolves #24's old "keep the
+    manifest title in sync by hand" duplication concern, since there's no
+    longer a hardcoded constant for it to drift from. Updated `guide.html`
+    to document the new section and what "Either orientation" does.
+
+    Live-tested in a browser: loaded the real Options page against a
+    mocked `chrome.storage.sync` (backed by `localStorage`, so state
+    survives a reload) and confirmed defaults load as 100/50/on, edits
+    (including an invalid `0` height clamping to 1) save and round-trip
+    correctly across a full page reload, and "Restore Defaults" resets all
+    three fields. Separately loaded the real `content.js`/`grid-render.js`
+    against three test images (a landscape well over both minimums, a
+    60x500 portrait that only meets the 100x50 minimum via the flip, and a
+    40x40 image too small either way) with `eitherOrientation` set both
+    ways: with it on, landscape and portrait both get a grid and the tiny
+    one doesn't; with it off, only landscape does - confirming the flip
+    itself, not just the option wiring, actually changes behaviour.
 
 ## Already checked and solid (no action needed)
 

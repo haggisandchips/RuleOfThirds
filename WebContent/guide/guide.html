@@ -38,9 +38,10 @@
             for that tab: full colour when it's active, greyscale when it isn't.
           </p>
           <p class="flow-text">
-            The grid only applies to images at least 100x50 pixels (in either orientation) that
-            are actually visible on the page - tiny icons, hidden elements and decorative spacers
-            are skipped automatically.
+            The grid only applies to images that are actually visible on the page and meet a
+            configurable minimum size (100x50 pixels by default) - tiny icons, hidden elements
+            and decorative spacers are skipped automatically. See <strong>Minimum Image
+            Size</strong> below to change this.
           </p>
           <p class="flow-text">
             Since a freshly loaded page has no grid on it yet, the icon resets to greyscale every
@@ -73,12 +74,20 @@
             slider, for anything from a bold solid line to a barely-there translucent one.
           </p>
           <p class="flow-text">
-            <strong>Embedded Frames</strong>, at the bottom of the page, controls whether the grid
-            also applies inside embedded frames (<em>iframes</em>) on a page - off by default,
-            since these are often adverts or other embedded content you probably don't want a
-            grid drawn over. Unlike the settings above, this one doesn't apply immediately: it
-            takes effect the next time you toggle the grid on a page, not on a tab where the grid
-            is already active.
+            <strong>Embedded Frames</strong> controls whether the grid also applies inside
+            embedded frames (<em>iframes</em>) on a page - off by default, since these are often
+            adverts or other embedded content you probably don't want a grid drawn over. Unlike
+            the settings above, this one doesn't apply immediately: it takes effect the next time
+            you toggle the grid on a page, not on a tab where the grid is already active.
+          </p>
+          <p class="flow-text">
+            <strong>Minimum Image Size</strong>, at the bottom of the page, sets the smallest
+            image the grid will apply to (100x50 pixels by default) - tiny icons, hidden elements
+            and decorative spacers stay skipped regardless of how you set this.
+            <strong>Either orientation</strong>, on by default, lets an image qualify with the
+            width and height minimums swapped too, so a tall portrait photo can use its height to
+            meet the width minimum. Turn it off to require the sizes exactly as given, which in
+            practice restricts the grid to clearly landscape-shaped images.
           </p>
         </div>
       </div>

@@ -11,7 +11,7 @@ const {
     sanitizeColour
 } = require('../WebContent/content.js');
 
-test('isMinSize accepts either orientation', () => {
+test('isMinSize accepts either orientation by default', () => {
     assert.equal(isMinSize(100, 50, 100, 50), true, 'exact landscape minimum');
     assert.equal(isMinSize(50, 100, 100, 50), true, 'exact portrait minimum');
 });
@@ -20,6 +20,22 @@ test('isMinSize rejects images smaller than the minimum in both orientations', (
     assert.equal(isMinSize(99, 50, 100, 50), false);
     assert.equal(isMinSize(50, 99, 100, 50), false);
     assert.equal(isMinSize(10, 10, 100, 50), false);
+});
+
+test('isMinSize with eitherOrientation explicitly true behaves the same as the default', () => {
+    assert.equal(isMinSize(100, 50, 100, 50, true), true, 'exact landscape minimum');
+    assert.equal(isMinSize(50, 100, 100, 50, true), true, 'exact portrait minimum');
+});
+
+test('isMinSize with eitherOrientation false rejects a swapped (portrait) match', () => {
+    // Would pass under the default eitherOrientation - only rejected once the
+    // flip itself is disabled.
+    assert.equal(isMinSize(50, 100, 100, 50, false), false);
+});
+
+test('isMinSize with eitherOrientation false accepts a literal (unswapped) match', () => {
+    assert.equal(isMinSize(100, 50, 100, 50, false), true);
+    assert.equal(isMinSize(200, 200, 100, 50, false), true);
 });
 
 test('shouldRender is false when the image is hidden, regardless of size', () => {
@@ -44,6 +60,19 @@ test('shouldRender is false for a visible but undersized image', () => {
     assert.equal(
         shouldRender({visibility: 'visible', display: 'block'}, 10, 10, 100, 50),
         false
+    );
+});
+
+test('shouldRender passes eitherOrientation through to isMinSize', () => {
+    // A 50x100 portrait image meets the 100x50 minimum only via the flip -
+    // rejected once eitherOrientation is turned off.
+    assert.equal(
+        shouldRender({visibility: 'visible', display: 'block'}, 50, 100, 100, 50, false),
+        false
+    );
+    assert.equal(
+        shouldRender({visibility: 'visible', display: 'block'}, 50, 100, 100, 50, true),
+        true
     );
 });
 
@@ -95,8 +124,17 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         circleOpacity: 0,
         circleRadius: 1,
         circleStyle: 'outline',
-        circleLines: [[true, true], [true, true]]
+        circleLines: [[true, true], [true, true]],
+        minImageWidth: 100,
+        minImageHeight: 50
     });
+});
+
+test('sanitizeOptions clamps minImageWidth/minImageHeight and falls back to the defaults', () => {
+    const result = sanitizeOptions({minImageWidth: '0', minImageHeight: 'abc'});
+
+    assert.equal(result.minImageWidth, 1, 'clamped up to the minimum of 1, not the 100 fallback');
+    assert.equal(result.minImageHeight, 50, 'falls back to 50 for a non-numeric value');
 });
 
 test('sanitizeColour passes through a valid #rrggbb value unchanged', () => {

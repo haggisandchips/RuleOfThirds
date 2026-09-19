@@ -3,17 +3,25 @@
 // `function` declarations (unlike rotInit's `const`) are safe to redeclare
 // if this file is injected into the same page more than once.
 
-function isMinSize(w, h, minLong, minShort) {
+// `eitherOrientation` (on by default) lets the width/height minimums apply
+// swapped too, so a tall portrait image can qualify using its height for
+// the width minimum and vice versa. Off, the minimums apply exactly as
+// given - eg the default 100/50 then only accepts images at least 100 wide,
+// which in practice means landscape-shaped images only.
+function isMinSize(w, h, minWidth, minHeight, eitherOrientation = true) {
 
-    return (w >= minLong && h >= minShort) || (h >= minLong && w >= minShort);
+    if (eitherOrientation) {
+        return (w >= minWidth && h >= minHeight) || (h >= minWidth && w >= minHeight);
+    }
+    return w >= minWidth && h >= minHeight;
 }
 
-function shouldRender(computedStyle, w, h, minLong, minShort) {
+function shouldRender(computedStyle, w, h, minWidth, minHeight, eitherOrientation = true) {
 
     const visibility = computedStyle['visibility'];
     const display = computedStyle['display'];
 
-    return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h, minLong, minShort);
+    return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h, minWidth, minHeight, eitherOrientation);
 }
 
 // Storage may hold values saved by an older version of the options page
@@ -31,6 +39,8 @@ function sanitizeOptions(data) {
         ...data,
         gridRows,
         gridColumns,
+        minImageWidth: sanitizeInt(data.minImageWidth, 1, 100),
+        minImageHeight: sanitizeInt(data.minImageHeight, 1, 50),
         gridRowLines: sanitizeLineStates(data.gridRowLines, gridRows - 1),
         gridColumnLines: sanitizeLineStates(data.gridColumnLines, gridColumns - 1),
         circleRadius: sanitizeInt(data.circleRadius, 1, 5),
@@ -97,11 +107,6 @@ if (typeof rotInit === 'undefined') {
 
     const rotInit = function () {
 
-        // manifest.json's action.default_title mentions "100 x 50" too -
-        // nothing enforces it, so keep them in sync by hand if these ever
-        // change (manifest.json can't reference a JS constant directly).
-        const MIN_LONG = 100, MIN_SHORT = 50;
-
         let options;
 
         const promise = readOptions();
@@ -148,7 +153,10 @@ if (typeof rotInit === 'undefined') {
                         circleOpacity: 100,
                         circleRadius: 5,
                         circleStyle: 'outline',
-                        circleLines: [[true, true], [true, true]]
+                        circleLines: [[true, true], [true, true]],
+                        minImageWidth: 100,
+                        minImageHeight: 50,
+                        eitherOrientation: true
                     },
                     (data) => {
                         options = sanitizeOptions(data);
@@ -196,7 +204,7 @@ if (typeof rotInit === 'undefined') {
                 const w = image.width;
                 const h = image.height;
 
-                if (shouldRender(computedStyle, w, h, MIN_LONG, MIN_SHORT)) {
+                if (shouldRender(computedStyle, w, h, options.minImageWidth, options.minImageHeight, options.eitherOrientation)) {
                     renderImageOverlay(image, computedStyle, w, h);
                 }
             }
@@ -211,7 +219,7 @@ if (typeof rotInit === 'undefined') {
             // stretched via CSS/HTML width/height) - naturalWidth/Height
             // reflect the real, already-loaded source, so no extra fetch is
             // needed to catch that case.
-            if (!isMinSize(image.naturalWidth, image.naturalHeight, MIN_LONG, MIN_SHORT)) {
+            if (!isMinSize(image.naturalWidth, image.naturalHeight, options.minImageWidth, options.minImageHeight, options.eitherOrientation)) {
                 return;
             }
 

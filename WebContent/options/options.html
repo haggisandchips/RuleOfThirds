@@ -183,6 +183,42 @@
         </div>
       </div>
 
+      <div class="row">
+        <div class="col s12">
+          <h5>Minimum Image Size</h5>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12 m3">
+          <p>
+            <label for="min-image-width">Minimum width (px)</label>
+            <input type="number" id="min-image-width" min="1"/>
+          </p>
+        </div>
+        <div class="col s12 m3">
+          <p>
+            <label for="min-image-height">Minimum height (px)</label>
+            <input type="number" id="min-image-height" min="1"/>
+          </p>
+        </div>
+        <div class="col s12">
+          <p class="help-text">
+            Images smaller than this are skipped - tiny icons, hidden elements and
+            decorative spacers are never worth grid lines.
+          </p>
+          <p>
+            <label>
+              <input type="checkbox" id="either-orientation"/>
+              <span>Either orientation</span>
+            </label>
+          </p>
+          <p class="help-text">
+            On by default: an image only needs to meet the two sizes in <em>either</em> arrangement, so a tall portrait
+            photo can qualify using its height for the width minimum and vice versa. Turn this off to require the sizes
+            exactly as given.
+          </p>
+        </div>
+      </div>
+
       <br />
 
       <div class="row">

@@ -29,7 +29,7 @@
             "19": "icon19-inactive.png",
             "38": "icon38-inactive.png"
         },
-        "default_title": "Toggle the Rule of Thirds grid on images larger than 100 x 50 in either orientation",
+        "default_title": "Toggle the Rule of Thirds grid on this page's images",
         "name": "Rule of Thirds"
     }
 }

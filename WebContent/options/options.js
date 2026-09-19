@@ -13,7 +13,10 @@ const DEFAULT_OPTIONS = {
     circleStyle: 'outline',
     circleLines: [[true, true], [true, true]],
     previewBackgroundImage: true,
-    applyToFrames: false
+    applyToFrames: false,
+    minImageWidth: 100,
+    minImageHeight: 50,
+    eitherOrientation: true
 };
 
 const MIN_GRID_LINES = 1;
@@ -23,6 +26,7 @@ const MIN_GRID_LINES = 1;
 const MAX_GRID_LINES = 9;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_OPACITY = 0;
+const MIN_IMAGE_SIZE = 1;
 
 // Per-line/per-circle enabled state for the "Customise" preview - kept as
 // plain module state (rather than re-read from the DOM) since there's no
@@ -84,6 +88,9 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
     const circleStyle = getSelectedOption('circle-style', DEFAULT_OPTIONS.circleStyle);
     const previewBackgroundImage = document.getElementById('preview-background-image').checked;
     const applyToFrames = document.getElementById('apply-to-frames').checked;
+    const minImageWidth = parseValidInt('min-image-width', MIN_IMAGE_SIZE, DEFAULT_OPTIONS.minImageWidth);
+    const minImageHeight = parseValidInt('min-image-height', MIN_IMAGE_SIZE, DEFAULT_OPTIONS.minImageHeight);
+    const eitherOrientation = document.getElementById('either-orientation').checked;
 
     chrome.storage.sync.set(
         {
@@ -101,7 +108,10 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
             circleStyle,
             circleLines: circleLineStates,
             previewBackgroundImage,
-            applyToFrames
+            applyToFrames,
+            minImageWidth,
+            minImageHeight,
+            eitherOrientation
         },
         () => {
             showToast(chrome.runtime.lastError
@@ -150,6 +160,9 @@ function setOptions(options) {
     selectOption('circle-style', options.circleStyle);
     document.getElementById('preview-background-image').checked = options.previewBackgroundImage;
     document.getElementById('apply-to-frames').checked = options.applyToFrames;
+    document.getElementById('min-image-width').value = options.minImageWidth;
+    document.getElementById('min-image-height').value = options.minImageHeight;
+    document.getElementById('either-orientation').checked = options.eitherOrientation;
     syncDependentFieldsEnabled();
     // Depends on every field set above, since an accurate preview needs all
     // of them (colours, opacity, style, both enabled toggles, and the photo
