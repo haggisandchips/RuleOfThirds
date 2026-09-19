@@ -274,10 +274,21 @@ priority order as time allows; none of these block day-to-day use.
     true and why, and pointing at the `document.getElementById`
     check inside `rotInit` as the real double-registration protection.
 
-22. **Blanket top-level `try/catch` in `service_worker.js:1-51`** swallows
-    listener-registration errors into a `console.log` nobody sees in
-    production; `chrome.*.addListener` essentially never throws
-    synchronously. Likely vestigial — consider removing or narrowing.
+22. ~~**Blanket top-level `try/catch` in `service_worker.js:1-51`**~~ **Fixed.**
+    Removed it entirely rather than narrowing it. It wasn't adding
+    resilience: if an early registration call ever did throw (eg a
+    permission dropped from the manifest, making `chrome.contextMenus`
+    itself `undefined`), execution still stops at that line either way -
+    every listener registered after the failure point goes unregistered
+    whether the throw is caught or not. The only actual effect of the
+    `catch` was to demote what would otherwise be a visible "Uncaught
+    Error" in the service worker's own inspector console into a
+    `console.log` - strictly less visible for debugging, and neither is
+    ever seen by a real user regardless. Verified by loading the file
+    against a mocked `chrome` API in Node: all five listeners
+    (`onInstalled`, `contextMenus.onClicked`, `action.onClicked`,
+    `runtime.onMessage`, `tabs.onUpdated`) still register exactly once,
+    identical to before.
 
 23. ~~**Awkward IIFE in `removeUndersizedImages`**~~ **Fixed by #2's rewrite** —
     the function (and its IIFE/`onerror` gap) no longer exists.

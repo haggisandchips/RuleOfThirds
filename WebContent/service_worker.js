@@ -1,75 +1,71 @@
-try {
-    chrome.runtime.onInstalled.addListener((details) => {
-        const reason = details.reason
+chrome.runtime.onInstalled.addListener((details) => {
+    const reason = details.reason
 
-        switch (reason) {
-            case 'update':
-                chrome.tabs.create({url:'versions/history.html'});
-                break;
-            default:
-                break;
-        }
+    switch (reason) {
+        case 'update':
+            chrome.tabs.create({url:'versions/history.html'});
+            break;
+        default:
+            break;
+    }
 
-        // removeAll() first since onInstalled can fire more than once in a
-        // dev/reload cycle (and again on every browser update) - create()
-        // alone would then fail with a "duplicate id" error on the second
-        // and later calls.
-        chrome.contextMenus.removeAll(() => {
-            chrome.contextMenus.create({
-                id: 'rule-of-thirds-guide',
-                title: 'How to Use',
-                contexts: ['action']
-            });
+    // removeAll() first since onInstalled can fire more than once in a
+    // dev/reload cycle (and again on every browser update) - create()
+    // alone would then fail with a "duplicate id" error on the second
+    // and later calls.
+    chrome.contextMenus.removeAll(() => {
+        chrome.contextMenus.create({
+            id: 'rule-of-thirds-guide',
+            title: 'How to Use',
+            contexts: ['action']
         });
     });
+});
 
-    chrome.contextMenus.onClicked.addListener((info) => {
-        if (info.menuItemId === 'rule-of-thirds-guide') {
-            chrome.tabs.create({url: 'guide/guide.html'});
-        }
-    });
+chrome.contextMenus.onClicked.addListener((info) => {
+    if (info.menuItemId === 'rule-of-thirds-guide') {
+        chrome.tabs.create({url: 'guide/guide.html'});
+    }
+});
 
-    chrome.action.onClicked.addListener(tab => {
+chrome.action.onClicked.addListener(tab => {
 
-        // Read fresh on every click rather than once at startup, so a
-        // change made in Options takes effect the next time the grid is
-        // toggled on - it can't reach into the frames of a tab where the
-        // grid is already active, since injection only happens here.
-        chrome.storage.sync.get({applyToFrames: false}, ({applyToFrames}) => {
-            chrome.scripting.executeScript({
-                target: {tabId: tab.id, allFrames: applyToFrames}, files: ['grid-render.js', 'content.js']
-            }).catch(() => {
-                showRefusalBadge(tab.id);
-            });
+    // Read fresh on every click rather than once at startup, so a
+    // change made in Options takes effect the next time the grid is
+    // toggled on - it can't reach into the frames of a tab where the
+    // grid is already active, since injection only happens here.
+    chrome.storage.sync.get({applyToFrames: false}, ({applyToFrames}) => {
+        chrome.scripting.executeScript({
+            target: {tabId: tab.id, allFrames: applyToFrames}, files: ['grid-render.js', 'content.js']
+        }).catch(() => {
+            showRefusalBadge(tab.id);
         });
     });
+});
 
-    // content.js reports the grid's new on/off state after every toggle, so
-    // the toolbar icon can reflect whether this specific tab currently has
-    // the grid applied.
-    chrome.runtime.onMessage.addListener((message, sender) => {
-        if (message && message.type === 'rule-of-thirds-state' && sender.tab && sender.tab.id !== undefined) {
-            setActionIcon(sender.tab.id, message.active);
-        }
-    });
+// content.js reports the grid's new on/off state after every toggle, so
+// the toolbar icon can reflect whether this specific tab currently has
+// the grid applied.
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message && message.type === 'rule-of-thirds-state' && sender.tab && sender.tab.id !== undefined) {
+        setActionIcon(sender.tab.id, message.active);
+    }
+});
 
-    // A full page load always drops the content script's own state (a
-    // fresh document has no #rule-of-thirds element to read), so the icon
-    // needs to reset in step with it - otherwise it would keep showing
-    // "active" for a page the grid was never (re-)added to since the last
-    // load. `changeInfo.url` also covers client-side (pushState) route
-    // changes on single-page sites (Instagram, Pinterest, X, ...), which
-    // never go through a 'loading'/'complete' status at all - the SPA's
-    // own re-render on a route change just as often wipes out the grid
-    // without the icon ever finding out.
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-        if (changeInfo.status === 'loading' || changeInfo.url) {
-            setActionIcon(tabId, false);
-        }
-    });
-} catch (e) {
-    console.log(e);
-}
+// A full page load always drops the content script's own state (a
+// fresh document has no #rule-of-thirds element to read), so the icon
+// needs to reset in step with it - otherwise it would keep showing
+// "active" for a page the grid was never (re-)added to since the last
+// load. `changeInfo.url` also covers client-side (pushState) route
+// changes on single-page sites (Instagram, Pinterest, X, ...), which
+// never go through a 'loading'/'complete' status at all - the SPA's
+// own re-render on a route change just as often wipes out the grid
+// without the icon ever finding out.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'loading' || changeInfo.url) {
+        setActionIcon(tabId, false);
+    }
+});
 
 function setActionIcon(tabId, active) {
 
