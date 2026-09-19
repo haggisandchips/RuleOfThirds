@@ -12,7 +12,8 @@ const DEFAULT_OPTIONS = {
     circleRadius: 5,
     circleStyle: 'outline',
     circleLines: [[true, true], [true, true]],
-    previewBackgroundImage: true
+    previewBackgroundImage: true,
+    applyToFrames: false
 };
 
 const MIN_GRID_LINES = 1;
@@ -82,6 +83,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
     const circleRadius = parseValidInt('circle-radius', MIN_CIRCLE_RADIUS, DEFAULT_OPTIONS.circleRadius);
     const circleStyle = getSelectedOption('circle-style', DEFAULT_OPTIONS.circleStyle);
     const previewBackgroundImage = document.getElementById('preview-background-image').checked;
+    const applyToFrames = document.getElementById('apply-to-frames').checked;
 
     chrome.storage.sync.set(
         {
@@ -98,7 +100,8 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
             circleRadius,
             circleStyle,
             circleLines: circleLineStates,
-            previewBackgroundImage
+            previewBackgroundImage,
+            applyToFrames
         },
         () => {
             showToast(chrome.runtime.lastError
@@ -146,6 +149,7 @@ function setOptions(options) {
     document.getElementById('circle-radius').value = options.circleRadius;
     selectOption('circle-style', options.circleStyle);
     document.getElementById('preview-background-image').checked = options.previewBackgroundImage;
+    document.getElementById('apply-to-frames').checked = options.applyToFrames;
     syncDependentFieldsEnabled();
     // Depends on every field set above, since an accurate preview needs all
     // of them (colours, opacity, style, both enabled toggles, and the photo

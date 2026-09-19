@@ -135,10 +135,34 @@ priority order as time allows; none of these block day-to-day use.
     gets a grid until toggled off/on again. Confirm this is intended before
     treating it as a bug — fixing it would mean a `MutationObserver`.
 
-11. **`service_worker.js:24-26` — iframes never get the grid.**
-    `executeScript` targets `{tabId}` only (no `allFrames: true`), so
-    same-origin iframe content (embeds/widgets) is silently skipped. Likely
-    fine given `activeTab` scoping — confirm as intentional.
+11. ~~**`service_worker.js:24-26` — iframes never get the grid.**~~ **Fixed, as an opt-in option.**
+    Reproduced first with a two-file demo page (a plain image plus a
+    same-origin `<iframe>` with its own image, no extension code loaded)
+    to confirm the real extension actually skips the iframe's image before
+    changing anything.
+
+    Rather than always injecting into every frame, added a new "Embedded
+    Frames" section at the bottom of the Options page - a single checkbox,
+    **off by default**, since iframes are often adverts, comment widgets
+    or other embedded content a grid over the top would just be
+    distracting on. `service_worker.js` now reads this
+    (`chrome.storage.sync.get({applyToFrames: false}, ...)`) fresh on
+    every toolbar click and sets `allFrames` on the `executeScript` call
+    accordingly - `activeTab` already covers this per-gesture, including
+    cross-origin iframes in that tab, so no new permission was needed.
+
+    Documented the one real gotcha in both the Options page itself and
+    `guide.html`: unlike every other option, this one **doesn't** take
+    effect on a tab where the grid is already active, since the
+    allFrames decision is only made once, at injection time, in the
+    service worker - it only applies the next time the grid is toggled on.
+
+    Live-verified the Options page end to end (checkbox renders unchecked
+    by default, saves, reloads correctly showing the true stored value,
+    and resets via Restore Defaults) - the `service_worker.js` half
+    can't be live-tested the same way (`chrome://extensions` is blocked
+    from browser-automation navigation), so that part rests on code
+    review plus the existing demo page for you to confirm by hand.
 
 12. ~~**`content.js` `sanitizeOptions` / `grid-render.js` `hexToRgba` — colour values aren't sanitized.**~~ **Fixed.**
     Added `sanitizeColour(value, fallback)` to `content.js`, falling back

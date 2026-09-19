@@ -31,10 +31,16 @@ try {
 
     chrome.action.onClicked.addListener(tab => {
 
-        chrome.scripting.executeScript({
-            target: {tabId: tab.id}, files: ['grid-render.js', 'content.js']
-        }).catch(() => {
-            showRefusalBadge(tab.id);
+        // Read fresh on every click rather than once at startup, so a
+        // change made in Options takes effect the next time the grid is
+        // toggled on - it can't reach into the frames of a tab where the
+        // grid is already active, since injection only happens here.
+        chrome.storage.sync.get({applyToFrames: false}, ({applyToFrames}) => {
+            chrome.scripting.executeScript({
+                target: {tabId: tab.id, allFrames: applyToFrames}, files: ['grid-render.js', 'content.js']
+            }).catch(() => {
+                showRefusalBadge(tab.id);
+            });
         });
     });
 
