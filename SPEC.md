@@ -130,7 +130,8 @@ priority order as time allows; none of these block day-to-day use.
    else - worth trying the main pin-browsing app (pinterest.com) too,
    where images are more likely lazy/virtualized (see #10).
 
-10. **`content.js:161-182` (`applyGrids`) — no live updates for lazy-loaded/infinite-scroll images.**
+10. ~~**`content.js:161-182` (`applyGrids`) — no live updates for lazy-loaded/infinite-scroll images.**~~ **WILL NOT FIX
+    ... too complex (on Flickr at least) and not worth it**
     Images are snapshotted once per click; anything added afterward never
     gets a grid until toggled off/on again. Confirm this is intended before
     treating it as a bug — fixing it would mean a `MutationObserver`.
