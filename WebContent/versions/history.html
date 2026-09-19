@@ -58,6 +58,17 @@
             The intersection circles can now be drawn filled instead of as outlines, via the new
             Outline/Filled option on the Options page. Outline remains the default.
           </p>
+          <h5>Embedded Frames</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            A new "Embedded Frames" option applies the grid inside same-origin iframes on a page
+            too, not just the top-level page. Off by default, since iframes are often adverts or
+            other embedded content you probably don't want a grid drawn over.
+          </p>
+          <p class="flow-text">
+            Unlike the other options, this one only takes effect the next time you toggle the
+            grid on - not on a tab where it's already active.
+          </p>
         </div>
         <div class="col s12 l6">
           <h5>Toolbar Icon</h5>
@@ -92,6 +103,13 @@
           <p class="flow-text">
             Rows and columns can't both be set to 1 at the same time, since that would draw no
             lines at all.
+          </p>
+          <h5>Minimum Image Size</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            The minimum image size the grid applies to - previously a fixed 100x50 pixels - is
+            now configurable from the Options page, along with whether that minimum can apply
+            with width and height swapped, so a tall portrait photo can qualify via its height.
           </p>
         </div>
       </div>
@@ -141,12 +159,26 @@
             applied to an image, just to double-check its size.
           </p>
           <p class="flow-text">
-            Grid rows and columns are now capped at 9 (a 3x3 grid of 3x3 cells), avoiding
-            excessively large grids.
+            Grid rows and columns are now capped at 9, avoiding excessively large grids.
           </p>
           <p class="flow-text">
             A failed save (<em>eg</em> from exceeding the sync storage limit) is now reported,
             instead of showing a false "Options saved." message.
+          </p>
+          <p class="flow-text">
+            Line and circle colour values loaded from storage are now sanitized, guarding
+            against corrupted or invalid colours left behind by older versions or manual edits.
+          </p>
+          <p class="flow-text">
+            Fields belonging to a disabled section (<em>eg</em> Circle Radius when Circles is
+            off) are now visibly greyed out.
+          </p>
+          <p class="flow-text">
+            "Restore Defaults" now applies immediately with an Undo action, instead of asking
+            for confirmation first.
+          </p>
+          <p class="flow-text">
+            The toolbar icon's tooltip now describes what clicking it actually does.
           </p>
         </div>
       </div>
