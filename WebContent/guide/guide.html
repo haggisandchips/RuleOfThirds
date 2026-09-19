@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Rule of Thirds: Guide</title>
+    <link rel="stylesheet" href="../css/style.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col s12">
+          <h2>Rule of Thirds: Guide</h2>
+          <p class="flow-text">
+            See what's changed recently on the <a href="../versions/history.html">Version History</a> page.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h4>What It Does</h4>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Rule of Thirds draws a configurable grid and intersection circles over the images on a
+            page, to help judge composition - where the subject sits relative to the classic "rule
+            of thirds" crossing points, or any other grid you set up.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h4>Using the Grid</h4>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Click the toolbar icon to add the grid to every eligible image on the current page.
+            Click it again to remove it. The icon itself shows whether the grid is currently on
+            for that tab: full colour when it's active, greyscale when it isn't.
+          </p>
+          <p class="flow-text">
+            The grid only applies to images that are actually visible on the page and meet a
+            configurable minimum size (100x50 pixels by default) - tiny icons, hidden elements
+            and decorative spacers are skipped automatically. See <strong>Minimum Image
+            Size</strong> below to change this.
+          </p>
+          <p class="flow-text">
+            Since a freshly loaded page has no grid on it yet, the icon resets to greyscale every
+            time you navigate - click it again to re-apply the grid on the new page.
+          </p>
+          <p class="flow-text">
+            If a page doesn't allow the grid to be added at all (<em>eg</em> a restricted
+            <code>chrome://</code> page), the toolbar icon briefly shows a warning badge instead.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h4>Customising the Grid</h4>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Right-click the toolbar icon and choose <em>Options</em> to change how the grid looks.
+            Changes apply immediately to any page the grid is currently active on.
+          </p>
+          <p class="flow-text">
+            <strong>Grid</strong> - turn grid lines on or off, and set the number of rows and
+            columns (1 or more; rows and columns can't both be set to 1, since that would draw no
+            lines at all). <strong>Circles</strong> - turn intersection circles on or off, set
+            their radius, and draw them outlined or filled.
+          </p>
+          <p class="flow-text">
+            <strong>Line Colour</strong> and <strong>Circle Colour</strong> each have their own
+            colour picker (with a Quick Pick row of common colours one click away) and an opacity
+            slider, for anything from a bold solid line to a barely-there translucent one.
+          </p>
+          <p class="flow-text">
+            <strong>Embedded Frames</strong> controls whether the grid also applies inside
+            embedded frames (<em>iframes</em>) on a page - off by default, since these are often
+            adverts or other embedded content you probably don't want a grid drawn over. Unlike
+            the settings above, this one doesn't apply immediately: it takes effect the next time
+            you toggle the grid on a page, not on a tab where the grid is already active.
+          </p>
+          <p class="flow-text">
+            <strong>Minimum Image Size</strong>, at the bottom of the page, sets the smallest
+            image the grid will apply to (100x50 pixels by default) - tiny icons, hidden elements
+            and decorative spacers stay skipped regardless of how you set this.
+            <strong>Either orientation</strong>, on by default, lets an image qualify with the
+            width and height minimums swapped too, so a tall portrait photo can use its height to
+            meet the width minimum. Turn it off to require the sizes exactly as given, which in
+            practice restricts the grid to clearly landscape-shaped images.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h4>Hiding Individual Lines and Circles</h4>
+          <div class="divider"></div>
+          <p class="flow-text">
+            The Options page's <strong>Customise</strong> section shows two views side by side: a
+            "Hide / Show" map for clicking individual lines and circles on or off, and a "Preview"
+            showing exactly what the real overlay will look like with your current colours,
+            opacity and style. A circle can be hidden independently of the lines it sits on, for a
+            crossing point with no dot on top of it.
+          </p>
+          <p class="flow-text">
+            The "Hide / Show" map can be operated entirely from the keyboard: tab to it, then use
+            the arrow keys to move between lines and circles and press Enter or Space to show or
+            hide whichever one is currently selected. A status message for screen readers
+            announces what's selected and whether it's currently shown or hidden.
+          </p>
+          <p class="flow-text">
+            Preview can optionally show a background photo behind the grid, tinted to match your
+            configured colours, for a better sense of how the overlay will sit on a real image -
+            turn it off via the "Use background photo" checkbox if you'd rather not.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
     DEFAULT_OPTIONS,
     MIN_GRID_LINES,
+    MAX_GRID_LINES,
     MIN_CIRCLE_RADIUS,
     clampInt,
     minGridLines,
@@ -15,7 +16,9 @@ const {
     computePreviewBackground,
     findGridCustomiseTarget,
     renderGridCustomiseReference,
-    drawPreviewBackground
+    drawPreviewBackground,
+    listGridCustomiseTargets,
+    drawGridCustomiseFocus
 } = require('../WebContent/options/options.js');
 
 // A fake canvas context that just records the strokeStyle in effect at each
@@ -24,14 +27,16 @@ const {
 function createColourRecordingContext() {
     let currentStrokeStyle = null;
     const strokes = [];
+    const arcRadii = [];
     return {
         strokes,
+        arcRadii,
         fillStyle: null,
         fillRect() {},
         beginPath() {},
         moveTo() {},
         lineTo() {},
-        arc() {},
+        arc(x, y, radius) { arcRadii.push(radius); },
         stroke() { strokes.push(currentStrokeStyle); },
         set strokeStyle(value) { currentStrokeStyle = value; },
         get strokeStyle() { return currentStrokeStyle; }
@@ -72,6 +77,11 @@ test('clampInt clamps to the minimum instead of accepting 0 or negative values',
 
 test('clampInt passes through an already-valid value unchanged', () => {
     assert.equal(clampInt('12', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows), 12);
+});
+
+test('clampInt clamps to an optional maximum', () => {
+    assert.equal(clampInt('20', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES), MAX_GRID_LINES);
+    assert.equal(clampInt('9', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES), 9);
 });
 
 test('minGridLines stays at the base minimum when the other dimension is not 1', () => {
@@ -235,7 +245,7 @@ test('renderGridCustomiseReference draws a disabled line in grey, everything els
     // skipped entirely (no crossing to sit on): 2 rows + 2 columns + 2
     // circles (row 1's only) = 6 strokes.
     assert.equal(ctx.strokes.length, 6);
-    assert.deepEqual(ctx.strokes, ['#b0b0b0', '#000000', '#000000', '#000000', '#000000', '#000000']);
+    assert.deepEqual(ctx.strokes, ['#787878', '#000000', '#000000', '#000000', '#000000', '#000000']);
 });
 
 test('renderGridCustomiseReference draws a disabled circle in grey without affecting its crossing lines', () => {
@@ -247,7 +257,7 @@ test('renderGridCustomiseReference draws a disabled circle in grey without affec
     // row-major order (rowIndex outer, columnIndex inner), the first of
     // which is the disabled one.
     assert.deepEqual(ctx.strokes.slice(0, 4), ['#000000', '#000000', '#000000', '#000000']);
-    assert.deepEqual(ctx.strokes.slice(4), ['#b0b0b0', '#000000', '#000000', '#000000']);
+    assert.deepEqual(ctx.strokes.slice(4), ['#787878', '#000000', '#000000', '#000000']);
 });
 
 test('renderGridCustomiseReference draws nothing for an axis whose master toggle is off', () => {
@@ -258,6 +268,77 @@ test('renderGridCustomiseReference draws nothing for an axis whose master toggle
     const circleOffCtx = createColourRecordingContext();
     renderGridCustomiseReference(circleOffCtx, 90, 90, baseGridOptions({renderCircle: false}));
     assert.equal(circleOffCtx.strokes.length, 4, 'only the 4 lines remain');
+});
+
+test('renderGridCustomiseReference clamps the circle radius to fit the grid cell', () => {
+    const ctx = createColourRecordingContext();
+    // A 90x90 3x3 grid gives 30x30 cells, so the largest radius that fits
+    // without overlap is 15 - circleRadius asks for far more than that.
+    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({circleRadius: 999}));
+
+    assert.ok(ctx.arcRadii.every(r => r === 15), `expected every radius clamped to 15, got ${ctx.arcRadii}`);
+});
+
+test('listGridCustomiseTargets lists every line and circle, in row/column/circle order', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions());
+
+    assert.deepEqual(targets.map(t => t.type), ['row', 'row', 'column', 'column', 'circle', 'circle', 'circle', 'circle']);
+    assert.deepEqual(targets.map(t => t.label), [
+        'Row line 1', 'Row line 2', 'Column line 1', 'Column line 2',
+        'Circle at row 1, column 1', 'Circle at row 1, column 2',
+        'Circle at row 2, column 1', 'Circle at row 2, column 2'
+    ]);
+});
+
+test('listGridCustomiseTargets still lists a disabled line as a target (to re-enable it)', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({gridRowLines: [false, true]}));
+    const rowTargets = targets.filter(t => t.type === 'row');
+
+    assert.equal(rowTargets[0].enabled, false);
+    assert.equal(rowTargets[1].enabled, true);
+});
+
+test('listGridCustomiseTargets omits a circle whose crossing line is disabled, even though the line itself is still listed', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({gridRowLines: [false, true]}));
+
+    assert.equal(targets.filter(t => t.type === 'row').length, 2, 'both row lines remain valid targets');
+    assert.equal(targets.filter(t => t.type === 'circle').length, 2, 'row 0 has no crossing to hang a circle on, so only row 1\'s 2 circles remain');
+});
+
+test('listGridCustomiseTargets returns no line targets when Grid is disabled, independent of Circles', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({renderGrid: false}));
+
+    assert.equal(targets.some(t => t.type === 'row' || t.type === 'column'), false);
+    assert.equal(targets.filter(t => t.type === 'circle').length, 4, 'circle visibility does not depend on renderGrid');
+});
+
+test('listGridCustomiseTargets returns no circle targets when Circles is disabled', () => {
+    const targets = listGridCustomiseTargets(baseGridOptions({renderCircle: false}));
+
+    assert.equal(targets.some(t => t.type === 'circle'), false);
+});
+
+test('drawGridCustomiseFocus does nothing when there is no target', () => {
+    const ctx = createColourRecordingContext();
+    drawGridCustomiseFocus(ctx, 90, 90, baseGridOptions(), null);
+
+    assert.equal(ctx.strokes.length, 0);
+});
+
+test('drawGridCustomiseFocus strokes a single highlight in the focus colour for a row, column or circle target', () => {
+    const options = baseGridOptions();
+
+    const rowCtx = createColourRecordingContext();
+    drawGridCustomiseFocus(rowCtx, 90, 90, options, {type: 'row', index: 0});
+    assert.deepEqual(rowCtx.strokes, ['#26a69a']);
+
+    const columnCtx = createColourRecordingContext();
+    drawGridCustomiseFocus(columnCtx, 90, 90, options, {type: 'column', index: 0});
+    assert.deepEqual(columnCtx.strokes, ['#26a69a']);
+
+    const circleCtx = createColourRecordingContext();
+    drawGridCustomiseFocus(circleCtx, 90, 90, options, {type: 'circle', row: 0, column: 0});
+    assert.deepEqual(circleCtx.strokes, ['#26a69a']);
 });
 
 // A fake canvas context that records drawImage/fillRect calls and the

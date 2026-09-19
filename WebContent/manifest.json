@@ -3,7 +3,7 @@
 
     "name": "Rule of Thirds",
     "version": "1.8",
-    "description": "Simple extension to draw a 3 x 3 grid on an image to help visualise the Rule of Thirds.",
+    "description": "A customisable grid overlay for visualising image composition techniques (primarily the Rule of Thirds).",
 
     "icons": {
         "16": "icon16.png",
@@ -19,7 +19,7 @@
         "scripting",
         "activeTab",
         "storage",
-        "notifications"
+        "contextMenus"
     ],
 
     "options_page": "options/options.html",
@@ -29,7 +29,7 @@
             "19": "icon19-inactive.png",
             "38": "icon38-inactive.png"
         },
-        "default_title": "Add Rule of Thirds grid to images larger than 100 x 50 in either orientation",
+        "default_title": "Toggle the Rule of Thirds grid on this page's images",
         "name": "Rule of Thirds"
     }
 }

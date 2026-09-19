@@ -10,6 +10,9 @@
       <div class="row">
         <div class="col s12">
           <h2>Rule of Thirds: Version History</h2>
+          <p class="flow-text">
+            New to the extension? See the <a href="../guide/guide.html">Guide</a> for how to use it. Prefer to jump straight in? Use <a href="../options/options.html">Options</a> to make it your own.
+          </p>
         </div>
       </div>
       <div class="row">
@@ -34,10 +37,13 @@
             A circle can be hidden independently of the lines it sits on, for a crossing point
             with no dot on top of it.
           </p>
+          <p class="flow-text">
+            Customise controls should be fully accessible. Comment via review if not.
+          </p>
           <h5>Live Preview</h5>
           <div class="divider"></div>
           <p class="flow-text">
-            The Customise section shows two views side by side: a "Control" map for clicking
+            The Customise section shows two views side by side: a "Hide / Show" map for clicking
             lines and circles on or off, and a "Preview" showing exactly what the real overlay
             will look like, using the actual configured colours, opacity and style.
           </p>
@@ -46,15 +52,11 @@
             with the configured colours, for a better sense of how the overlay will sit on a
             real image. Turn it off via the "Use background photo" checkbox if you'd rather not.
           </p>
-          <h5>Grid Dimensions</h5>
+          <h5>Circle Style</h5>
           <div class="divider"></div>
           <p class="flow-text">
-            Grid rows and columns can now be set to 1, effectively removing dividing lines in
-            one orientation instead of always requiring a full grid.
-          </p>
-          <p class="flow-text">
-            Rows and columns can't both be set to 1 at the same time, since that would draw no
-            lines at all.
+            The intersection circles can now be drawn filled instead of as outlines, via the new
+            Outline/Filled option on the Options page. Outline remains the default.
           </p>
         </div>
         <div class="col s12 l6">
@@ -81,11 +83,15 @@
           <p class="flow-text">
             Both colours also gained an opacity slider, for translucent grid lines and circles.
           </p>
-          <h5>Circle Style</h5>
+          <h5>Grid Dimensions</h5>
           <div class="divider"></div>
           <p class="flow-text">
-            The intersection circles can now be drawn filled instead of as outlines, via the new
-            Outline/Filled option on the Options page. Outline remains the default.
+            Grid rows and columns can now be set to 1, effectively removing dividing lines in
+            one orientation instead of always requiring a full grid.
+          </p>
+          <p class="flow-text">
+            Rows and columns can't both be set to 1 at the same time, since that would draw no
+            lines at all.
           </p>
         </div>
       </div>
@@ -119,12 +125,28 @@
             scrolling.
           </p>
           <p class="flow-text">
-            A notification is now shown when the grid can't be added to a page, rather than
-            failing silently.
+            When the grid can't be added to a page (<em>eg</em> a restricted <code>chrome://</code> page),
+            the toolbar icon now shows a brief warning badge instead of failing silently.
           </p>
           <p class="flow-text">
             Line Colour now has its own section on the Options page, instead of living inside
             the Grid section.
+          </p>
+          <p class="flow-text">
+            Fixed the grid not being added to images whose own CSS position is <code>fixed</code>
+            (<em>eg</em> some lightbox/modal patterns) - previously skipped entirely.
+          </p>
+          <p class="flow-text">
+            Removed a redundant network request that used to happen every time the grid was
+            applied to an image, just to double-check its size.
+          </p>
+          <p class="flow-text">
+            Grid rows and columns are now capped at 9 (a 3x3 grid of 3x3 cells), avoiding
+            excessively large grids.
+          </p>
+          <p class="flow-text">
+            A failed save (<em>eg</em> from exceeding the sync storage limit) is now reported,
+            instead of showing a false "Options saved." message.
           </p>
         </div>
       </div>

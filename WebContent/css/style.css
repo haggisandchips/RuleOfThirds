@@ -109,12 +109,38 @@ h5 {
     color: #424242;
 }
 
+/* A short explanatory line under a section heading - smaller and quieter
+   than .flow-text, which is sized for the changelog/guide pages rather
+   than a compact options form. */
+.help-text {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin: 0 0 0.75rem;
+}
+
+/* Visually hides text while keeping it readable to screen readers - used
+   for the Customise Control canvas's live status announcements (see
+   #grid-customise-status in options.html / announceGridCustomiseFocus in
+   options.js), since that feedback has no useful on-screen presentation
+   of its own (the canvas's focus ring already shows it visually). */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Field captions (labels with a `for`, placed before their input, or a
    plain span above a widget that has no single bound input). */
 label[for],
 .field-caption {
     display: block;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--color-muted);
     margin-bottom: 0.25rem;
 }
@@ -213,6 +239,16 @@ input[type="range"] {
     margin: 0.5rem 0;
 }
 
+/* Grid's Rows/Columns/Line Colour and Circles' Radius/Style/Colour are
+   disabled via syncDependentFieldsEnabled() in options.js while their
+   section's own "Enabled" checkbox is off, since none of them do anything
+   in that state - dimmed and cursor:not-allowed makes that visible rather
+   than leaving fully-interactive controls that silently have no effect. */
+input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .opacity-row {
     display: flex;
     align-items: center;
@@ -262,8 +298,33 @@ input[type="range"] {
     transform: scale(1.1);
 }
 
+.quick-swatch:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.quick-swatch:disabled:hover {
+    transform: none;
+}
+
+/* The white swatch's own border is transparent like every other swatch's,
+   which makes it nearly invisible against the page's own off-white
+   background when unselected - give it a permanent light border instead.
+   Placed before .selected below, which has equal specificity, so .selected
+   still wins via source order when the white swatch is also selected. */
+.quick-swatch[data-value="#ffffff"] {
+    border-color: #d0d0d0;
+}
+
 .quick-swatch.selected {
     border-color: var(--color-primary);
+}
+
+/* An outline rather than a border-colour change, so keyboard focus stays
+   visually distinct from .selected instead of looking the same. */
+.quick-swatch:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 /* Two side-by-side canvases for the "Customise" grid, sized by
@@ -298,6 +359,15 @@ input[type="range"] {
     margin-top: 0.5rem;
 }
 
+/* Applied by layoutGridCustomiseCanvases() in options.js once sharing the
+   row with Control's fixed 200px would squeeze Preview into a barely-
+   useful sliver - stacks Control above Preview and centres both instead
+   of squeezing them side by side. */
+.grid-customise-col-stacked {
+    flex-direction: column;
+    align-items: center;
+}
+
 .grid-customise-panel {
     display: flex;
     flex-direction: column;
@@ -319,6 +389,16 @@ input[type="range"] {
     margin: 0.5rem 0 0;
 }
 
+/* The canvas draws its own focus indicator around the selected line/circle
+   (see drawGridCustomiseFocus in options.js), but it still needs a native
+   focus outline around the canvas itself so keyboard users can tell it's
+   the active element at all, consistent with the rest of the page's
+   :focus styling. */
+.grid-customise-control:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;
@@ -337,6 +417,11 @@ input[type="range"] {
     background: var(--color-primary-dark);
 }
 
+.btn-large:focus-visible {
+    outline: 3px solid var(--color-primary-dark);
+    outline-offset: 2px;
+}
+
 #toast-container {
     position: fixed;
     left: 1rem;
@@ -348,6 +433,9 @@ input[type="range"] {
 }
 
 .toast {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
     background: #323232;
     color: #fff;
     padding: 0.75rem 1.5rem;
@@ -362,4 +450,24 @@ input[type="range"] {
 .toast.show {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* eg the "Undo" button on restoreDefaultOptions's toast (see options.js). */
+.toast-action {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--color-primary-light);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+}
+
+.toast-action:hover,
+.toast-action:focus-visible {
+    text-decoration: underline;
 }

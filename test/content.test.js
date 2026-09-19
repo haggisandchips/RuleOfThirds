@@ -2,36 +2,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-    resolveImageSrc,
     isMinSize,
     shouldRender,
     sanitizeInt,
     sanitizeOptions,
-    sanitizeCircleStates
+    sanitizeLineStates,
+    sanitizeCircleStates,
+    sanitizeColour
 } = require('../WebContent/content.js');
 
-test('resolveImageSrc prefers currentSrc over src', () => {
-    assert.equal(
-        resolveImageSrc({currentSrc: 'https://example.com/a.jpg', src: 'https://example.com/b.jpg'}),
-        'https://example.com/a.jpg'
-    );
-});
-
-test('resolveImageSrc falls back to src when currentSrc is empty', () => {
-    assert.equal(
-        resolveImageSrc({currentSrc: '', src: 'https://example.com/b.jpg'}),
-        'https://example.com/b.jpg'
-    );
-});
-
-test('resolveImageSrc never throws for an image with no src at all', () => {
-    // This is the bug that used to crash applyGrids() partway through the
-    // page whenever an <img> had no literal `src` attribute (srcset-only,
-    // lazy-loaded placeholders, etc).
-    assert.doesNotThrow(() => resolveImageSrc({currentSrc: '', src: ''}));
-});
-
-test('isMinSize accepts either orientation', () => {
+test('isMinSize accepts either orientation by default', () => {
     assert.equal(isMinSize(100, 50, 100, 50), true, 'exact landscape minimum');
     assert.equal(isMinSize(50, 100, 100, 50), true, 'exact portrait minimum');
 });
@@ -40,6 +20,22 @@ test('isMinSize rejects images smaller than the minimum in both orientations', (
     assert.equal(isMinSize(99, 50, 100, 50), false);
     assert.equal(isMinSize(50, 99, 100, 50), false);
     assert.equal(isMinSize(10, 10, 100, 50), false);
+});
+
+test('isMinSize with eitherOrientation explicitly true behaves the same as the default', () => {
+    assert.equal(isMinSize(100, 50, 100, 50, true), true, 'exact landscape minimum');
+    assert.equal(isMinSize(50, 100, 100, 50, true), true, 'exact portrait minimum');
+});
+
+test('isMinSize with eitherOrientation false rejects a swapped (portrait) match', () => {
+    // Would pass under the default eitherOrientation - only rejected once the
+    // flip itself is disabled.
+    assert.equal(isMinSize(50, 100, 100, 50, false), false);
+});
+
+test('isMinSize with eitherOrientation false accepts a literal (unswapped) match', () => {
+    assert.equal(isMinSize(100, 50, 100, 50, false), true);
+    assert.equal(isMinSize(200, 200, 100, 50, false), true);
 });
 
 test('shouldRender is false when the image is hidden, regardless of size', () => {
@@ -64,6 +60,19 @@ test('shouldRender is false for a visible but undersized image', () => {
     assert.equal(
         shouldRender({visibility: 'visible', display: 'block'}, 10, 10, 100, 50),
         false
+    );
+});
+
+test('shouldRender passes eitherOrientation through to isMinSize', () => {
+    // A 50x100 portrait image meets the 100x50 minimum only via the flip -
+    // rejected once eitherOrientation is turned off.
+    assert.equal(
+        shouldRender({visibility: 'visible', display: 'block'}, 50, 100, 100, 50, false),
+        false
+    );
+    assert.equal(
+        shouldRender({visibility: 'visible', display: 'block'}, 50, 100, 100, 50, true),
+        true
     );
 });
 
@@ -93,10 +102,10 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         renderGrid: true,
         gridRows: '3',
         gridColumns: '',
-        lineColour: '#000',
+        lineColour: '#000000',
         lineOpacity: '150',
         renderCircle: true,
-        circleColour: '#f00',
+        circleColour: '#ff0000',
         circleOpacity: '-10',
         circleRadius: '-1',
         circleStyle: 'outline'
@@ -108,15 +117,54 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         gridColumns: 3,
         gridRowLines: [true, true],
         gridColumnLines: [true, true],
-        lineColour: '#000',
+        lineColour: '#000000',
         lineOpacity: 100,
         renderCircle: true,
-        circleColour: '#f00',
+        circleColour: '#ff0000',
         circleOpacity: 0,
         circleRadius: 1,
         circleStyle: 'outline',
-        circleLines: [[true, true], [true, true]]
+        circleLines: [[true, true], [true, true]],
+        minImageWidth: 100,
+        minImageHeight: 50
     });
+});
+
+test('sanitizeOptions clamps minImageWidth/minImageHeight and falls back to the defaults', () => {
+    const result = sanitizeOptions({minImageWidth: '0', minImageHeight: 'abc'});
+
+    assert.equal(result.minImageWidth, 1, 'clamped up to the minimum of 1, not the 100 fallback');
+    assert.equal(result.minImageHeight, 50, 'falls back to 50 for a non-numeric value');
+});
+
+test('sanitizeColour passes through a valid #rrggbb value unchanged', () => {
+    assert.equal(sanitizeColour('#a1b2c3', '#ffffff'), '#a1b2c3');
+});
+
+test('sanitizeColour falls back for anything that is not a valid 6-digit hex colour', () => {
+    // hexToRgba() hard-codes 6-digit substring offsets, so even a
+    // technically-valid CSS shorthand like #000 would parse into garbage -
+    // only a full #rrggbb value is actually safe to pass through.
+    assert.equal(sanitizeColour('#000', '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour('red', '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour('#gggggg', '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour(undefined, '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour(null, '#ffffff'), '#ffffff');
+    assert.equal(sanitizeColour(12, '#ffffff'), '#ffffff');
+});
+
+test('sanitizeOptions falls back to the default colours for malformed stored values', () => {
+    const result = sanitizeOptions({lineColour: 'not-a-colour', circleColour: null});
+
+    assert.equal(result.lineColour, '#ffffff');
+    assert.equal(result.circleColour, '#ff0000');
+});
+
+test('sanitizeOptions caps gridRows/gridColumns at 9', () => {
+    const result = sanitizeOptions({gridRows: '20', gridColumns: '12'});
+
+    assert.equal(result.gridRows, 9);
+    assert.equal(result.gridColumns, 9);
 });
 
 test('sanitizeOptions treats a missing line-state array as every line enabled', () => {
@@ -138,6 +186,27 @@ test('sanitizeOptions only disables a line on an explicit false, and resizes to 
     // Grew from 2 stored entries to 3 (gridColumns 4 => 3 lines) - the new
     // trailing entry has no stored data, so it defaults to enabled.
     assert.deepEqual(result.gridColumnLines, [true, false, true]);
+});
+
+test('sanitizeLineStates treats a missing array as every line enabled', () => {
+    const result = sanitizeLineStates(undefined, 3);
+    assert.deepEqual(result, [true, true, true]);
+});
+
+test('sanitizeLineStates only disables a line on an explicit false', () => {
+    const result = sanitizeLineStates([false, 'not a boolean', true], 3);
+    assert.deepEqual(result, [false, true, true]);
+});
+
+test('sanitizeLineStates resizes to the current count', () => {
+    // Grew from 2 stored entries to 3 - the new trailing entry has no
+    // stored data, so it defaults to enabled.
+    const result = sanitizeLineStates([false, false], 3);
+    assert.deepEqual(result, [false, false, true]);
+});
+
+test('sanitizeLineStates returns an empty array for a count of 0', () => {
+    assert.deepEqual(sanitizeLineStates([false, true], 0), []);
 });
 
 test('sanitizeCircleStates treats a missing circle grid as every circle enabled', () => {
