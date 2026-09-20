@@ -126,7 +126,11 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         circleStyle: 'outline',
         circleLines: [[true, true], [true, true]],
         minImageWidth: 100,
-        minImageHeight: 50
+        minImageHeight: 50,
+        phiRatio: [1, 0.618, 1],
+        phiRowLines: [true, true],
+        phiColumnLines: [true, true],
+        phiCircleLines: [[true, true], [true, true]]
     });
 });
 
@@ -224,4 +228,22 @@ test('sanitizeCircleStates resizes each row to the current column count', () => 
     // entry has no stored data, so it defaults to enabled.
     const result = sanitizeCircleStates([[false, false]], 2, 3);
     assert.deepEqual(result, [[false, false, true], [true, true, true]]);
+});
+
+test('sanitizeOptions falls back to the default Phi ratio when missing or malformed', () => {
+    assert.deepEqual(sanitizeOptions({}).phiRatio, [1, 0.618, 1]);
+    assert.deepEqual(sanitizeOptions({phiRatio: 'not an array'}).phiRatio, [1, 0.618, 1]);
+    assert.deepEqual(sanitizeOptions({phiRatio: [1, 2]}).phiRatio, [1, 0.618, 1], 'wrong length falls back entirely');
+});
+
+test('sanitizeOptions falls back per-entry for an invalid Phi ratio value, not the whole array', () => {
+    const result = sanitizeOptions({phiRatio: [2, 'not a number', -1]});
+    assert.deepEqual(result.phiRatio, [2, 0.618, 1]);
+});
+
+test('sanitizeOptions treats a missing Phi Grid line/circle state as every line/circle enabled', () => {
+    const result = sanitizeOptions({});
+    assert.deepEqual(result.phiRowLines, [true, true]);
+    assert.deepEqual(result.phiColumnLines, [true, true]);
+    assert.deepEqual(result.phiCircleLines, [[true, true], [true, true]]);
 });

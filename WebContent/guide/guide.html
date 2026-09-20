@@ -20,73 +20,108 @@
         <div class="col s12">
           <h4>What It Does</h4>
           <div class="divider"></div>
-          <p class="flow-text">
-            Rule of Thirds draws a configurable grid and intersection circles over the images on a
-            page, to help judge composition - where the subject sits relative to the classic "rule
-            of thirds" crossing points, or any other grid you set up.
+          <p class="flow-text">Rule of Thirds draws a configurable composition
+            overlay over the images on a page, to help judge composition - a classic grid, a fixed Phi Grid, or a
+            Fibonacci Spiral.
           </p>
         </div>
       </div>
 
       <div class="row">
         <div class="col s12">
-          <h4>Using the Grid</h4>
+          <h4>Using the Overlay</h4>
           <div class="divider"></div>
-          <p class="flow-text">
-            Click the toolbar icon to add the grid to every eligible image on the current page.
-            Click it again to remove it. The icon itself shows whether the grid is currently on
-            for that tab: full colour when it's active, greyscale when it isn't.
+          <p class="flow-text">Click the toolbar icon to add the overlay to every
+            eligible image on the current page. Click it again to remove it. The icon itself shows
+            whether the overlay is currently on for that tab: full colour when it's active,
+            greyscale when it isn't.
           </p>
-          <p class="flow-text">
-            The grid only applies to images that are actually visible on the page and meet a
-            configurable minimum size (100x50 pixels by default) - tiny icons, hidden elements
-            and decorative spacers are skipped automatically. See <strong>Minimum Image
-            Size</strong> below to change this.
+          <p class="flow-text">The overlay only applies to images that are actually
+            visible on the page and meet a configurable minimum size (100x50 pixels by default) -
+            tiny icons, hidden elements and decorative spacers are skipped automatically. See
+            <strong>Minimum Image Size</strong> below to change this.
           </p>
-          <p class="flow-text">
-            Since a freshly loaded page has no grid on it yet, the icon resets to greyscale every
-            time you navigate - click it again to re-apply the grid on the new page.
-          </p>
-          <p class="flow-text">
-            If a page doesn't allow the grid to be added at all (<em>eg</em> a restricted
-            <code>chrome://</code> page), the toolbar icon briefly shows a warning badge instead.
+          <p class="flow-text">If a page doesn't allow the overlay to be added at
+            all (<em>eg</em> a restricted <code>chrome://</code> page), the toolbar icon briefly
+            shows a warning badge instead.
           </p>
         </div>
       </div>
 
       <div class="row">
         <div class="col s12">
-          <h4>Customising the Grid</h4>
+          <h4>Choosing an Overlay Style</h4>
+          <div class="divider"></div>
+          <p class="flow-text">Right-click the toolbar icon and choose
+            <em>Options</em>. The large <strong>Composition Overlay</strong> toggle at the top
+            picks one of three styles - only one applies at a time, though all three keep their
+            own settings when you switch between them, so nothing is lost by trying another.
+          </p>
+          <p class="flow-text"><strong>Grid</strong> - the classic rule-of-thirds
+            grid, with a fully configurable number of rows and columns.
+          </p>
+          <p class="flow-text"><strong>Phi Grid</strong> - a fixed 3x3 grid spaced by a ratio (1 : 0.618 : 1 by
+            default) instead of equal thirds.
+          </p>
+          <p class="flow-text"><strong>Fibonacci Spiral</strong> - a spiral overlay
+            instead of straight lines.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h4>Customising Grid and Phi Grid</h4>
           <div class="divider"></div>
           <p class="flow-text">
-            Right-click the toolbar icon and choose <em>Options</em> to change how the grid looks.
-            Changes apply immediately to any page the grid is currently active on.
+            Changes apply immediately to any page the overlay is currently active on.
           </p>
-          <p class="flow-text">
-            <strong>Grid</strong> - turn grid lines on or off, and set the number of rows and
-            columns (1 or more; rows and columns can't both be set to 1, since that would draw no
-            lines at all). <strong>Circles</strong> - turn intersection circles on or off, set
-            their radius, and draw them outlined or filled.
+          <p class="flow-text"><strong>Grid</strong> - turn grid lines on or off,
+            and set the number of rows and columns (1 or more; rows and columns can't both be set
+            to 1, since that would draw no lines at all).
+          </p>
+          <p class="flow-text"><strong>Phi Grid</strong> - turn its lines on or
+            off, same as Grid, and edit the <strong>Ratio</strong>
+            (outer : middle : outer) that spaces them. The same ratio applies in both directions.
+            "Restore Default Ratio" resets just this ratio back to 1&nbsp;:&nbsp;0.618&nbsp;:&nbsp;1, leaving every
+            other option (including whether Phi Grid itself is enabled) untouched.
+          </p>
+          <p class="flow-text"><strong>Circles</strong> - shared by both Grid
+            and Phi Grid: turn intersection circles on or off, set their radius, and draw them
+            outlined or filled.
           </p>
           <p class="flow-text">
             <strong>Line Colour</strong> and <strong>Circle Colour</strong> each have their own
             colour picker (with a Quick Pick row of common colours one click away) and an opacity
             slider, for anything from a bold solid line to a barely-there translucent one.
           </p>
-          <p class="flow-text">
-            <strong>Embedded Frames</strong> controls whether the grid also applies inside
-            embedded frames (<em>iframes</em>) on a page - off by default, since these are often
-            adverts or other embedded content you probably don't want a grid drawn over. Unlike
-            the settings above, this one doesn't apply immediately: it takes effect the next time
-            you toggle the grid on a page, not on a tab where the grid is already active.
+          <p class="flow-text"><strong>Embedded Frames</strong> controls whether
+            the overlay also applies inside embedded frames (<em>iframes</em>) on a page - off by
+            default, since these are often adverts or other embedded content you probably don't
+            want an overlay drawn over. Unlike the settings above, this one doesn't apply
+            immediately: it takes effect the next time you toggle the overlay on a page, not on a
+            tab where the overlay is already active.
           </p>
-          <p class="flow-text">
-            <strong>Minimum Image Size</strong>, at the bottom of the page, sets the smallest
-            image the grid will apply to (100x50 pixels by default) - tiny icons, hidden elements
-            and decorative spacers stay skipped regardless of how you set this.
-            <strong>Either orientation</strong>, on by default, lets an image qualify with the
-            width and height minimums swapped too, so a tall portrait photo can use its height to
-            meet the width minimum. Turn it off to require minimum sizes exactly as given.
+          <p class="flow-text"><strong>Minimum Image Size</strong>, at the bottom
+            of the page, sets the smallest image the overlay will apply to (100x50 pixels by
+            default) - tiny icons, hidden elements and decorative spacers stay skipped regardless
+            of how you set this. <strong>Either orientation</strong>, on by default, lets an
+            image qualify with the width and height minimums swapped too, so a tall portrait photo
+            can use its height to meet the width minimum. Turn it off to require minimum sizes
+            exactly as given.
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h4>Fibonacci Spiral</h4>
+          <div class="divider"></div>
+          <p class="flow-text">Choose a direction (clockwise or
+            counter-clockwise) and a starting corner - the eight thumbnails show every combination
+            and stay in sync with whichever you pick, in either direction: click a thumbnail to
+            select it, or the radios to highlight the matching thumbnail. The spiral is drawn using
+            <strong>Line Colour</strong> above.
           </p>
         </div>
       </div>
@@ -95,11 +130,11 @@
         <div class="col s12">
           <h4>Hiding Individual Lines and Circles</h4>
           <div class="divider"></div>
-          <p class="flow-text">
-            The Options page's <strong>Customise</strong> section shows two views side by side: a
-            "Hide / Show" map for clicking individual lines and circles on or off, and a "Preview"
-            showing exactly what the real overlay will look like with your current colours,
-            opacity and style. A circle can be hidden independently of the lines it sits on, for a
+          <p class="flow-text">The Options page's <strong>Customise</strong>
+            section - shared by Grid and Phi Grid - shows two views side by side: a "Hide / Show"
+            map for clicking individual lines and circles on or off, and a "Preview" showing
+            exactly what the real overlay will look like with your current colours, opacity and
+            style. A circle can be hidden independently of the lines it sits on, for a
             crossing point with no dot on top of it.
           </p>
           <p class="flow-text">

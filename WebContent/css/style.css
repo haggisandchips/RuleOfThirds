@@ -544,6 +544,59 @@ input:disabled {
     outline-offset: 2px;
 }
 
+/* A smaller, less dominant sibling to .btn-large - for a scoped action (eg
+   "Restore Default Ratio") that shouldn't visually compete with the page's
+   one main Restore Defaults button. */
+.btn-small {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    background: transparent;
+    color: var(--color-primary-dark);
+    border: 1px solid var(--color-primary);
+    border-radius: 2px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-small:hover {
+    background: var(--color-primary-light);
+}
+
+.btn-small:focus-visible {
+    outline: 3px solid var(--color-primary-dark);
+    outline-offset: 2px;
+}
+
+/* The three Phi Grid ratio fields sit side by side with ":" separators
+   (eg "1 : 0.618 : 1"), rather than stacking like every other labelled
+   number field, since they're only meaningful read together as one ratio. */
+.phi-ratio-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.phi-ratio-row input[type="number"] {
+    width: 4rem;
+    flex: 0 0 auto;
+}
+
+/* A ratio field reads worse with spin-button arrows cluttering it, and
+   step-clicking them one thousandth at a time isn't a useful way to edit
+   one anyway - still type="number" underneath (numeric-only input, decimal
+   keyboard on mobile), just without the spinner UI. */
+.no-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 #toast-container {
     position: fixed;
     left: 1rem;

@@ -6,13 +6,19 @@ const {
     MIN_GRID_LINES,
     MAX_GRID_LINES,
     MIN_CIRCLE_RADIUS,
+    MIN_PHI_RATIO,
+    PHI_RATIO_DECIMALS,
     clampInt,
+    clampFloat,
+    roundTo,
     minGridLines,
     computeGridLineMinimums,
     resizeLineStates,
     resetLineStates,
     resizeCircleStates,
     resetCircleStates,
+    weightedLinePositions,
+    smallestWeightedBand,
     computePreviewBackground,
     findGridCustomiseTarget,
     renderGridCustomiseReference,
@@ -43,14 +49,17 @@ function createColourRecordingContext() {
     };
 }
 
-function baseGridOptions(overrides) {
+// A "shape" for a 3x3 equal-thirds weighted grid (see weightedGridStyles in
+// options.js) - Grid's own case, and structurally identical to what a Phi
+// Grid shape looks like with a different rowWeights/columnWeights.
+function baseShape(overrides) {
     return Object.assign({
-        renderGrid: true,
-        gridRows: 3,
-        gridColumns: 3,
-        gridRowLines: [true, true],
-        gridColumnLines: [true, true],
-        renderCircle: true,
+        linesEnabled: true,
+        rowWeights: [1, 1, 1],
+        columnWeights: [1, 1, 1],
+        rowLines: [true, true],
+        columnLines: [true, true],
+        circlesEnabled: true,
         circleRadius: 5,
         circleLines: [[true, true], [true, true]]
     }, overrides);
@@ -82,6 +91,36 @@ test('clampInt passes through an already-valid value unchanged', () => {
 test('clampInt clamps to an optional maximum', () => {
     assert.equal(clampInt('20', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES), MAX_GRID_LINES);
     assert.equal(clampInt('9', MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES), 9);
+});
+
+test('clampFloat parses a decimal value, unlike clampInt which would truncate it', () => {
+    assert.equal(clampFloat('0.618', MIN_PHI_RATIO, 1), 0.618);
+});
+
+test('clampFloat falls back when the field is blank or not a number', () => {
+    assert.equal(clampFloat('', MIN_PHI_RATIO, 1), 1);
+    assert.equal(clampFloat('abc', MIN_PHI_RATIO, 1), 1);
+});
+
+test('clampFloat clamps to the minimum instead of accepting 0 or negative values', () => {
+    assert.equal(clampFloat('0', MIN_PHI_RATIO, 1), MIN_PHI_RATIO);
+    assert.equal(clampFloat('-5', MIN_PHI_RATIO, 1), MIN_PHI_RATIO);
+});
+
+test('clampFloat leaves the value unrounded when no decimals argument is given', () => {
+    assert.equal(clampFloat('0.123456', MIN_PHI_RATIO, 1), 0.123456);
+});
+
+test('clampFloat rounds to the given number of decimal places', () => {
+    assert.equal(clampFloat('0.123456', MIN_PHI_RATIO, 1, 3), 0.123);
+    assert.equal(clampFloat('1', MIN_PHI_RATIO, 1, 3), 1, 'a whole number stays whole, not padded to 1.000');
+});
+
+test('roundTo rounds without padding trailing zeros', () => {
+    assert.equal(roundTo(1, 3), 1);
+    assert.equal(roundTo(0.618, 3), 0.618);
+    assert.equal(roundTo(0.61849, 3), 0.618);
+    assert.equal(roundTo(0.6185, PHI_RATIO_DECIMALS), 0.619, 'rounds half up, same as Math.round');
 });
 
 test('minGridLines stays at the base minimum when the other dimension is not 1', () => {
@@ -186,51 +225,57 @@ test('computePreviewBackground falls back to plain white when neither is enabled
     assert.equal(computePreviewBackground('#ffffff', '#ff0000', false, false), '#ffffff');
 });
 
+test('weightedLinePositions splits equal weights into even fractions', () => {
+    assert.deepEqual(weightedLinePositions([1, 1, 1]), [1 / 3, 2 / 3]);
+});
+
+test('smallestWeightedBand finds the narrowest band as a fraction of the whole', () => {
+    assert.equal(smallestWeightedBand([1, 1, 1]), 1 / 3);
+    assert.ok(Math.abs(smallestWeightedBand([1, 0.618, 1]) - 0.618 / 2.618) < 1e-9);
+});
+
+test('findGridCustomiseTarget places intersections according to a Phi Grid ratio, not equal thirds', () => {
+    const weights = [1, 0.618, 1];
+    const shape = baseShape({rowWeights: weights, columnWeights: weights});
+    // A large axis so the Phi ratio's intersection and the equal-thirds
+    // position it's being compared against are well outside each other's
+    // hit tolerance.
+    const size = 900;
+    const phiPosition = weightedLinePositions(weights)[0] * size;
+    const equalThirdsPosition = size / 3;
+
+    assert.deepEqual(findGridCustomiseTarget(phiPosition, phiPosition, size, size, shape), {type: 'circle', row: 0, column: 0});
+    assert.equal(findGridCustomiseTarget(equalThirdsPosition, equalThirdsPosition, size, size, shape), null,
+        'the equal-thirds position is not a target for a Phi Grid ratio');
+});
+
 test('findGridCustomiseTarget prefers a circle over its own crossing lines when both are within range', () => {
-    const options = {
-        gridRows: 3, gridColumns: 3,
-        gridRowLines: [true, true], gridColumnLines: [true, true],
-        renderGrid: true, renderCircle: true
-    };
     // A 90x90 preview puts the (1,1) intersection at (30, 30).
-    const target = findGridCustomiseTarget(30, 30, 90, 90, options);
+    const target = findGridCustomiseTarget(30, 30, 90, 90, baseShape());
     assert.deepEqual(target, {type: 'circle', row: 0, column: 0});
 });
 
 test('findGridCustomiseTarget falls back to a line when the click is away from any intersection', () => {
-    const options = {
-        gridRows: 3, gridColumns: 3,
-        gridRowLines: [true, true], gridColumnLines: [true, true],
-        renderGrid: true, renderCircle: true
-    };
     // x=5 is far from both column lines (30, 60), y=60 matches row index 1.
-    const target = findGridCustomiseTarget(5, 60, 90, 90, options);
+    const target = findGridCustomiseTarget(5, 60, 90, 90, baseShape());
     assert.deepEqual(target, {type: 'row', index: 1});
 });
 
 test('findGridCustomiseTarget still targets a disabled line itself (to re-enable it), just never a circle sitting on one', () => {
-    const options = {
-        gridRows: 3, gridColumns: 3,
-        gridRowLines: [false, true], gridColumnLines: [true, true],
-        renderGrid: true, renderCircle: true
-    };
     // Row 0's line is disabled, so there's no circle to click at (30, 30) -
     // but the (disabled) line itself is still a valid target to re-enable.
-    assert.deepEqual(findGridCustomiseTarget(30, 30, 90, 90, options), {type: 'row', index: 0});
+    const shape = baseShape({rowLines: [false, true]});
+    assert.deepEqual(findGridCustomiseTarget(30, 30, 90, 90, shape), {type: 'row', index: 0});
 });
 
-test('findGridCustomiseTarget finds nothing when both Grid and Circles are disabled', () => {
-    const options = {
-        gridRows: 3, gridColumns: 3,
-        gridRowLines: [true, true], gridColumnLines: [true, true],
-        renderGrid: false, renderCircle: false
-    };
-    assert.equal(findGridCustomiseTarget(30, 30, 90, 90, options), null);
+test('findGridCustomiseTarget finds nothing when both lines and circles are disabled', () => {
+    const shape = baseShape({linesEnabled: false, circlesEnabled: false});
+    assert.equal(findGridCustomiseTarget(30, 30, 90, 90, shape), null);
 });
 
 test('renderGridCustomiseReference draws everything in the enabled colour when nothing is hidden', () => {
     const ctx = createColourRecordingContext();
-    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions());
+    renderGridCustomiseReference(ctx, 90, 90, baseShape());
 
     // 2 row lines + 2 column lines + 4 circles (a 3x3 grid).
     assert.equal(ctx.strokes.length, 8);
@@ -239,7 +284,7 @@ test('renderGridCustomiseReference draws everything in the enabled colour when n
 
 test('renderGridCustomiseReference draws a disabled line in grey, everything else unaffected', () => {
     const ctx = createColourRecordingContext();
-    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({gridRowLines: [false, true]}));
+    renderGridCustomiseReference(ctx, 90, 90, baseShape({rowLines: [false, true]}));
 
     // Both row lines are still drawn (one grey), but row 0's circles are
     // skipped entirely (no crossing to sit on): 2 rows + 2 columns + 2
@@ -250,7 +295,7 @@ test('renderGridCustomiseReference draws a disabled line in grey, everything els
 
 test('renderGridCustomiseReference draws a disabled circle in grey without affecting its crossing lines', () => {
     const ctx = createColourRecordingContext();
-    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({circleLines: [[false, true], [true, true]]}));
+    renderGridCustomiseReference(ctx, 90, 90, baseShape({circleLines: [[false, true], [true, true]]}));
 
     assert.equal(ctx.strokes.length, 8);
     // 2 row + 2 column strokes (all enabled), then 4 circle strokes in
@@ -262,11 +307,11 @@ test('renderGridCustomiseReference draws a disabled circle in grey without affec
 
 test('renderGridCustomiseReference draws nothing for an axis whose master toggle is off', () => {
     const gridOffCtx = createColourRecordingContext();
-    renderGridCustomiseReference(gridOffCtx, 90, 90, baseGridOptions({renderGrid: false}));
+    renderGridCustomiseReference(gridOffCtx, 90, 90, baseShape({linesEnabled: false}));
     assert.equal(gridOffCtx.strokes.length, 4, 'only the 4 circles remain');
 
     const circleOffCtx = createColourRecordingContext();
-    renderGridCustomiseReference(circleOffCtx, 90, 90, baseGridOptions({renderCircle: false}));
+    renderGridCustomiseReference(circleOffCtx, 90, 90, baseShape({circlesEnabled: false}));
     assert.equal(circleOffCtx.strokes.length, 4, 'only the 4 lines remain');
 });
 
@@ -274,13 +319,13 @@ test('renderGridCustomiseReference clamps the circle radius to fit the grid cell
     const ctx = createColourRecordingContext();
     // A 90x90 3x3 grid gives 30x30 cells, so the largest radius that fits
     // without overlap is 15 - circleRadius asks for far more than that.
-    renderGridCustomiseReference(ctx, 90, 90, baseGridOptions({circleRadius: 999}));
+    renderGridCustomiseReference(ctx, 90, 90, baseShape({circleRadius: 999}));
 
     assert.ok(ctx.arcRadii.every(r => r === 15), `expected every radius clamped to 15, got ${ctx.arcRadii}`);
 });
 
 test('listGridCustomiseTargets lists every line and circle, in row/column/circle order', () => {
-    const targets = listGridCustomiseTargets(baseGridOptions());
+    const targets = listGridCustomiseTargets(baseShape());
 
     assert.deepEqual(targets.map(t => t.type), ['row', 'row', 'column', 'column', 'circle', 'circle', 'circle', 'circle']);
     assert.deepEqual(targets.map(t => t.label), [
@@ -291,7 +336,7 @@ test('listGridCustomiseTargets lists every line and circle, in row/column/circle
 });
 
 test('listGridCustomiseTargets still lists a disabled line as a target (to re-enable it)', () => {
-    const targets = listGridCustomiseTargets(baseGridOptions({gridRowLines: [false, true]}));
+    const targets = listGridCustomiseTargets(baseShape({rowLines: [false, true]}));
     const rowTargets = targets.filter(t => t.type === 'row');
 
     assert.equal(rowTargets[0].enabled, false);
@@ -299,45 +344,45 @@ test('listGridCustomiseTargets still lists a disabled line as a target (to re-en
 });
 
 test('listGridCustomiseTargets omits a circle whose crossing line is disabled, even though the line itself is still listed', () => {
-    const targets = listGridCustomiseTargets(baseGridOptions({gridRowLines: [false, true]}));
+    const targets = listGridCustomiseTargets(baseShape({rowLines: [false, true]}));
 
     assert.equal(targets.filter(t => t.type === 'row').length, 2, 'both row lines remain valid targets');
     assert.equal(targets.filter(t => t.type === 'circle').length, 2, 'row 0 has no crossing to hang a circle on, so only row 1\'s 2 circles remain');
 });
 
-test('listGridCustomiseTargets returns no line targets when Grid is disabled, independent of Circles', () => {
-    const targets = listGridCustomiseTargets(baseGridOptions({renderGrid: false}));
+test('listGridCustomiseTargets returns no line targets when lines are disabled, independent of circles', () => {
+    const targets = listGridCustomiseTargets(baseShape({linesEnabled: false}));
 
     assert.equal(targets.some(t => t.type === 'row' || t.type === 'column'), false);
-    assert.equal(targets.filter(t => t.type === 'circle').length, 4, 'circle visibility does not depend on renderGrid');
+    assert.equal(targets.filter(t => t.type === 'circle').length, 4, 'circle visibility does not depend on linesEnabled');
 });
 
-test('listGridCustomiseTargets returns no circle targets when Circles is disabled', () => {
-    const targets = listGridCustomiseTargets(baseGridOptions({renderCircle: false}));
+test('listGridCustomiseTargets returns no circle targets when circles are disabled', () => {
+    const targets = listGridCustomiseTargets(baseShape({circlesEnabled: false}));
 
     assert.equal(targets.some(t => t.type === 'circle'), false);
 });
 
 test('drawGridCustomiseFocus does nothing when there is no target', () => {
     const ctx = createColourRecordingContext();
-    drawGridCustomiseFocus(ctx, 90, 90, baseGridOptions(), null);
+    drawGridCustomiseFocus(ctx, 90, 90, baseShape(), null);
 
     assert.equal(ctx.strokes.length, 0);
 });
 
 test('drawGridCustomiseFocus strokes a single highlight in the focus colour for a row, column or circle target', () => {
-    const options = baseGridOptions();
+    const shape = baseShape();
 
     const rowCtx = createColourRecordingContext();
-    drawGridCustomiseFocus(rowCtx, 90, 90, options, {type: 'row', index: 0});
+    drawGridCustomiseFocus(rowCtx, 90, 90, shape, {type: 'row', index: 0});
     assert.deepEqual(rowCtx.strokes, ['#26a69a']);
 
     const columnCtx = createColourRecordingContext();
-    drawGridCustomiseFocus(columnCtx, 90, 90, options, {type: 'column', index: 0});
+    drawGridCustomiseFocus(columnCtx, 90, 90, shape, {type: 'column', index: 0});
     assert.deepEqual(columnCtx.strokes, ['#26a69a']);
 
     const circleCtx = createColourRecordingContext();
-    drawGridCustomiseFocus(circleCtx, 90, 90, options, {type: 'circle', row: 0, column: 0});
+    drawGridCustomiseFocus(circleCtx, 90, 90, shape, {type: 'circle', row: 0, column: 0});
     assert.deepEqual(circleCtx.strokes, ['#26a69a']);
 });
 

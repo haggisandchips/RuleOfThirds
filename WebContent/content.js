@@ -24,6 +24,25 @@ function shouldRender(computedStyle, w, h, minWidth, minHeight, eitherOrientatio
     return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h, minWidth, minHeight, eitherOrientation);
 }
 
+// Phi Grid is always 3 bands per axis (see PHI_GRID_BAND_COUNT in
+// options.js) - unlike Grid, it has no user-editable row/column count.
+const PHI_GRID_LINE_COUNT = 2;
+const DEFAULT_PHI_RATIO = [1, 0.618, 1];
+
+// Storage may hold a ratio saved by an older/corrupted version, or with the
+// wrong number of entries - falls back per-entry (not as a whole array) so
+// a single bad value doesn't discard two otherwise-valid ones.
+function sanitizePhiRatio(value) {
+
+    if (!Array.isArray(value) || value.length !== DEFAULT_PHI_RATIO.length) {
+        return DEFAULT_PHI_RATIO.slice();
+    }
+    return value.map((entry, index) => {
+        const parsed = parseFloat(entry);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PHI_RATIO[index];
+    });
+}
+
 // Storage may hold values saved by an older version of the options page
 // (numbers saved as strings, or missing bounds checks), so re-validate on
 // every read rather than trusting what was persisted.
@@ -48,7 +67,11 @@ function sanitizeOptions(data) {
         circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100),
         circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1),
         lineColour: sanitizeColour(data.lineColour, '#ffffff'),
-        circleColour: sanitizeColour(data.circleColour, '#ff0000')
+        circleColour: sanitizeColour(data.circleColour, '#ff0000'),
+        phiRatio: sanitizePhiRatio(data.phiRatio),
+        phiRowLines: sanitizeLineStates(data.phiRowLines, PHI_GRID_LINE_COUNT),
+        phiColumnLines: sanitizeLineStates(data.phiColumnLines, PHI_GRID_LINE_COUNT),
+        phiCircleLines: sanitizeCircleStates(data.phiCircleLines, PHI_GRID_LINE_COUNT, PHI_GRID_LINE_COUNT)
     };
 }
 
@@ -158,6 +181,11 @@ if (typeof rotInit === 'undefined') {
                         minImageWidth: 100,
                         minImageHeight: 50,
                         eitherOrientation: true,
+                        renderPhiGrid: true,
+                        phiRatio: DEFAULT_PHI_RATIO,
+                        phiRowLines: [true, true],
+                        phiColumnLines: [true, true],
+                        phiCircleLines: [[true, true], [true, true]],
                         goldenRatioDirection: 'clockwise',
                         goldenRatioStart: 'bottom-left'
                     },
@@ -235,19 +263,25 @@ if (typeof rotInit === 'undefined') {
             // call can keep using CSS-pixel coordinates (w/h) unchanged.
             ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
 
-            if (options.overlayStyle === 'golden-ratio') {
-                drawGoldenSpiral(ctx, w, h);
-            } else {
-                drawGridOverlay(ctx, w, h, options);
-            }
+            OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, w, h, options);
 
             (image.offsetParent || document.body).append(canvas);
         }
 
-        // Golden Ratio and Grid/Circles are mutually-exclusive overlay
-        // "modes" (see Composition Overlay on the Options page) - only ever one
-        // or the other, never both at once.
-        function drawGoldenSpiral(ctx, w, h) {
+        // Every overlay style's draw function shares this one signature -
+        // adding a new style (alongside Grid/Phi Grid/Fibonacci Spiral)
+        // means adding one more entry here, not a new branch in
+        // renderImageOverlay.
+        const OVERLAY_STYLE_DRAWERS = {
+            grid: drawGridOverlay,
+            'phi-grid': drawPhiGridOverlay,
+            'golden-ratio': drawGoldenSpiral
+        };
+
+        // Fibonacci Spiral, Grid and Phi Grid are mutually-exclusive
+        // overlay "modes" (see Composition Overlay on the Options page) -
+        // only ever one at a time, never more than one at once.
+        function drawGoldenSpiral(ctx, w, h, options) {
 
             ctx.lineWidth = 1;
             ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
