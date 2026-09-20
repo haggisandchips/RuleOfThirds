@@ -1,0 +1,30 @@
+A customisable grid overlay for visualising image composition techniques (primarily the Rule of Thirds).
+
+History
+------------------------------------------------------------------------------------------------------------------------
+
+UNRELEASED
+* Toolbar icon now shows at a glance whether the grid is on, plus a warning badge if it can't be applied
+* Customise grid: show/hide individual grid lines and circles
+* Circles can now be drawn filled, not just outlined
+* Colour picker: full colour spectrum, opacity sliders, and quick-pick swatches for the original 8 colours
+* Grid rows/columns restricted to 1-9 to avoid performance issues
+* Minimum image size the grid applies to is now configurable
+* New "Embedded Frames" option applies the grid inside iframes too
+* Grid now works correctly on fixed-position images
+* Default line colour is now white
+* Restore Defaults is instant with Undo, instead of a confirmation prompt
+
+v1.7 - 2 June 2024
+* Switch from host_permissions to activeTab (extension does nothing until clicked)
+* Position grid correctly for local images (ie file:// protocol)
+* Add Options page to control grid size, colours & whether lines and/or circles are rendered
+* Support arbitrary sized grid
+
+v1.6 - 21 May 2024
+* Migrate to Manifest v3
+* Replace JQuery dependency with native functions
+
+v1.5 - 29 August 2014
+* Ignore images with "display: none" styles
+* Fix circles on intersection points so they are drawn fully
