@@ -2,13 +2,17 @@
 
 ## `manifest.json` version
 
-Never bump the `version` field in `WebContent/manifest.json` unless the user explicitly asks
-for it in that turn. It must track actual releases published to the Chrome Web Store, not
-internal feature work or changelog entries — bumping it autonomously (e.g. alongside a
-`WebContent/versions/history.html` changelog entry) puts it out of sync with reality.
+`WebContent/manifest.json`'s `version` field always holds the version currently being worked
+toward — one release ahead of what's actually published. It gets bumped to the *next* version
+only by the Releasing process below (step 6, when reopening for the next cycle), which is also
+what makes it correct to release under (step 2). This lets a locally unpacked build be told
+apart at a glance from the published one when both are loaded side by side.
+
+Never bump it any other way — not alongside a changelog entry, not for internal feature work —
+unless the user explicitly asks for it in that turn.
 
 Changelog entries in `WebContent/versions/history.html` can still be added or updated without
-a version bump; just leave `manifest.json` alone unless told otherwise.
+a version bump; just leave `manifest.json` alone outside of the Releasing process.
 
 ## Documenting changes as you make them
 
@@ -54,17 +58,18 @@ When told to release the extension, work through these steps in order:
 1. **Check for unresolved TODOs.** If `history.html` or `guide.html` still contains any
    `[TODO]` marker, stop and tell the user which file(s) need reviewing first — do not
    continue.
-2. **Confirm the version.** If the user didn't give one, work out the next version number and
-   confirm it with them before continuing.
+2. **Take the version from the manifest.** Read the current `version` field in
+   `WebContent/manifest.json` — that's the version being released. No need to ask the user or
+   work it out; it was already set up by the previous release's step 6.
 3. **Finalize the entry.** In both `history.html` and `RELEASE.txt`, replace `UNRELEASED` with
    `v<version> - <today's date>`, spelling the month out in full (e.g. `v1.9 - 20 September
-   2026`, not `20 Sep 2026`). Also bump the `version` field in `WebContent/manifest.json` to
-   `<version>` (no `v` prefix — Chrome's manifest format doesn't allow one).
+   2026`, not `20 Sep 2026`). `manifest.json` needs no change here — it's already correct.
 4. **Clean up `guide.html`.** Remove any remaining yellow-background styling — step 1 already
    guarantees nothing yellow is still unreviewed.
 5. **Commit and tag** this release commit as `v<version>` (e.g. `v1.9`) — pushing this tag is
    what triggers the `.github/workflows/release.yml` GitHub Actions release.
 6. **Reopen for the next cycle.** Add a new, empty `UNRELEASED` section: at the top of
    `history.html` (below the intro paragraph) and in `RELEASE.txt` (below the `History`
-   header).
+   header). Also bump `manifest.json`'s `version` field to the next version (increment the last
+   dot-separated component by 1, e.g. `1.9` -> `1.10`), so it's ready to be released next time.
 7. **Commit and push.**
