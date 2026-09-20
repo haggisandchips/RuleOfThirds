@@ -15,22 +15,20 @@
 
       <div class="row">
         <div class="col s12">
-          <h5>Overlay Style</h5>
+          <h5>Composition Overlay</h5>
           <div class="divider"></div>
         </div>
-        <div class="col s12 m3">
-          <p>
-            <label>
+        <div class="col s12">
+          <div class="overlay-style-toggle">
+            <label class="overlay-style-option">
               <input type="radio" id="overlay-style-grid" name="overlay-style" value="grid">
               <span>Grid</span>
             </label>
-          </p>
-          <p>
-            <label>
+            <label class="overlay-style-option">
               <input type="radio" id="overlay-style-golden-ratio" name="overlay-style" value="golden-ratio">
               <span>Golden Ratio</span>
             </label>
-          </p>
+          </div>
         </div>
       </div>
 
@@ -264,16 +262,16 @@
           <p>
             <label>
               <input type="checkbox" id="apply-to-frames"/>
-              <span>Apply grid inside embedded frames (iframes)</span>
+              <span>Apply overlay inside embedded frames (iframes)</span>
             </label>
           </p>
           <p class="help-text">
             Off by default: embedded frames are often adverts, comment widgets or other
-            content you probably don't want a grid drawn over. Turn this on only if you
+            content you probably don't want an overlay drawn over. Turn this on only if you
             specifically need images inside frames covered too.
           </p>
           <p class="help-text">
-            Takes effect the next time you toggle the grids on a page - changing it won't
+            Takes effect the next time you toggle the overlay on a page - changing it won't
             take immediate effect as per other options.
           </p>
         </div>
@@ -299,7 +297,7 @@
         <div class="col s12">
           <p class="help-text">
             Images smaller than this are skipped - tiny icons, hidden elements and
-            decorative spacers are never worth grid lines.
+            decorative spacers are never worth an overlay.
           </p>
           <p>
             <label>

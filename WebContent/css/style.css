@@ -445,6 +445,82 @@ input:disabled {
     display: block;
 }
 
+/* Composition Overlay picks between two entirely different overlays (see
+   syncOverlayStyleVisibility in options.js, which shows/hides every other
+   section based on this) - a plain pair of radio buttons undersold how big
+   a switch that is, so this is a large, unmissable two-way toggle instead
+   of just another form field. The whole label is the click target; the
+   native radio is kept (visually hidden below) rather than removed, so
+   this stays a real, keyboard-operable radio group. */
+.overlay-style-toggle {
+    display: flex;
+    gap: 0.75rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+/* Same visually-hidden-but-focusable technique as .sr-only, just with
+   higher specificity than the generic input[type="radio"] rule (which
+   would otherwise win on source order and force this back to an 18px
+   visible circle). */
+.overlay-style-option input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Specificity note: the generic `label:not([for])` rule above (display,
+   gap, cursor, margin) outranks a bare `.overlay-style-option` class
+   selector, so this is qualified with its parent to win the cascade
+   instead of fighting it with !important. */
+.overlay-style-toggle .overlay-style-option {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 1.1rem 1rem;
+    border: 2px solid var(--color-divider);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Higher-specificity `.overlay-style-toggle .overlay-style-option span`
+   form used throughout below so these all outrank the generic
+   `input[type="radio"]:checked + span` colour rule further up the file. */
+.overlay-style-toggle .overlay-style-option span {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.overlay-style-toggle .overlay-style-option:hover {
+    border-color: var(--color-primary);
+}
+
+.overlay-style-toggle .overlay-style-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.overlay-style-toggle .overlay-style-option:has(input:focus-visible) {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.overlay-style-toggle .overlay-style-option:has(input:checked) span {
+    color: var(--color-primary-dark);
+}
+
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;

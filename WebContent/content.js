@@ -66,7 +66,7 @@ var HEX_COLOUR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 // A malformed stored colour (eg from external tampering, a future format
 // change, or plain corruption) would otherwise reach hexToRgba() as-is,
 // which turns it into rgba(NaN, NaN, NaN, ...) - canvas silently draws
-// nothing for that, so the grid can vanish with no error or explanation.
+// nothing for that, so the overlay can vanish with no error or explanation.
 function sanitizeColour(value, fallback) {
 
     return typeof value === 'string' && HEX_COLOUR_PATTERN.test(value) ? value : fallback;
@@ -123,8 +123,8 @@ if (typeof rotInit === 'undefined') {
                 if (area === 'sync'/* && changes.options?.newValue*/) {
                     if (controlElement.getAttribute('active') === 'true') {
                         readOptions().then(() => {
-                            removeGrids();
-                            applyGrids();
+                            removeOverlays();
+                            applyOverlays();
                         })
                     }
                 }
@@ -132,7 +132,7 @@ if (typeof rotInit === 'undefined') {
         }
 
         promise.then(() => {
-            toggleGrids();
+            toggleOverlays();
             reportState();
         });
 
@@ -169,18 +169,18 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        function toggleGrids() {
+        function toggleOverlays() {
 
             if (controlElement.getAttribute('active') === 'false') {
-                applyGrids();
+                applyOverlays();
             } else {
-                removeGrids();
+                removeOverlays();
             }
         }
 
         // Lets the service worker reflect this tab's on/off state on the
         // toolbar icon - it has no other way to know, since applying and
-        // removing the grid only ever changes DOM state inside this page.
+        // removing the overlay only ever changes DOM state inside this page.
         function reportState() {
 
             chrome.runtime.sendMessage({
@@ -189,7 +189,7 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        function applyGrids() {
+        function applyOverlays() {
 
             const images = document.getElementsByTagName('img');
             for (let ii = 0; ii < images.length; ii++) {
@@ -245,7 +245,7 @@ if (typeof rotInit === 'undefined') {
         }
 
         // Golden Ratio and Grid/Circles are mutually-exclusive overlay
-        // "modes" (see Overlay Style on the Options page) - only ever one
+        // "modes" (see Composition Overlay on the Options page) - only ever one
         // or the other, never both at once.
         function drawGoldenSpiral(ctx, w, h) {
 
@@ -257,7 +257,7 @@ if (typeof rotInit === 'undefined') {
             ctx.stroke();
         }
 
-        function removeGrids() {
+        function removeOverlays() {
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
             controlElement.setAttribute('active', 'false');
