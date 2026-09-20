@@ -3,7 +3,7 @@ A customisable grid overlay for visualising image composition techniques (primar
 History
 ------------------------------------------------------------------------------------------------------------------------
 
-UNRELEASED
+v1.8 - 20 September 2026
 * Toolbar icon now shows at a glance whether the grid is on, plus a warning badge if it can't be applied
 * Customise grid: show/hide individual grid lines and circles
 * Circles can now be drawn filled, not just outlined

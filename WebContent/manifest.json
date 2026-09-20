@@ -2,7 +2,7 @@
     "manifest_version": 3,
 
     "name": "Rule of Thirds",
-    "version": "1.7",
+    "version": "1.8",
     "description": "A customisable grid overlay for visualising image composition techniques (primarily the Rule of Thirds).",
 
     "icons": {
