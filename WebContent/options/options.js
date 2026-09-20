@@ -315,6 +315,36 @@ function syncOverlayStyleVisibility() {
         const styles = row.dataset.overlayStyles.split(' ');
         row.style.display = styles.includes(overlayStyle) ? '' : 'none';
     });
+
+    syncGridPhiGridColumnWidths(overlayStyle);
+}
+
+// Phi Grid's own content (the Ratio row, its help text and "Restore
+// Default Ratio" button) needs more room than Grid's plain Rows/Columns
+// fields, so the shared Grid/Circles row's column split widens for it -
+// Grid's own split is untouched. One more entry here, not a new branch,
+// if a future weighted-grid style needs its own split too.
+const GRID_PHI_GRID_COLUMN_WIDTHS = {
+    grid: {left: 'm3', right: 'm9'},
+    'phi-grid': {left: 'm4', right: 'm8'}
+};
+
+function syncGridPhiGridColumnWidths(overlayStyle) {
+
+    const widths = GRID_PHI_GRID_COLUMN_WIDTHS[overlayStyle];
+    if (!widths) {
+        return;
+    }
+
+    const left = document.getElementById('grid-phi-grid-columns-left');
+    const right = document.getElementById('grid-phi-grid-columns-right');
+
+    Object.values(GRID_PHI_GRID_COLUMN_WIDTHS).forEach(other => {
+        left.classList.remove(other.left);
+        right.classList.remove(other.right);
+    });
+    left.classList.add(widths.left);
+    right.classList.add(widths.right);
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native

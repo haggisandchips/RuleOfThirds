@@ -69,7 +69,7 @@
       </div>
 
       <div class="row" data-overlay-styles="grid phi-grid">
-        <div class="col s12 m3">
+        <div class="col s12 m3" id="grid-phi-grid-columns-left">
           <div class="row" data-overlay-styles="grid">
             <div class="col s12">
               <h5>Grid</h5>
@@ -106,7 +106,7 @@
               </p>
               <p class="help-text">
                 Fixed at 3x3. Lines and circles are placed by the ratio below (outer : middle :
-                outer), the same in both directions, instead of equal thirds.
+                outer), the same in both directions.
               </p>
               <p>
                 <span class="field-caption">Ratio</span>
@@ -122,13 +122,13 @@
                 The default 1 : 0.618 : 1 is the classic "Phi Grid" composition guide. Circles
                 use the same settings as Circles, to the right.
               </p>
-              <p class="right-align">
-                <button type="button" id="restorePhiRatioDefaults" class="btn-small">Restore Default Ratio</button>
+              <p class="left-align">
+                <button type="button" id="restorePhiRatioDefaults" class="btn-small">Restore Golden Ratio</button>
               </p>
             </div>
           </div>
         </div>
-        <div class="col s12 m9">
+        <div class="col s12 m9" id="grid-phi-grid-columns-right">
           <div class="row">
             <div class="col s12">
               <h5>Circles</h5>
