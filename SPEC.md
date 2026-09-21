@@ -71,11 +71,13 @@ none of these block day-to-day use except where noted.
    `.selected` class (which stays default `false` in `options.html` until
    the first sync).
 
-6. **Phi Grid's Ratio fields don't grey out when Phi Grid is disabled**,
-   inconsistent with Grid's own pattern (`syncDependentFieldsEnabled` dims
-   Line Colour/Opacity when Grid is off and Circle fields when Circles is
-   off, but the three `phi-ratio-*` fields aren't wired into an equivalent
-   list).
+6. ~~**Phi Grid's Ratio fields don't grey out when Phi Grid is disabled**~~
+   **Fixed.** Wired `PHI_RATIO_INPUT_IDS` into `syncDependentFieldsEnabled`,
+   same as `GRID_DIMENSION_FIELD_IDS` - the ratio positions Circles'
+   intersections too (independent of Phi Grid's own "Enabled"), so it only
+   dims once *neither* section would use it. Verified live: disabling Phi
+   Grid alone leaves it enabled (Circles still needs it), disabling both
+   dims it.
 
 7. **`weightedLinePositions`/`smallestWeightedBand` are duplicated**
    between `grid-render.js` and `options.js`, justified by a comment about

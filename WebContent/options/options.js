@@ -254,10 +254,17 @@ function syncDependentFieldsEnabled() {
 
     const gridEnabled = document.getElementById('render-grid').checked;
     const circleEnabled = document.getElementById('render-circle').checked;
+    const phiGridEnabled = document.getElementById('render-phi-grid').checked;
 
     setFieldsEnabled(GRID_DIMENSION_FIELD_IDS, gridEnabled || circleEnabled);
     setSectionFieldsEnabled(GRID_ONLY_FIELD_IDS, 'line-colour-quick', gridEnabled);
     setSectionFieldsEnabled(CIRCLE_ONLY_FIELD_IDS, 'circle-colour-quick', circleEnabled);
+    // Like GRID_DIMENSION_FIELD_IDS above, the ratio positions BOTH Phi
+    // Grid's lines (while Phi Grid is enabled) AND the circle
+    // intersections (while Circles is enabled, independent of Phi Grid -
+    // drawWeightedGridOverlay's circle loop isn't gated on linesEnabled at
+    // all) - only disable it once *neither* section would use it.
+    setFieldsEnabled(PHI_RATIO_INPUT_IDS, phiGridEnabled || circleEnabled);
 }
 
 function setFieldsEnabled(fieldIds, enabled) {
