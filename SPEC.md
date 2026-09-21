@@ -79,11 +79,13 @@ none of these block day-to-day use except where noted.
    Grid alone leaves it enabled (Circles still needs it), disabling both
    dims it.
 
-7. **`weightedLinePositions`/`smallestWeightedBand` are duplicated**
-   between `grid-render.js` and `options.js`, justified by a comment about
-   keeping `options.js` directly unit-testable without a DOM - nothing
-   enforces the two copies stay in sync if one changes. Consider a
-   cross-check test, or accept the duplication as deliberate debt.
+7. ~~**`weightedLinePositions`/`smallestWeightedBand` are duplicated**
+   between `grid-render.js` and `options.js`.~~ **Fixed (partial).** The
+   duplication itself is staying (still needed for `options.js` to stay
+   unit-testable without a DOM-oriented sibling file), but added a
+   cross-check test in `options.test.js` that requires both copies and
+   compares their output across a spread of weight arrays, so any future
+   drift between them fails the suite instead of going unnoticed.
 
 8. ~~**No test pins `configureControl`'s undefined-return behaviour.**~~ **Fixed as part of #3.**
 

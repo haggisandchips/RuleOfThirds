@@ -27,6 +27,16 @@ const {
     drawGridCustomiseFocus
 } = require('../WebContent/options/options.js');
 
+// grid-render.js has its own copy of weightedLinePositions/
+// smallestWeightedBand (see options.js's comment on its own copies for
+// why they're duplicated rather than shared) - imported under different
+// names here purely so the two can be cross-checked against each other
+// below, not because options.js itself uses grid-render.js's copies.
+const {
+    weightedLinePositions: gridRenderWeightedLinePositions,
+    smallestWeightedBand: gridRenderSmallestWeightedBand
+} = require('../WebContent/grid-render.js');
+
 // A fake canvas context that just records the strokeStyle in effect at each
 // stroke() call, in order, so renderGridCustomiseReference's black/grey
 // choice can be asserted without a real canvas.
@@ -232,6 +242,30 @@ test('weightedLinePositions splits equal weights into even fractions', () => {
 test('smallestWeightedBand finds the narrowest band as a fraction of the whole', () => {
     assert.equal(smallestWeightedBand([1, 1, 1]), 1 / 3);
     assert.ok(Math.abs(smallestWeightedBand([1, 0.618, 1]) - 0.618 / 2.618) < 1e-9);
+});
+
+// options.js keeps its own copy of weightedLinePositions/
+// smallestWeightedBand rather than requiring grid-render.js (so these stay
+// unit-testable without pulling in a DOM-oriented sibling file - see the
+// comment on options.js's own copies) - nothing else enforces the two
+// stay in sync if one is changed without the other, so this cross-checks
+// them directly against a spread of weight arrays.
+test('options.js\'s weightedLinePositions/smallestWeightedBand match grid-render.js\'s copies', () => {
+    const weightArrays = [
+        [1, 1, 1],
+        [1, 0.618, 1],
+        [1],
+        [1, 1],
+        [3, 1, 1, 2],
+        [0.01, 5, 0.01]
+    ];
+
+    weightArrays.forEach(weights => {
+        assert.deepEqual(weightedLinePositions(weights), gridRenderWeightedLinePositions(weights),
+            `weightedLinePositions diverged for [${weights}]`);
+        assert.equal(smallestWeightedBand(weights), gridRenderSmallestWeightedBand(weights),
+            `smallestWeightedBand diverged for [${weights}]`);
+    });
 });
 
 test('findGridCustomiseTarget places intersections according to a Phi Grid ratio, not equal thirds', () => {
