@@ -46,6 +46,11 @@ const MIN_PHI_RATIO = 0.01;
 // could plausibly want to experiment.
 const MAX_PHI_RATIO = 100;
 const PHI_RATIO_DECIMALS = 3;
+// How long to wait, after the last keystroke in a ratio field, before
+// re-rendering the Customise preview live - short enough to feel
+// immediate, long enough that a fast typist doesn't trigger a redraw per
+// character.
+const PHI_RATIO_PREVIEW_DEBOUNCE_MS = 150;
 
 // Per-line/per-circle enabled state for the "Customise" preview - kept as
 // plain module state (rather than re-read from the DOM) since there's no
@@ -511,13 +516,19 @@ function clampInt(value, min, fallback, max = Infinity) {
 // fields - a decimal (eg 0.618), not a whole number, so parseInt would
 // truncate it to 0. `decimals`, if given, rounds the result (see
 // roundTo) - the field is left showing that rounded value, not whatever
-// extra precision was typed.
-function parseValidFloat(elementId, min, fallback, decimals, max) {
+// extra precision was typed, unless `write` is false: a live-typing
+// preview (see the ratio fields' 'input' listener) reads the in-progress
+// value without correcting the field out from under the user mid-edit -
+// eg clamping a momentary "0" up to the minimum while they're still
+// typing "0.05" would stomp on what they're about to type next.
+function parseValidFloat(elementId, min, fallback, decimals, max, write = true) {
 
     const element = document.getElementById(elementId);
     const value = clampFloat(element.value, min, fallback, decimals, max);
 
-    element.value = value;
+    if (write) {
+        element.value = value;
+    }
     return value;
 }
 
@@ -542,10 +553,11 @@ function roundTo(value, decimals) {
 }
 
 // Reads/writes the three Phi Grid ratio fields as one array, in the same
-// order they're declared in options.html (outer, middle, outer).
-function readPhiRatio() {
+// order they're declared in options.html (outer, middle, outer). `write`
+// is passed straight through to parseValidFloat - see its comment.
+function readPhiRatio(write = true) {
 
-    return PHI_RATIO_INPUT_IDS.map((id, index) => parseValidFloat(id, MIN_PHI_RATIO, DEFAULT_OPTIONS.phiRatio[index], PHI_RATIO_DECIMALS, MAX_PHI_RATIO));
+    return PHI_RATIO_INPUT_IDS.map((id, index) => parseValidFloat(id, MIN_PHI_RATIO, DEFAULT_OPTIONS.phiRatio[index], PHI_RATIO_DECIMALS, MAX_PHI_RATIO, write));
 }
 
 function writePhiRatio(ratio) {
@@ -646,8 +658,9 @@ function parseHexColour(hex) {
 // every overlay style's own fields (Grid's, Phi Grid's, and the ones they
 // share), so it can be handed to whichever style's draw function is
 // currently active without the caller needing to build a different shape
-// per style.
-function buildLiveGridCustomiseOptions() {
+// per style. `write`, passed straight through to readPhiRatio, is false
+// only for the ratio fields' live-typing preview (see renderGridCustomisePreview).
+function buildLiveGridCustomiseOptions(write = true) {
 
     return {
         renderGrid: document.getElementById('render-grid').checked,
@@ -656,7 +669,7 @@ function buildLiveGridCustomiseOptions() {
         gridRowLines: gridRowLineStates,
         gridColumnLines: gridColumnLineStates,
         renderPhiGrid: document.getElementById('render-phi-grid').checked,
-        phiRatio: readPhiRatio(),
+        phiRatio: readPhiRatio(write),
         phiRowLines: phiRowLineStates,
         phiColumnLines: phiColumnLineStates,
         phiCircleLines: phiCircleLineStates,
@@ -812,9 +825,9 @@ function drawPreviewBackground(ctx, w, h, options, image) {
 // fixed white/black/grey reference map, drawn the same way regardless of
 // the user's actual colours, so there's always an obvious, unambiguous spot
 // to click.
-function renderGridCustomisePreview() {
+function renderGridCustomisePreview(write = true) {
 
-    const liveOptions = buildLiveGridCustomiseOptions();
+    const liveOptions = buildLiveGridCustomiseOptions(write);
     const style = currentWeightedGridStyle(liveOptions);
     if (!style) {
         // Customise (the Preview/Hide-Show canvases) only applies to
@@ -1346,6 +1359,27 @@ if (typeof document !== 'undefined') {
 
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
+
+    // Live-updates the ratio as it's typed, not just once the field is
+    // committed (blur/Enter) - debounced so a burst of keystrokes (or the
+    // native number input's up/down arrow keys, held down) triggers one
+    // update shortly after typing pauses, not one per keystroke. Writes
+    // just the phiRatio key to chrome.storage.sync (a merge, not a full
+    // options save - every other key is left untouched) so the real
+    // overlay on any other tab picks it up via the same storage.onChanged
+    // listener content.js already reacts to for a saved change, for
+    // side-by-side editing with the page the overlay's actually on.
+    // write:false throughout (see renderGridCustomisePreview/readPhiRatio)
+    // so this never clamps-and-rewrites the field mid-edit - only
+    // saveOptions (on 'change') does that, once typing is actually done.
+    let phiRatioPreviewTimeoutId;
+    document.querySelectorAll('.phi-ratio-row input').forEach(input => input.addEventListener('input', () => {
+        clearTimeout(phiRatioPreviewTimeoutId);
+        phiRatioPreviewTimeoutId = setTimeout(() => {
+            renderGridCustomisePreview(false);
+            chrome.storage.sync.set({phiRatio: readPhiRatio(false)});
+        }, PHI_RATIO_PREVIEW_DEBOUNCE_MS);
+    }));
 
     const gridCustomiseControl = document.getElementById('grid-customise-control');
     gridCustomiseControl.addEventListener('click', onGridCustomiseClick);
