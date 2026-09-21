@@ -61,9 +61,9 @@ none of these block day-to-day use except where noted.
 
 ## Worth doing
 
-4. **Duplicate `aria-label="Outer ratio"`** on both `phi-ratio-1` and
-   `phi-ratio-3` in `options.html` - a screen reader can't distinguish the
-   first ratio field from the third. Needs distinct labels.
+4. ~~**Duplicate `aria-label="Outer ratio"`** on both `phi-ratio-1` and
+   `phi-ratio-3` in `options.html`.~~ **Fixed.** Relabelled "First outer
+   ratio" / "Second outer ratio".
 
 5. **Fibonacci Spiral thumbnail selection isn't exposed to assistive
    tech.** `syncGoldenRatioThumbnailSelection` in `options.js` only toggles
