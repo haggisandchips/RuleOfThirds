@@ -300,9 +300,14 @@ function drawGoldenRatioThumbnails() {
 }
 
 // Highlights whichever thumbnail matches the current direction/starting-
-// point radios, whether they were just set by a thumbnail click or the
-// radios themselves. aria-pressed carries that same state to assistive
-// tech - the border-colour highlight alone is only visible, not exposed.
+// point radios, whether they were just set by a thumbnail click, the
+// radios themselves, or arrow-key navigation (see
+// onGoldenRatioThumbKeyDown). The 8 thumbnails are a role="radiogroup" -
+// aria-checked carries the selected one to assistive tech (the
+// border-colour highlight alone is only visible), and only the selected
+// thumbnail keeps tabindex="0" (a "roving tabindex": Tab reaches the group
+// once, at whichever one is currently selected, same as a native radio
+// group - arrow keys move *within* it instead of Tab hopping to all 8).
 function syncGoldenRatioThumbnailSelection() {
 
     const direction = getSelectedOption('golden-ratio-direction');
@@ -311,8 +316,53 @@ function syncGoldenRatioThumbnailSelection() {
     document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
         const selected = button.dataset.direction === direction && button.dataset.start === start;
         button.classList.toggle('selected', selected);
-        button.setAttribute('aria-pressed', selected);
+        button.setAttribute('aria-checked', selected);
+        button.tabIndex = selected ? 0 : -1;
     });
+}
+
+const GOLDEN_RATIO_THUMB_NAVIGATION_KEYS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+
+// Arrow-key navigation for the thumbnail radiogroup - "selection follows
+// focus", same as a native radio group: moving focus also selects and
+// saves immediately, with no separate Enter/Space needed (unlike the
+// Customise Control canvas's Enter/Space-to-toggle, which is a different
+// pattern since that's independent per-line/circle toggles, not a single
+// mutually-exclusive choice).
+function onGoldenRatioThumbKeyDown(event) {
+
+    if (!GOLDEN_RATIO_THUMB_NAVIGATION_KEYS.includes(event.key)) {
+        return;
+    }
+    event.preventDefault();
+
+    const thumbs = Array.from(document.querySelectorAll('.golden-ratio-thumb'));
+    const currentIndex = Math.max(thumbs.indexOf(event.currentTarget), 0);
+    let nextIndex;
+
+    switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            nextIndex = (currentIndex + 1) % thumbs.length;
+            break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            nextIndex = (currentIndex - 1 + thumbs.length) % thumbs.length;
+            break;
+        case 'Home':
+            nextIndex = 0;
+            break;
+        case 'End':
+            nextIndex = thumbs.length - 1;
+            break;
+    }
+
+    const nextThumb = thumbs[nextIndex];
+    selectOption('golden-ratio-direction', nextThumb.dataset.direction);
+    selectOption('golden-ratio-start', nextThumb.dataset.start);
+    syncGoldenRatioThumbnailSelection();
+    nextThumb.focus();
+    saveOptions();
 }
 
 // Every overlay style's settings are mutually exclusive - only the active
@@ -1331,12 +1381,15 @@ if (typeof document !== 'undefined') {
 
     document.querySelectorAll('input[name="golden-ratio-direction"], input[name="golden-ratio-start"]').forEach(input => input.addEventListener('change', syncGoldenRatioThumbnailSelection));
 
-    document.querySelectorAll('.golden-ratio-thumb').forEach(button => button.addEventListener('click', () => {
-        selectOption('golden-ratio-direction', button.dataset.direction);
-        selectOption('golden-ratio-start', button.dataset.start);
-        syncGoldenRatioThumbnailSelection();
-        saveOptions();
-    }));
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
+        button.addEventListener('click', () => {
+            selectOption('golden-ratio-direction', button.dataset.direction);
+            selectOption('golden-ratio-start', button.dataset.start);
+            syncGoldenRatioThumbnailSelection();
+            saveOptions();
+        });
+        button.addEventListener('keydown', onGoldenRatioThumbKeyDown);
+    });
 }
 
 if (typeof module !== 'undefined' && module.exports) {

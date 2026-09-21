@@ -111,3 +111,20 @@ none of these block day-to-day use except where noted.
     `overlay-style-option`). Added a matching `.golden-ratio-thumb:focus-visible`
     rule; confirmed live (`outline-style: solid`, themed colour) after a
     real Tab press onto the first thumbnail.
+
+11. ~~**Fibonacci Spiral thumbnails were 8 separate Tab stops with only
+    click/Enter/Space activation**, unlike a native radio group.~~
+    **Fixed.** Flagged in review: the 8 thumbnails are functionally a
+    single mutually-exclusive choice (same underlying state as the
+    direction/start radios), so the expected pattern (WAI-ARIA radiogroup,
+    and this codebase's own Customise Control canvas precedent) is one Tab
+    stop with arrow keys moving *within* the group, not eight. Converted to
+    `role="radiogroup"`/`role="radio"` with `aria-checked` and a roving
+    `tabindex` (only the selected thumbnail is `0`), and added arrow-key
+    navigation where moving focus also selects immediately - "selection
+    follows focus", matching native `<input type="radio">` behaviour (Home/
+    End jump to the first/last thumbnail). Confirmed live: Tab lands
+    directly on the currently-selected thumbnail, ArrowRight/Down and
+    ArrowLeft/Up move and select (wrapping at both ends), the direction/
+    start radios and visual highlight stay in sync throughout. Documented
+    in `guide.html`.
