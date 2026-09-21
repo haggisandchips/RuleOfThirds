@@ -97,9 +97,17 @@ none of these block day-to-day use except where noted.
    Options page's `clampFloat` (now takes an optional `max`), plus a
    matching `max="100"` on the three `<input>`s.
 
-10. **Accessibility of the Phi Grid and Fibonacci Spiral sections on the
-    Options page**, generally. The original Customise controls (Grid/
-    Circles, the Hide/Show canvas) were reviewed for accessibility - the
-    newer sections haven't had the same pass. Check keyboard operability,
-    focus order, and screen-reader behaviour beyond the specific labelling
-    gaps already called out in #4/#5 above.
+10. ~~**Accessibility of the Phi Grid and Fibonacci Spiral sections on the
+    Options page**, generally.~~ **Fixed (the gap this turned up).** #4/#6
+    (Phi Grid) and #5 (Fibonacci Spiral) covered the labelling/state gaps
+    already known about. Live-tested keyboard operability and focus order
+    with real Tab presses (not just `.focus()` calls, which don't reliably
+    trigger `:focus-visible`): tab order through both sections is sensible,
+    and every custom control gets a themed focus ring - except the
+    Fibonacci Spiral thumbnails, which had no `:focus-visible` rule at all
+    and fell back to the browser's unstyled default outline, inconsistent
+    with every other custom control on the page (`quick-swatch`,
+    `btn-large`/`btn-small`, `grid-customise-control`,
+    `overlay-style-option`). Added a matching `.golden-ratio-thumb:focus-visible`
+    rule; confirmed live (`outline-style: solid`, themed colour) after a
+    real Tab press onto the first thumbnail.

@@ -441,6 +441,16 @@ input:disabled {
     border-color: var(--color-primary);
 }
 
+/* Every other custom control on this page (quick-swatch, btn-large,
+   btn-small, grid-customise-control, overlay-style-option) gets a matching
+   themed focus-visible outline instead of the browser default - this was
+   the one left relying on the default, easy to miss since it's still
+   visible, just inconsistent. */
+.golden-ratio-thumb:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
 .golden-ratio-thumb canvas {
     display: block;
 }
