@@ -289,14 +289,17 @@ function drawGoldenRatioThumbnails() {
 
 // Highlights whichever thumbnail matches the current direction/starting-
 // point radios, whether they were just set by a thumbnail click or the
-// radios themselves.
+// radios themselves. aria-pressed carries that same state to assistive
+// tech - the border-colour highlight alone is only visible, not exposed.
 function syncGoldenRatioThumbnailSelection() {
 
     const direction = getSelectedOption('golden-ratio-direction');
     const start = getSelectedOption('golden-ratio-start');
 
     document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
-        button.classList.toggle('selected', button.dataset.direction === direction && button.dataset.start === start);
+        const selected = button.dataset.direction === direction && button.dataset.start === start;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', selected);
     });
 }
 

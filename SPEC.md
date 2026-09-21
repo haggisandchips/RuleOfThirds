@@ -65,11 +65,11 @@ none of these block day-to-day use except where noted.
    `phi-ratio-3` in `options.html`.~~ **Fixed.** Relabelled "First outer
    ratio" / "Second outer ratio".
 
-5. **Fibonacci Spiral thumbnail selection isn't exposed to assistive
-   tech.** `syncGoldenRatioThumbnailSelection` in `options.js` only toggles
-   a CSS `.selected` class on the 8 thumbnail buttons; no
-   `aria-pressed`/`aria-current`. A screen reader user tabbing the
-   thumbnails gets no indication which one (if any) is currently selected.
+5. ~~**Fibonacci Spiral thumbnail selection isn't exposed to assistive
+   tech.**~~ **Fixed.** `syncGoldenRatioThumbnailSelection` now sets
+   `aria-pressed` on each of the 8 thumbnail buttons alongside the CSS
+   `.selected` class (which stays default `false` in `options.html` until
+   the first sync).
 
 6. **Phi Grid's Ratio fields don't grey out when Phi Grid is disabled**,
    inconsistent with Grid's own pattern (`syncDependentFieldsEnabled` dims
