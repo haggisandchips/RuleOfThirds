@@ -749,6 +749,17 @@ function drawPreviewBackground(ctx, w, h, options, image) {
 // to click.
 function renderGridCustomisePreview() {
 
+    const liveOptions = buildLiveGridCustomiseOptions();
+    const style = currentWeightedGridStyle(liveOptions);
+    if (!style) {
+        // Customise (the Preview/Hide-Show canvases) only applies to
+        // weighted-grid styles (Grid, Phi Grid) - its whole row is hidden
+        // for any other style (eg Fibonacci Spiral, which has no per-line
+        // state for currentWeightedGridStyle to resolve), so there's
+        // nothing to draw.
+        return;
+    }
+
     // setTransform() (not scale()) since this function redraws the same
     // two persistent canvases repeatedly over the page's lifetime -
     // scale() would compound on every call instead of just re-applying
@@ -759,8 +770,6 @@ function renderGridCustomisePreview() {
     const previewCtx = previewCanvas.getContext('2d');
     const previewSize = getCanvasLogicalSize(previewCanvas);
     previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const liveOptions = buildLiveGridCustomiseOptions();
-    const style = currentWeightedGridStyle(liveOptions);
 
     drawPreviewBackground(previewCtx, previewSize.width, previewSize.height, {
         previewBackgroundImage: liveOptions.previewBackgroundImage,

@@ -26,8 +26,11 @@ function shouldRender(computedStyle, w, h, minWidth, minHeight, eitherOrientatio
 
 // Phi Grid is always 3 bands per axis (see PHI_GRID_BAND_COUNT in
 // options.js) - unlike Grid, it has no user-editable row/column count.
-const PHI_GRID_LINE_COUNT = 2;
-const DEFAULT_PHI_RATIO = [1, 0.618, 1];
+// `var`, not `const` - like every other top-level declaration in this file
+// (see HEX_COLOUR_PATTERN below), it must be safe to redeclare when this
+// file is injected into the same page more than once.
+var PHI_GRID_LINE_COUNT = 2;
+var DEFAULT_PHI_RATIO = [1, 0.618, 1];
 
 // Storage may hold a ratio saved by an older/corrupted version, or with the
 // wrong number of entries - falls back per-entry (not as a whole array) so
