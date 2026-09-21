@@ -53,6 +53,15 @@ function configureControl(direction, start, w, h) {
             return new Control(2, true, w * PHI, h, w, h);
         case 'top-left-counter-clockwise':
             return new Control(1, true, w, h * PHI, w, 0);
+        default:
+            // direction/start are validated as an enum by content.js's
+            // sanitizeOptions before they ever reach here in the real
+            // overlay, but this file is also called directly by the
+            // options page's thumbnails (fixed, always-valid data
+            // attributes) - falls back to the same default as a
+            // freshly-installed extension (bottom-left-clockwise) rather
+            // than returning undefined for calculateSections to crash on.
+            return new Control(2, false, w, h * PHI, w, h);
     }
 }
 

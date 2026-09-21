@@ -46,6 +46,23 @@ function sanitizePhiRatio(value) {
     });
 }
 
+// overlayStyle/goldenRatioDirection/goldenRatioStart all drive a lookup
+// (OVERLAY_STYLE_DRAWERS below, configureControl in golden-ratio.js) that
+// has no safe fallback of its own for a value outside its known set - an
+// unrecognized one throws and aborts applyOverlays() partway through,
+// leaving some images without an overlay and the toolbar icon out of sync.
+// Storage could hold anything (a sync conflict with an older/newer
+// version, manual tampering), so every enum-shaped field is validated here
+// rather than trusted as-is.
+var VALID_OVERLAY_STYLES = ['grid', 'phi-grid', 'golden-ratio'];
+var VALID_GOLDEN_RATIO_DIRECTIONS = ['clockwise', 'counter-clockwise'];
+var VALID_GOLDEN_RATIO_STARTS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+
+function sanitizeEnum(value, validValues, fallback) {
+
+    return validValues.includes(value) ? value : fallback;
+}
+
 // Storage may hold values saved by an older version of the options page
 // (numbers saved as strings, or missing bounds checks), so re-validate on
 // every read rather than trusting what was persisted.
@@ -74,7 +91,10 @@ function sanitizeOptions(data) {
         phiRatio: sanitizePhiRatio(data.phiRatio),
         phiRowLines: sanitizeLineStates(data.phiRowLines, PHI_GRID_LINE_COUNT),
         phiColumnLines: sanitizeLineStates(data.phiColumnLines, PHI_GRID_LINE_COUNT),
-        phiCircleLines: sanitizeCircleStates(data.phiCircleLines, PHI_GRID_LINE_COUNT, PHI_GRID_LINE_COUNT)
+        phiCircleLines: sanitizeCircleStates(data.phiCircleLines, PHI_GRID_LINE_COUNT, PHI_GRID_LINE_COUNT),
+        overlayStyle: sanitizeEnum(data.overlayStyle, VALID_OVERLAY_STYLES, 'grid'),
+        goldenRatioDirection: sanitizeEnum(data.goldenRatioDirection, VALID_GOLDEN_RATIO_DIRECTIONS, 'clockwise'),
+        goldenRatioStart: sanitizeEnum(data.goldenRatioStart, VALID_GOLDEN_RATIO_STARTS, 'bottom-left')
     };
 }
 
@@ -351,5 +371,5 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour};
+    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum};
 }

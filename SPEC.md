@@ -38,25 +38,26 @@ none of these block day-to-day use except where noted.
    the "Options saved." toast, and switching back to Grid/Phi Grid still
    re-renders Customise correctly.
 
-3. **`overlayStyle`/`goldenRatioDirection`/`goldenRatioStart` are read from storage unvalidated, and a bad value crashes the whole render loop.**
+3. ~~**`overlayStyle`/`goldenRatioDirection`/`goldenRatioStart` are read from storage unvalidated, and a bad value crashes the whole render loop.**~~ **Fixed.**
    `content.js`'s `sanitizeOptions` bounds-checks `gridRows`, `phiRatio`,
-   colours, etc., but passes these three straight through via `...data`.
-   `golden-ratio.js`'s `configureControl` switch has no `default` - an
-   unrecognized `direction`/`start` pair returns `undefined`, and
-   `calculateSections` immediately destructures `control.initialRotation`
+   colours, etc., but passed these three straight through via `...data`.
+   `golden-ratio.js`'s `configureControl` switch had no `default` - an
+   unrecognized `direction`/`start` pair returned `undefined`, and
+   `calculateSections` immediately destructured `control.initialRotation`
    off it, throwing. Separately, `OVERLAY_STYLE_DRAWERS[options.overlayStyle](...)`
-   throws `TypeError: ... is not a function` if `overlayStyle` isn't
-   exactly `grid`/`phi-grid`/`golden-ratio`. Either throw happens inside
-   `applyOverlays()`'s loop over every `<img>` with no `try`/`catch`
-   anywhere in the file, so it aborts mid-loop (skipping the overlay on
-   every remaining image) *and* skips the trailing
+   would throw `TypeError: ... is not a function` if `overlayStyle` wasn't
+   exactly `grid`/`phi-grid`/`golden-ratio`. Either throw would have
+   happened inside `applyOverlays()`'s loop over every `<img>` with no
+   `try`/`catch` anywhere in the file, aborting mid-loop (skipping the
+   overlay on every remaining image) *and* skipping the trailing
    `controlElement.setAttribute('active', 'true')` - since `toggleOverlays()`
    and `reportState()` are chained in the same `.then()`, the toolbar icon
-   silently desyncs too. Reachable via any corrupted/unexpected
-   `chrome.storage.sync` value (a multi-profile sync conflict, a manual
-   edit, a future schema change), not just theoretical. Fix: validate these
-   three fields in `sanitizeOptions` (fallback to `grid`/`clockwise`/
-   `bottom-left`), and/or add a `default:` case to `configureControl`.
+   would have silently desynced too. Added `sanitizeEnum` and three
+   `VALID_*` lists to `content.js` - `sanitizeOptions` now validates all
+   three fields (falling back to `grid`/`clockwise`/`bottom-left`), and
+   `configureControl` also got a defensive `default:` case (same fallback)
+   as a second line of defence for any other caller. Covered by new tests
+   in `content.test.js` and `golden-ratio.test.js` (closes #8 too).
 
 ## Worth doing
 
@@ -82,10 +83,7 @@ none of these block day-to-day use except where noted.
    enforces the two copies stay in sync if one changes. Consider a
    cross-check test, or accept the duplication as deliberate debt.
 
-8. **No test pins `configureControl`'s undefined-return behaviour.**
-   `golden-ratio.test.js` only exercises valid direction/start
-   combinations; once #3 is fixed, add a test for the new fallback (or the
-   documented throw, if left as-is).
+8. ~~**No test pins `configureControl`'s undefined-return behaviour.**~~ **Fixed as part of #3.**
 
 9. **`phiRatio` has no upper bound** - `sanitizePhiRatio` and the UI's
    `clampFloat`/`MIN_PHI_RATIO` only enforce a floor (0.01). A very large

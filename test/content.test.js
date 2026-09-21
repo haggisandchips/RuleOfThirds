@@ -8,7 +8,8 @@ const {
     sanitizeOptions,
     sanitizeLineStates,
     sanitizeCircleStates,
-    sanitizeColour
+    sanitizeColour,
+    sanitizeEnum
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation by default', () => {
@@ -130,7 +131,10 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         phiRatio: [1, 0.618, 1],
         phiRowLines: [true, true],
         phiColumnLines: [true, true],
-        phiCircleLines: [[true, true], [true, true]]
+        phiCircleLines: [[true, true], [true, true]],
+        overlayStyle: 'grid',
+        goldenRatioDirection: 'clockwise',
+        goldenRatioStart: 'bottom-left'
     });
 });
 
@@ -246,4 +250,39 @@ test('sanitizeOptions treats a missing Phi Grid line/circle state as every line/
     assert.deepEqual(result.phiRowLines, [true, true]);
     assert.deepEqual(result.phiColumnLines, [true, true]);
     assert.deepEqual(result.phiCircleLines, [[true, true], [true, true]]);
+});
+
+test('sanitizeEnum passes through a value that is in the valid set', () => {
+    assert.equal(sanitizeEnum('phi-grid', ['grid', 'phi-grid'], 'grid'), 'phi-grid');
+});
+
+test('sanitizeEnum falls back for a value outside the valid set, including missing/wrong-type values', () => {
+    assert.equal(sanitizeEnum('not-a-style', ['grid', 'phi-grid'], 'grid'), 'grid');
+    assert.equal(sanitizeEnum(undefined, ['grid', 'phi-grid'], 'grid'), 'grid');
+    assert.equal(sanitizeEnum(null, ['grid', 'phi-grid'], 'grid'), 'grid');
+    assert.equal(sanitizeEnum(42, ['grid', 'phi-grid'], 'grid'), 'grid');
+});
+
+test('sanitizeOptions falls back to safe defaults for a corrupted overlayStyle/goldenRatioDirection/goldenRatioStart', () => {
+    const result = sanitizeOptions({
+        overlayStyle: 'not-a-real-style',
+        goldenRatioDirection: 'diagonally',
+        goldenRatioStart: 'the-middle'
+    });
+
+    assert.equal(result.overlayStyle, 'grid');
+    assert.equal(result.goldenRatioDirection, 'clockwise');
+    assert.equal(result.goldenRatioStart, 'bottom-left');
+});
+
+test('sanitizeOptions leaves a valid overlayStyle/goldenRatioDirection/goldenRatioStart untouched', () => {
+    const result = sanitizeOptions({
+        overlayStyle: 'golden-ratio',
+        goldenRatioDirection: 'counter-clockwise',
+        goldenRatioStart: 'top-right'
+    });
+
+    assert.equal(result.overlayStyle, 'golden-ratio');
+    assert.equal(result.goldenRatioDirection, 'counter-clockwise');
+    assert.equal(result.goldenRatioStart, 'top-right');
 });

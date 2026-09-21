@@ -41,3 +41,15 @@ test('calculateSections rotates backwards through quadrants for a counter-clockw
         assert.equal(sections[ii].rotation, (sections[ii - 1].rotation + 3) % 4);
     }
 });
+
+test('configureControl falls back to bottom-left-clockwise for an unrecognized direction/start pair, instead of returning undefined', () => {
+    // direction/start are validated upstream (content.js's sanitizeOptions)
+    // before reaching here in the real overlay, but this guards
+    // calculateSections against ever destructuring properties off
+    // undefined if that validation is ever bypassed or this file is used
+    // some other way.
+    const fallback = configureControl('clockwise', 'bottom-left', 100, 60);
+
+    assert.deepEqual(configureControl('sideways', 'the-middle', 100, 60), fallback);
+    assert.deepEqual(configureControl(undefined, undefined, 100, 60), fallback);
+});
