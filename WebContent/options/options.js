@@ -1124,16 +1124,22 @@ function toggleGridCustomiseTarget(target, rowLineStates, columnLineStates, circ
 }
 
 const GRID_CUSTOMISE_FOCUS_COLOUR = '#26a69a'; // matches --color-primary in css/style.css
-
-const GRID_CUSTOMISE_FOCUS_MARKER_SIZE = 10;
+// Same colour as GRID_CUSTOMISE_FOCUS_COLOUR (#26a69a = rgb(38, 166, 154)),
+// translucent - canvas fillStyle has no separate opacity property, so the
+// alpha has to be baked into the colour string itself.
+const GRID_CUSTOMISE_FOCUS_BAND_FILL = 'rgba(38, 166, 154, 0.35)';
+// A fixed pixel margin either side of the line, not sized off the cell
+// itself (eg via smallestWeightedBand) - that made the band grow to fill
+// most of the cell on a plain 3x3 grid, well past what's needed just to
+// show which line has focus.
+const GRID_CUSTOMISE_FOCUS_BAND_MARGIN = 15;
 
 // Draws the Control canvas's only visible focus indicator - a canvas gets
 // no native browser focus ring of its own the way a real form control
-// would. A row/column line gets a small chevron at the canvas edge instead
-// of a highlight traced along its whole length, so the line's own black/
-// grey colour - its actual shown/hidden state - stays fully visible rather
-// than being painted over; a circle gets a ring drawn around it instead of
-// over it, for the same reason.
+// would. A row/column line gets a translucent band a fixed few pixels
+// either side of it, rather than being painted over directly, so its own
+// black/grey shown-hidden colour stays visible through the tint; a circle
+// gets a ring drawn around it instead of over it, for the same reason.
 function drawGridCustomiseFocus(ctx, w, h, shape, target) {
 
     if (!target) {
@@ -1143,21 +1149,20 @@ function drawGridCustomiseFocus(ctx, w, h, shape, target) {
     const rowPositions = weightedLinePositions(shape.rowWeights);
     const columnPositions = weightedLinePositions(shape.columnWeights);
 
-    const marker = GRID_CUSTOMISE_FOCUS_MARKER_SIZE;
-    ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-
     if (target.type === 'row') {
         const y = rowPositions[target.index] * h;
-        ctx.moveTo(marker, y - marker);
-        ctx.lineTo(0, y);
-        ctx.lineTo(marker, y + marker);
+        ctx.fillStyle = GRID_CUSTOMISE_FOCUS_BAND_FILL;
+        ctx.fillRect(0, y - GRID_CUSTOMISE_FOCUS_BAND_MARGIN, w, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2);
+        ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, y - GRID_CUSTOMISE_FOCUS_BAND_MARGIN + 0.5, w - 1, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2 - 1);
     } else if (target.type === 'column') {
         const x = columnPositions[target.index] * w;
-        ctx.moveTo(x - marker, marker);
-        ctx.lineTo(x, 0);
-        ctx.lineTo(x + marker, marker);
+        ctx.fillStyle = GRID_CUSTOMISE_FOCUS_BAND_FILL;
+        ctx.fillRect(x - GRID_CUSTOMISE_FOCUS_BAND_MARGIN, 0, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2, h);
+        ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - GRID_CUSTOMISE_FOCUS_BAND_MARGIN + 0.5, 0.5, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2 - 1, h - 1);
     } else {
         const radius = Math.min(
             (smallestWeightedBand(shape.rowWeights) * h) / 2,
@@ -1165,10 +1170,12 @@ function drawGridCustomiseFocus(ctx, w, h, shape, target) {
             shape.circleRadius) + 4;
         const x = columnPositions[target.column] * w;
         const y = rowPositions[target.row] * h;
+        ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
     }
-
-    ctx.stroke();
 }
 
 // Converts a mouse event's page position into the canvas's own pixel

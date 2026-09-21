@@ -55,6 +55,11 @@ function createColourRecordingContext() {
         lineTo() {},
         arc(x, y, radius) { arcRadii.push(radius); },
         stroke() { strokes.push(currentStrokeStyle); },
+        // drawGridCustomiseFocus's row/column band uses strokeRect (a
+        // rectangle outline in one call) rather than beginPath/stroke -
+        // recorded the same way so existing assertions on `strokes` don't
+        // need to care which one was used.
+        strokeRect() { strokes.push(currentStrokeStyle); },
         set strokeStyle(value) { currentStrokeStyle = value; },
         get strokeStyle() { return currentStrokeStyle; }
     };
