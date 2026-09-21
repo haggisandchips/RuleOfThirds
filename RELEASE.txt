@@ -1,4 +1,4 @@
-A customisable grid overlay for visualising image composition techniques (primarily the Rule of Thirds).
+Pick a composition guide and see straight away how your image lines up against it, all one click away from the toolbar icon - a fully configurable grid, from the classic rule-of-thirds arrangement up to nine rows and columns; a Phi Grid spaced by the golden ratio; or a Fibonacci Spiral. Line and intersection-circle colours, opacity, and circle style are all yours to set from the Options page, with any individual line or circle free to show or hide. Tiny icons and spacers stay out of the way below a size you set, and the toolbar icon always shows at a glance whether the overlay is currently on.
 
 History
 ------------------------------------------------------------------------------------------------------------------------
