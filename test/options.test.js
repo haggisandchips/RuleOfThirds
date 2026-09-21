@@ -7,6 +7,7 @@ const {
     MAX_GRID_LINES,
     MIN_CIRCLE_RADIUS,
     MIN_PHI_RATIO,
+    MAX_PHI_RATIO,
     PHI_RATIO_DECIMALS,
     clampInt,
     clampFloat,
@@ -124,6 +125,15 @@ test('clampFloat leaves the value unrounded when no decimals argument is given',
 test('clampFloat rounds to the given number of decimal places', () => {
     assert.equal(clampFloat('0.123456', MIN_PHI_RATIO, 1, 3), 0.123);
     assert.equal(clampFloat('1', MIN_PHI_RATIO, 1, 3), 1, 'a whole number stays whole, not padded to 1.000');
+});
+
+test('clampFloat has no upper bound by default', () => {
+    assert.equal(clampFloat('999999', MIN_PHI_RATIO, 1), 999999);
+});
+
+test('clampFloat clamps to an optional maximum', () => {
+    assert.equal(clampFloat('999999', MIN_PHI_RATIO, 1, undefined, MAX_PHI_RATIO), MAX_PHI_RATIO);
+    assert.equal(clampFloat('50', MIN_PHI_RATIO, 1, undefined, MAX_PHI_RATIO), 50);
 });
 
 test('roundTo rounds without padding trailing zeros', () => {

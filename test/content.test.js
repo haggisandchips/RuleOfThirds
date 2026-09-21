@@ -245,6 +245,16 @@ test('sanitizeOptions falls back per-entry for an invalid Phi ratio value, not t
     assert.deepEqual(result.phiRatio, [2, 0.618, 1]);
 });
 
+test('sanitizeOptions falls back per-entry for a Phi ratio value over the maximum', () => {
+    const result = sanitizeOptions({phiRatio: [1, 999999, 1]});
+    assert.deepEqual(result.phiRatio, [1, 0.618, 1]);
+});
+
+test('sanitizeOptions accepts a Phi ratio value exactly at the maximum', () => {
+    const result = sanitizeOptions({phiRatio: [1, 100, 1]});
+    assert.deepEqual(result.phiRatio, [1, 100, 1]);
+});
+
 test('sanitizeOptions treats a missing Phi Grid line/circle state as every line/circle enabled', () => {
     const result = sanitizeOptions({});
     assert.deepEqual(result.phiRowLines, [true, true]);

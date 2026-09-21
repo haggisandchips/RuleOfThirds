@@ -40,6 +40,11 @@ const MIN_IMAGE_SIZE = 1;
 const PHI_GRID_BAND_COUNT = 3;
 const PHI_RATIO_INPUT_IDS = ['phi-ratio-1', 'phi-ratio-2', 'phi-ratio-3'];
 const MIN_PHI_RATIO = 0.01;
+// 100 is already far more skewed than any real composition guide needs -
+// just enough to rule out a ratio so lopsided the narrow band collapses
+// toward an unusable sliver, without capping the field somewhere a user
+// could plausibly want to experiment.
+const MAX_PHI_RATIO = 100;
 const PHI_RATIO_DECIMALS = 3;
 
 // Per-line/per-circle enabled state for the "Customise" preview - kept as
@@ -457,22 +462,22 @@ function clampInt(value, min, fallback, max = Infinity) {
 // truncate it to 0. `decimals`, if given, rounds the result (see
 // roundTo) - the field is left showing that rounded value, not whatever
 // extra precision was typed.
-function parseValidFloat(elementId, min, fallback, decimals) {
+function parseValidFloat(elementId, min, fallback, decimals, max) {
 
     const element = document.getElementById(elementId);
-    const value = clampFloat(element.value, min, fallback, decimals);
+    const value = clampFloat(element.value, min, fallback, decimals, max);
 
     element.value = value;
     return value;
 }
 
-function clampFloat(value, min, fallback, decimals) {
+function clampFloat(value, min, fallback, decimals, max = Infinity) {
 
     const parsed = parseFloat(value);
     if (Number.isNaN(parsed)) {
         return fallback;
     }
-    const clamped = Math.max(parsed, min);
+    const clamped = Math.min(Math.max(parsed, min), max);
     return decimals === undefined ? clamped : roundTo(clamped, decimals);
 }
 
@@ -490,7 +495,7 @@ function roundTo(value, decimals) {
 // order they're declared in options.html (outer, middle, outer).
 function readPhiRatio() {
 
-    return PHI_RATIO_INPUT_IDS.map((id, index) => parseValidFloat(id, MIN_PHI_RATIO, DEFAULT_OPTIONS.phiRatio[index], PHI_RATIO_DECIMALS));
+    return PHI_RATIO_INPUT_IDS.map((id, index) => parseValidFloat(id, MIN_PHI_RATIO, DEFAULT_OPTIONS.phiRatio[index], PHI_RATIO_DECIMALS, MAX_PHI_RATIO));
 }
 
 function writePhiRatio(ratio) {
@@ -1336,7 +1341,7 @@ if (typeof document !== 'undefined') {
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        DEFAULT_OPTIONS, MIN_GRID_LINES, MAX_GRID_LINES, MIN_CIRCLE_RADIUS, MIN_PHI_RATIO, PHI_RATIO_DECIMALS, clampInt, clampFloat, roundTo, minGridLines, computeGridLineMinimums,
+        DEFAULT_OPTIONS, MIN_GRID_LINES, MAX_GRID_LINES, MIN_CIRCLE_RADIUS, MIN_PHI_RATIO, MAX_PHI_RATIO, PHI_RATIO_DECIMALS, clampInt, clampFloat, roundTo, minGridLines, computeGridLineMinimums,
         resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
         weightedLinePositions, smallestWeightedBand,
         computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground,

@@ -31,6 +31,10 @@ function shouldRender(computedStyle, w, h, minWidth, minHeight, eitherOrientatio
 // file is injected into the same page more than once.
 var PHI_GRID_LINE_COUNT = 2;
 var DEFAULT_PHI_RATIO = [1, 0.618, 1];
+// Matches the Options page's MAX_PHI_RATIO - already far more skewed than
+// any real composition guide needs, just enough to rule out a ratio so
+// lopsided the narrow band collapses toward an unusable sliver.
+var MAX_PHI_RATIO = 100;
 
 // Storage may hold a ratio saved by an older/corrupted version, or with the
 // wrong number of entries - falls back per-entry (not as a whole array) so
@@ -42,7 +46,7 @@ function sanitizePhiRatio(value) {
     }
     return value.map((entry, index) => {
         const parsed = parseFloat(entry);
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PHI_RATIO[index];
+        return Number.isFinite(parsed) && parsed > 0 && parsed <= MAX_PHI_RATIO ? parsed : DEFAULT_PHI_RATIO[index];
     });
 }
 

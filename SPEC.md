@@ -89,10 +89,13 @@ none of these block day-to-day use except where noted.
 
 8. ~~**No test pins `configureControl`'s undefined-return behaviour.**~~ **Fixed as part of #3.**
 
-9. **`phiRatio` has no upper bound** - `sanitizePhiRatio` and the UI's
-   `clampFloat`/`MIN_PHI_RATIO` only enforce a floor (0.01). A very large
-   typed value produces a visually degenerate grid (two bands collapse
-   toward zero width) but doesn't crash - low-priority UX nit.
+9. ~~**`phiRatio` has no upper bound**~~ **Fixed.** Added a `MAX_PHI_RATIO`
+   of 100 (generous enough for any real use, just ruling out a ratio so
+   lopsided the narrow band collapses toward an unusable sliver) - enforced
+   in both `content.js`'s `sanitizePhiRatio` (falls back to the default for
+   that entry, same as the existing floor/non-numeric handling) and the
+   Options page's `clampFloat` (now takes an optional `max`), plus a
+   matching `max="100"` on the three `<input>`s.
 
 10. **Accessibility of the Phi Grid and Fibonacci Spiral sections on the
     Options page**, generally. The original Customise controls (Grid/
