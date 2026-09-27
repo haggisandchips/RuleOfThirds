@@ -14,7 +14,8 @@ const {
     RESIZE_HANDLES,
     activeResizeRect,
     resizeHandlePosition,
-    dragResizeRect
+    dragResizeRect,
+    resizeMaskRects
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation by default', () => {
@@ -128,6 +129,7 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         renderCircle: true,
         circleColour: '#ff0000',
         circleOpacity: 0,
+        resizeMaskOpacity: 50,
         circleRadius: 1,
         circleStyle: 'outline',
         circleLines: [[true, true], [true, true]],
@@ -375,4 +377,26 @@ test('dragResizeRect never inverts or collapses the rectangle below MIN_RESIZE_D
     const collapsedVertically = dragResizeRect(rect, 's', 0, -10000, 1000, 1000);
     assert.equal(collapsedVertically.h, MIN_RESIZE_DIMENSION);
     assert.equal(collapsedVertically.y, rect.y, 'the untouched top edge stays put');
+});
+
+test('resizeMaskRects covers nothing when the rectangle already fills the whole canvas', () => {
+    const rects = resizeMaskRects({x: 0, y: 0, w: 200, h: 100}, 200, 100);
+    rects.forEach(rect => assert.equal(rect.w * rect.h, 0));
+});
+
+test('resizeMaskRects tiles the area outside the rectangle without gaps or overlap', () => {
+    const rect = {x: 20, y: 10, w: 100, h: 50};
+    const w = 200;
+    const h = 100;
+    const rects = resizeMaskRects(rect, w, h);
+
+    const totalArea = rects.reduce((sum, r) => sum + r.w * r.h, 0);
+    assert.equal(totalArea, w * h - rect.w * rect.h, 'the four strips together cover exactly the area outside the rectangle');
+
+    assert.deepEqual(rects, [
+        {x: 0, y: 0, w: 200, h: 10},
+        {x: 0, y: 60, w: 200, h: 40},
+        {x: 0, y: 10, w: 20, h: 50},
+        {x: 120, y: 10, w: 80, h: 50}
+    ]);
 });

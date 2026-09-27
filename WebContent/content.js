@@ -89,6 +89,7 @@ function sanitizeOptions(data) {
         circleRadius: sanitizeInt(data.circleRadius, 1, 5),
         lineOpacity: sanitizeInt(data.lineOpacity, 0, 100, 100),
         circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100),
+        resizeMaskOpacity: sanitizeInt(data.resizeMaskOpacity, 0, 50, 100),
         circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1),
         lineColour: sanitizeColour(data.lineColour, '#ffffff'),
         circleColour: sanitizeColour(data.circleColour, '#ff0000'),
@@ -229,6 +230,27 @@ function dragResizeRect(startRect, handleId, dx, dy, imageWidth, imageHeight) {
     if (edges.includes('e')) { right = Math.max(right, left + MIN_RESIZE_DIMENSION); }
 
     return {x: left, y: top, w: right - left, h: bottom - top};
+}
+
+// The (up to) four non-overlapping rectangles covering everything OUTSIDE
+// `rect` within a `w`x`h` canvas - the "cropped" part of the image a
+// resized overlay no longer applies to, dimmed (see resizeMaskOpacity on
+// the Options page) so it's obvious at a glance which part of the image
+// the composition guide currently covers, rather than looking untouched.
+//
+// Deliberately four non-overlapping strips (not four overlapping full-
+// width/height rectangles) so a translucent fill doesn't stack extra
+// opacity into the corners. Degenerates to four zero-area rectangles (so
+// nothing is drawn) when `rect` already covers the whole canvas - callers
+// don't need to special-case "not actually resized" themselves.
+function resizeMaskRects(rect, w, h) {
+
+    return [
+        {x: 0, y: 0, w: w, h: rect.y}, // above
+        {x: 0, y: rect.y + rect.h, w: w, h: h - (rect.y + rect.h)}, // below
+        {x: 0, y: rect.y, w: rect.x, h: rect.h}, // left
+        {x: rect.x + rect.w, y: rect.y, w: w - (rect.x + rect.w), h: rect.h} // right
+    ];
 }
 
 // Diameter of a handle's own visible circle, in CSS pixels - centred on
@@ -477,6 +499,7 @@ if (typeof rotInit === 'undefined') {
                         renderCircle: true,
                         circleColour: '#ff0000',
                         circleOpacity: 100,
+                        resizeMaskOpacity: 50,
                         circleRadius: 5,
                         circleStyle: 'outline',
                         circleLines: [[true, true], [true, true]],
@@ -599,6 +622,15 @@ if (typeof rotInit === 'undefined') {
                 // clean slate.
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 ctx.clearRect(0, 0, w, h);
+
+                // Dims whatever's outside `rect` (nothing is drawn if it's
+                // still the whole image - see resizeMaskRects) so it's
+                // obvious at a glance which part of the image a resized
+                // overlay currently applies to, drawn before the overlay
+                // itself so it never covers the grid/spiral lines.
+                ctx.fillStyle = hexToRgba('#000000', options.resizeMaskOpacity);
+                resizeMaskRects(rect, w, h).forEach(maskRect => ctx.fillRect(maskRect.x, maskRect.y, maskRect.w, maskRect.h));
+
                 ctx.translate(rect.x, rect.y);
 
                 OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, rect.w, rect.h, options);
@@ -857,6 +889,6 @@ if (typeof rotInit === 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum,
-        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect
+        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, resizeMaskRects
     };
 }

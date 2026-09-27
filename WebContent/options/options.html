@@ -43,6 +43,20 @@
             </span>
           </p>
         </div>
+        <div class="col s12 m6">
+          <p>
+            <label for="resize-mask-opacity">Cropped Area Opacity</label>
+            <span class="opacity-row">
+              <input type="range" id="resize-mask-opacity" min="0" max="100"/>
+              <span class="opacity-value" id="resize-mask-opacity-value"></span>
+            </span>
+          </p>
+          <p class="help-text">
+            When an overlay's right-click "Enable Resize" confines it to part of an image, this
+            dims the rest of the image outside it, so it's obvious at a glance which part the
+            composition guide currently applies to. 0 leaves that area undimmed.
+          </p>
+        </div>
       </div>
 
       <div class="row overlay-style-tabs">
