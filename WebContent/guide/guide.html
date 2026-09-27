@@ -50,14 +50,28 @@
 
       <div class="row">
         <div class="col s12">
-          <h4>Resizing an Overlay</h4>
+          <h4>Resizing an Overlay [TODO]</h4>
           <div class="divider"></div>
           <p class="flow-text">Right-click a rendered overlay for "Enable Resize" - turn it on and 8
             small handles appear at its corners and edges. Drag any of them to confine the overlay
             to part of the image instead of covering all of it; it can't be dragged outside the
-            image itself. Turning "Enable Resize" back off hides the handles again but leaves the
-            overlay exactly where it was resized to, for an uncluttered view of the composition
-            you've chosen.
+            image itself. <span style="background-color: yellow;">Drag anywhere else inside the overlay (not a handle or the orientation flip
+            control below) to move it without resizing it.</span> Turning "Enable Resize" back off
+            hides the handles again but leaves the overlay exactly where it was resized to, for an
+            uncluttered view of the composition you've chosen.
+          </p>
+          <p class="flow-text"><span style="background-color: yellow;">The right-click menu's <strong>Resize Options</strong> submenu holds <strong>Maintain Aspect
+            Ratio</strong> - keeps the resized area's current proportions while dragging any handle,
+            instead of letting width and height change independently - plus a choice of standard
+            photo ratios (6x4, 7x5, 8x6, 5x4, Square, 16x9) to force the overlay to instead of
+            whatever shape it's currently at.</span>
+          </p>
+          <p class="flow-text"><span style="background-color: yellow;">Choosing one of those ratios (or turning Enable Resize on when one's
+            already chosen) instantly resizes the overlay to the largest area at that ratio,
+            anchored at its current top left corner, in whichever of portrait or landscape suits
+            the image's own shape. A small circular control at the centre of the resized area -
+            or "Switch to Portrait"/"Switch to Landscape" on the same submenu - flips between the
+            two.</span>
           </p>
           <p class="flow-text">The part of the image a resized overlay no longer covers is dimmed, with a
             thin line in Line Colour tracing the exact edge - <strong>Cropped Area Opacity</strong>,

@@ -55,12 +55,27 @@
           </p>
         </div>
         <div class="col s12 l6">
-          <h5>Resize Overlay</h5>
+          <h5>Resize Overlay [TODO]</h5>
           <div class="divider"></div>
           <p class="flow-text">
             Right-click a rendered overlay for a new "Enable Resize" option - turn it on and drag
             any of 8 handles to confine the overlay to part of the image instead of covering all of
-            it. "Reset" snaps it back to the whole image.
+            it, or drag anywhere else inside it to move it without resizing. "Reset" snaps it back
+            to the whole image.
+          </p>
+          <p class="flow-text">
+            The right-click menu's new "Resize Options" submenu holds "Maintain Aspect Ratio" -
+            keeps the resized area's current proportions while dragging any handle, instead of
+            letting width and height change independently - plus a choice of standard photo
+            ratios (6x4, 7x5, 8x6, 5x4, Square, 16x9) to force the overlay to instead of whatever
+            shape it's currently at.
+          </p>
+          <p class="flow-text">
+            Choosing one of those ratios (or Enabling Resize when one's already chosen) instantly
+            resizes the overlay to the largest area at that ratio, anchored at its current top left
+            corner, in whichever of portrait or landscape suits the image's own shape - a small
+            circular control at the centre of the resized area (or "Switch to Portrait"/"Switch to
+            Landscape" on the same submenu) flips between the two.
           </p>
           <p class="flow-text">
             Transient: unaffected by turning "Enable Resize" back off (the overlay just

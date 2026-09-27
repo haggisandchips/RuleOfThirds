@@ -15,8 +15,15 @@ const {
     activeResizeRect,
     resizeHandlePosition,
     dragResizeRect,
+    dragResizeRectLocked,
+    fitRectToImage,
     resizeMaskRects,
-    resizeBorderRects
+    resizeBorderRects,
+    ASPECT_RATIO_PRESETS,
+    effectiveAspectRatio,
+    maxRectAtAnchor,
+    orientationFlipDisplay,
+    dragMoveRect
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation by default', () => {
@@ -418,4 +425,131 @@ test('resizeBorderRects traces a 1px frame exactly one pixel outside the rectang
         {x: 19, y: 10, w: 1, h: 50},
         {x: 120, y: 10, w: 1, h: 50}
     ]);
+});
+
+test('fitRectToImage leaves a rectangle untouched when it already fits and meets the minimum size', () => {
+    const rect = {x: 10, y: 10, w: 50, h: 50};
+    assert.deepEqual(fitRectToImage(rect, 1, 200, 200), rect);
+});
+
+test('fitRectToImage shrinks a too-wide rectangle to fit, preserving the aspect ratio', () => {
+    const result = fitRectToImage({x: 0, y: 0, w: 300, h: 150}, 2, 200, 200);
+    assert.deepEqual(result, {x: 0, y: 0, w: 200, h: 100});
+});
+
+test('fitRectToImage shrinks a too-tall rectangle to fit, preserving the aspect ratio', () => {
+    const result = fitRectToImage({x: 0, y: 0, w: 100, h: 400}, 0.25, 300, 200);
+    assert.deepEqual(result, {x: 0, y: 0, w: 50, h: 200});
+});
+
+test('fitRectToImage grows a too-small rectangle up to MIN_RESIZE_DIMENSION, preserving the aspect ratio', () => {
+    const result = fitRectToImage({x: 50, y: 50, w: 5, h: 5}, 1, 200, 200);
+    assert.deepEqual(result, {x: 50, y: 50, w: MIN_RESIZE_DIMENSION, h: MIN_RESIZE_DIMENSION});
+});
+
+test('fitRectToImage repositions (without resizing) a rectangle that no longer fits after a shrink', () => {
+    const result = fitRectToImage({x: 150, y: 150, w: 300, h: 150}, 2, 200, 200);
+    assert.deepEqual(result, {x: 0, y: 100, w: 200, h: 100});
+});
+
+test('dragResizeRectLocked: a corner drag lets the dominant axis drive, deriving the other from the ratio, anchored at the opposite corner', () => {
+    // startRect is 2:1 - dragging 'se' by (100, 10) grows width far more
+    // (proportionally) than height, so width should drive.
+    const startRect = {x: 0, y: 0, w: 100, h: 50};
+    const result = dragResizeRectLocked(startRect, 'se', 100, 10, 1000, 1000);
+
+    assert.deepEqual(result, {x: 0, y: 0, w: 200, h: 100});
+});
+
+test('dragResizeRectLocked: an edge handle derives its other axis symmetrically around the rectangle\'s own centre', () => {
+    const startRect = {x: 10, y: 20, w: 100, h: 50};
+    const result = dragResizeRectLocked(startRect, 'e', 50, 0, 1000, 1000);
+
+    assert.deepEqual(result, {x: 10, y: 7.5, w: 150, h: 75});
+    // The vertical centre (20 + 50/2) is unchanged.
+    assert.equal(result.y + result.h / 2, startRect.y + startRect.h / 2);
+});
+
+test('dragResizeRectLocked keeps the exact aspect ratio even when clamped to the image bounds', () => {
+    const startRect = {x: 0, y: 0, w: 50, h: 50};
+    const result = dragResizeRectLocked(startRect, 'se', 10000, 10000, 200, 100);
+
+    assert.deepEqual(result, {x: 0, y: 0, w: 100, h: 100});
+    assert.equal(result.w / result.h, startRect.w / startRect.h);
+});
+
+test('effectiveAspectRatio returns null for \'original\' - meaning "nothing forced", not a real ratio', () => {
+    assert.equal(effectiveAspectRatio('original', false, 100, 100), null);
+    assert.equal(effectiveAspectRatio('original', true, 300, 100), null);
+});
+
+test('effectiveAspectRatio uses a preset\'s own (landscape) figure for a landscape image', () => {
+    assert.equal(effectiveAspectRatio('6x4', false, 200, 100), 3 / 2);
+});
+
+test('effectiveAspectRatio inverts a preset\'s ratio for a portrait image', () => {
+    assert.equal(effectiveAspectRatio('6x4', false, 100, 200), 2 / 3);
+});
+
+test('effectiveAspectRatio inverts again when orientationFlipped is set, regardless of the image\'s own shape', () => {
+    assert.equal(effectiveAspectRatio('6x4', true, 200, 100), 2 / 3, 'landscape image, flipped to portrait');
+    assert.equal(effectiveAspectRatio('6x4', true, 100, 200), 3 / 2, 'portrait image, flipped to landscape');
+});
+
+test('effectiveAspectRatio: Square is unaffected by orientation either way', () => {
+    assert.equal(effectiveAspectRatio('square', false, 100, 200), 1);
+    assert.equal(effectiveAspectRatio('square', true, 100, 200), 1);
+});
+
+test('ASPECT_RATIO_PRESETS: every preset except \'original\' is expressed in its landscape (>= 1) form', () => {
+    Object.entries(ASPECT_RATIO_PRESETS).forEach(([id, preset]) => {
+        if (id === 'original') {
+            assert.equal(preset.ratio, null);
+        } else {
+            assert.ok(preset.ratio >= 1, `${id}'s ratio (${preset.ratio}) should be >= 1`);
+        }
+    });
+});
+
+test('maxRectAtAnchor fills all the way to the image\'s edge along whichever axis is tightest', () => {
+    assert.deepEqual(maxRectAtAnchor(0, 0, 2, 300, 100), {x: 0, y: 0, w: 200, h: 100});
+});
+
+test('maxRectAtAnchor starts from a non-zero anchor, not the image\'s own origin', () => {
+    assert.deepEqual(maxRectAtAnchor(50, 20, 1, 200, 150), {x: 50, y: 20, w: 130, h: 130});
+});
+
+test('orientationFlipDisplay shows the target shape, not the current one', () => {
+    const landscape = orientationFlipDisplay(1.5);
+    assert.equal(landscape.title, 'Switch to portrait');
+    assert.equal(landscape.targetIsPortrait, true);
+
+    const portrait = orientationFlipDisplay(2 / 3);
+    assert.equal(portrait.title, 'Switch to landscape');
+    assert.equal(portrait.targetIsPortrait, false);
+});
+
+test('orientationFlipDisplay treats an exact 1:1 ratio as landscape (offering portrait)', () => {
+    assert.equal(orientationFlipDisplay(1).title, 'Switch to portrait');
+});
+
+test('dragMoveRect translates the rectangle without resizing it', () => {
+    const startRect = {x: 50, y: 40, w: 100, h: 80};
+    const result = dragMoveRect(startRect, 20, -10, 1000, 1000);
+
+    assert.deepEqual(result, {x: 70, y: 30, w: 100, h: 80});
+});
+
+test('dragMoveRect clamps to the image\'s top-left rather than dragging the rectangle out of it', () => {
+    const startRect = {x: 50, y: 40, w: 100, h: 80};
+    const result = dragMoveRect(startRect, -10000, -10000, 1000, 1000);
+
+    assert.deepEqual(result, {x: 0, y: 0, w: 100, h: 80});
+});
+
+test('dragMoveRect clamps to the image\'s bottom-right rather than dragging the rectangle out of it', () => {
+    const startRect = {x: 50, y: 40, w: 100, h: 80};
+    const result = dragMoveRect(startRect, 10000, 10000, 300, 200);
+
+    assert.deepEqual(result, {x: 200, y: 120, w: 100, h: 80});
 });

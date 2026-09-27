@@ -232,6 +232,174 @@ function dragResizeRect(startRect, handleId, dx, dy, imageWidth, imageHeight) {
     return {x: left, y: top, w: right - left, h: bottom - top};
 }
 
+// Same drag semantics as dragResizeRect above (the handle's own edges
+// move, the others stay put) but the rectangle's aspect ratio - width
+// divided by height, taken from `startRect` itself, whatever it happens
+// to be when the drag begins, not necessarily the image's own ratio - is
+// preserved throughout (see the "Maintain Aspect Ratio" context-menu
+// item). A corner handle lets whichever axis the pointer has moved
+// further along, proportionally, drive the resize, deriving the other
+// axis from the ratio; an edge handle (only one axis of its own) derives
+// its other axis the same way, growing/shrinking evenly around the
+// rectangle's own centre on that axis, since there's no edge of the
+// user's own dragging to anchor it to instead.
+function dragResizeRectLocked(startRect, handleId, dx, dy, imageWidth, imageHeight, aspectRatio = startRect.w / startRect.h) {
+
+    const edges = RESIZE_HANDLES[handleId].edges;
+    const drivesWidth = edges.includes('w') || edges.includes('e');
+    const drivesHeight = edges.includes('n') || edges.includes('s');
+
+    const free = dragResizeRect(startRect, handleId, dx, dy, imageWidth, imageHeight);
+
+    let w = free.w;
+    let h = free.h;
+
+    if (drivesWidth && drivesHeight) {
+        // Cross-multiplied rather than dividing, so this compares the two
+        // axes' proportional change without risking a divide-by-zero.
+        const widthChanged = Math.abs(free.w - startRect.w) * startRect.h;
+        const heightChanged = Math.abs(free.h - startRect.h) * startRect.w;
+        if (widthChanged >= heightChanged) {
+            h = w / aspectRatio;
+        } else {
+            w = h * aspectRatio;
+        }
+    } else if (drivesWidth) {
+        h = w / aspectRatio;
+    } else {
+        w = h * aspectRatio;
+    }
+
+    let x = startRect.x;
+    let y = startRect.y;
+    if (edges.includes('w')) {
+        x = startRect.x + startRect.w - w;
+    } else if (!drivesWidth) {
+        x = startRect.x + (startRect.w - w) / 2;
+    }
+    if (edges.includes('n')) {
+        y = startRect.y + startRect.h - h;
+    } else if (!drivesHeight) {
+        y = startRect.y + (startRect.h - h) / 2;
+    }
+
+    return fitRectToImage({x, y, w, h}, aspectRatio, imageWidth, imageHeight);
+}
+
+// Shrinks or grows `rect` - preserving `aspectRatio` throughout, so this
+// is only ever used to finish off dragResizeRectLocked above - until it
+// fits within (0, 0) to (imageWidth, imageHeight) and is at least
+// MIN_RESIZE_DIMENSION along its smaller axis, then repositions it
+// (without resizing, so the ratio stays exact) to stay fully on the
+// image. Width-then-height order for both the shrink and the grow pass,
+// so whichever axis is tightest for this particular ratio is what ends
+// up governing the final size.
+function fitRectToImage(rect, aspectRatio, imageWidth, imageHeight) {
+
+    let w = rect.w;
+    let h = rect.h;
+
+    if (w > imageWidth) { w = imageWidth; h = w / aspectRatio; }
+    if (h > imageHeight) { h = imageHeight; w = h * aspectRatio; }
+    if (w < MIN_RESIZE_DIMENSION) { w = MIN_RESIZE_DIMENSION; h = w / aspectRatio; }
+    if (h < MIN_RESIZE_DIMENSION) { h = MIN_RESIZE_DIMENSION; w = h * aspectRatio; }
+
+    const x = Math.min(Math.max(rect.x, 0), imageWidth - w);
+    const y = Math.min(Math.max(rect.y, 0), imageHeight - h);
+
+    return {x, y, w, h};
+}
+
+// Translates `startRect` by (dx, dy) - the pointer's total movement since
+// the drag began, same convention as dragResizeRect/dragResizeRectLocked -
+// without resizing it at all, clamped so it can't be dragged outside the
+// image. Used to move the resize rectangle by dragging anywhere inside it
+// that isn't a handle or the orientation flip control (both sit on top of
+// the canvas as separate elements, so a pointerdown starting on either
+// never reaches the canvas's own listener this drives - no exclusion
+// logic needed here beyond that).
+function dragMoveRect(startRect, dx, dy, imageWidth, imageHeight) {
+
+    const x = Math.min(Math.max(startRect.x + dx, 0), imageWidth - startRect.w);
+    const y = Math.min(Math.max(startRect.y + dy, 0), imageHeight - startRect.h);
+
+    return {x, y, w: startRect.w, h: startRect.h};
+}
+
+// --- Forced aspect-ratio presets ("Resize Options" submenu) ---
+//
+// Each ratio is expressed in its landscape form (>= 1) - effectiveAspectRatio
+// below flips it for a portrait image/orientation. `label` is what shows in
+// the submenu; `original` is a distinct case (see effectiveAspectRatio and
+// applyForcedAspectRatio in rotInit) meaning "do not force a specific ratio",
+// not "the image's own ratio" - selecting it just returns resizing to its
+// plain Maintain Aspect Ratio behaviour (whatever shape the rectangle
+// already has).
+var ASPECT_RATIO_PRESETS = {
+    original: {label: 'Original', ratio: null},
+    '6x4': {label: '6 x 4', ratio: 3 / 2},
+    '7x5': {label: '7 x 5', ratio: 7 / 5},
+    '8x6': {label: '8 x 6', ratio: 4 / 3},
+    '5x4': {label: '5 x 4', ratio: 5 / 4},
+    square: {label: 'Square', ratio: 1},
+    '16x9': {label: '16 x 9', ratio: 16 / 9}
+};
+
+// The actual w/h ratio to resize to for a given preset - its landscape
+// figure (ASPECT_RATIO_PRESETS' own ratio) if the image itself is
+// landscape, or that figure inverted (portrait) if it's not - flipped
+// again if orientationFlipped (the on-canvas flip control/submenu action)
+// is set. Returns null for 'original', same as the preset itself, so a
+// caller can use that to mean "nothing forced" without a separate check.
+function effectiveAspectRatio(presetId, orientationFlipped, imageWidth, imageHeight) {
+
+    const preset = ASPECT_RATIO_PRESETS[presetId];
+    if (!preset || preset.ratio === null) {
+        return null;
+    }
+
+    const imageIsLandscape = imageWidth >= imageHeight;
+    const targetIsLandscape = imageIsLandscape !== orientationFlipped;
+
+    return targetIsLandscape ? preset.ratio : 1 / preset.ratio;
+}
+
+// The largest rectangle at aspectRatio that fits between (anchorX,
+// anchorY) and the image's own bottom-right corner - "as large as
+// possible" for a forced-ratio preset, anchored whereever the resize
+// rectangle's top-left corner already was (or (0, 0), the image's own,
+// if it hadn't been resized yet - activeResizeRect already resolves that).
+function maxRectAtAnchor(anchorX, anchorY, aspectRatio, imageWidth, imageHeight) {
+
+    const availableWidth = imageWidth - anchorX;
+    const availableHeight = imageHeight - anchorY;
+
+    let w = availableWidth;
+    let h = w / aspectRatio;
+    if (h > availableHeight) {
+        h = availableHeight;
+        w = h * aspectRatio;
+    }
+
+    return {x: anchorX, y: anchorY, w, h};
+}
+
+// Whether the on-canvas orientation flip control's little rectangle icon
+// (see createOrientationFlipControl) should be drawn tall (offering
+// portrait) or wide (offering landscape), and its tooltip - always the
+// shape it would switch *to*, not the one it's currently at, so eg a
+// currently-landscape overlay shows the portrait icon it's offering to
+// switch to, matching the equivalent "Switch to Portrait"/"Switch to
+// Landscape" submenu action's own label. A CSS-sized rectangle rather
+// than a Unicode glyph (eg U+25AC/U+25AE), which at this small a size
+// render more like a dash than a recognisable rectangle in most fonts.
+function orientationFlipDisplay(ratio) {
+
+    return ratio >= 1
+        ? {targetIsPortrait: true, title: 'Switch to portrait'}
+        : {targetIsPortrait: false, title: 'Switch to landscape'};
+}
+
 // The (up to) four non-overlapping rectangles covering everything OUTSIDE
 // `rect` within a `w`x`h` canvas - the "cropped" part of the image a
 // resized overlay no longer applies to, dimmed (see resizeMaskOpacity on
@@ -295,15 +463,18 @@ var RESIZE_HANDLE_COLOUR = '#26a69a';
 // A small, generic, keyboard-accessible replacement for the page's own
 // right-click menu when it's opened on the overlay - deliberately built
 // around a declarative list of items (see showOverlayContextMenu's `items`
-// parameter) rather than bespoke DOM for "Enable Resize" and "Reset"
-// specifically, since more per-image overrides are expected to grow this
-// menu later. Follows the WAI-ARIA menu pattern (role="menu" containing
-// role="menuitem"/"menuitemcheckbox", arrow keys to move between them,
-// Enter/Space to activate, Escape or a click outside to close and return
-// focus to whatever opened it).
+// parameter) rather than bespoke DOM for each menu entry, since the menu
+// keeps growing (per-image overrides, now the "Resize Options" submenu).
+// Follows the WAI-ARIA menu pattern (role="menu" containing role=
+// "menuitem"/"menuitemcheckbox"/"menuitemradio", arrow keys to move
+// between them, Enter/Space to activate, Escape or a click outside to
+// close and return focus to whatever opened it) plus its submenu
+// extension (role="menuitem" with aria-haspopup/aria-expanded, ArrowRight/
+// click/hover to open, ArrowLeft/Escape to close just that level).
 //
-// Only one instance is ever open at a time - opening a new one closes
-// whichever was already showing, same as a native context menu.
+// Only one menu (root + at most one open submenu) is ever showing at a
+// time - opening a new root menu closes whichever was already showing,
+// same as a native context menu.
 //
 // KNOWN GAP: "keyboard-accessible" above is about the menu's own internals
 // once it's open, not how to open it - the overlay's container has
@@ -311,18 +482,49 @@ var RESIZE_HANDLE_COLOUR = '#26a69a';
 // works) but is deliberately not in the page's own Tab order, so there's
 // currently no keyboard path to trigger the browser's own Shift+F10/Menu-
 // key "contextmenu" event on it at all. The resize handles (see
-// createResizeHandles below) are pointer-only too - role="presentation"/
-// aria-hidden="true", no keyboard equivalent for nudging one. Flagged
+// createResizeHandles below), the orientation flip control (see
+// createOrientationFlipControl), and dragging the rectangle itself to
+// move it (see the canvas's own pointerdown listener in renderImageOverlay)
+// are pointer-only too - role="presentation"/aria-hidden="true" for the
+// first two, no keyboard equivalent for nudging a handle, moving the
+// rectangle, or flipping orientation (the latter does at least have a
+// menu fallback - "Switch to Portrait"/"Switch to Landscape" on the
+// Resize Options submenu - the other two have no keyboard equivalent at
+// all). Flagged
 // rather than fixed here since a real fix (Tab reaching the overlay,
 // Tab/arrow keys between handles, arrow keys to nudge, Shift+arrow for
 // bigger steps) is a proper feature in its own right, not a quick patch.
 var openOverlayMenu = null;
+var openOverlaySubmenu = null;
+
+// `returnFocus` - whether to move focus back to the item that opened this
+// submenu. false when the whole menu (root included) is about to close
+// anyway, since there would be nothing left to return focus to.
+function closeOverlaySubmenu(returnFocus) {
+
+    if (!openOverlaySubmenu) {
+        return;
+    }
+
+    const {element, parentItem} = openOverlaySubmenu;
+    element.remove();
+    if (parentItem) {
+        parentItem.setAttribute('aria-expanded', 'false');
+    }
+    openOverlaySubmenu = null;
+
+    if (returnFocus && parentItem && typeof parentItem.focus === 'function') {
+        parentItem.focus();
+    }
+}
 
 function closeOverlayContextMenu() {
 
     if (!openOverlayMenu) {
         return;
     }
+
+    closeOverlaySubmenu(false);
 
     const {element, returnFocusTo} = openOverlayMenu;
     element.remove();
@@ -340,27 +542,53 @@ function closeOverlayContextMenu() {
 
 function onOverlayMenuPointerDown(event) {
 
-    if (openOverlayMenu && !openOverlayMenu.element.contains(event.target)) {
+    if (!openOverlayMenu) {
+        return;
+    }
+
+    const inRoot = openOverlayMenu.element.contains(event.target);
+    const inSubmenu = openOverlaySubmenu && openOverlaySubmenu.element.contains(event.target);
+    if (!inRoot && !inSubmenu) {
         closeOverlayContextMenu();
     }
 }
 
+// Positions an already-appended (so its own size can be measured) menu
+// element at (x, y), nudged back on-screen if it would otherwise spill
+// past the right/bottom edge of the viewport.
+function positionMenuElement(element, x, y) {
+
+    element.style.left = x + 'px';
+    element.style.top = y + 'px';
+
+    const bounds = element.getBoundingClientRect();
+    if (bounds.right > window.innerWidth) {
+        element.style.left = Math.max(0, window.innerWidth - bounds.width) + 'px';
+    }
+    if (bounds.bottom > window.innerHeight) {
+        element.style.top = Math.max(0, window.innerHeight - bounds.height) + 'px';
+    }
+}
+
+// Builds a styled role="menu" element from `items` - shared between the
+// root menu and any submenu, so both look and behave identically. Doesn't
+// position or append it itself - the caller does that once the element's
+// own size can be measured. `onEscape`/`onArrowLeft` let the root menu and
+// a submenu react to those keys differently (close everything vs close
+// just this one level and return to its parent item).
+//
 // `items` is an array of:
 //   {type: 'checkbox', label, checked, onToggle(newChecked)}
+//   {type: 'radio', label, checked, onToggle(newChecked)}
 //   {type: 'action', label, onActivate()}
+//   {type: 'submenu', label, items: [...]}
 //   {type: 'separator'}
-// `returnFocusTo` gets focus back once the menu closes (Escape, a click
-// outside, or an item being activated all close it).
-function showOverlayContextMenu(x, y, items, returnFocusTo) {
-
-    closeOverlayContextMenu();
+function buildMenuElement(items, onEscape, onArrowLeft, closesSubmenuOnHover) {
 
     const menu = document.createElement('div');
     menu.setAttribute('role', 'menu');
     menu.setAttribute('data-extension', 'rule-of-thirds');
     menu.style.position = 'fixed';
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
     // Higher than anything a host page would plausibly use, so the menu
     // never ends up hidden behind the page's own fixed-position content.
     menu.style.zIndex = '2147483647';
@@ -374,6 +602,13 @@ function showOverlayContextMenu(x, y, items, returnFocusTo) {
     menu.style.font = '14px "Helvetica Neue", Helvetica, Arial, sans-serif';
 
     const focusableItems = [];
+    // Every radio-type item's own {item, menuItem, dot} - not just the
+    // DOM, the underlying `item` object too, so selecting one can reset
+    // every *other* radio in the same group back to unchecked (both its
+    // DOM and its own `checked` flag) - without this, re-clicking a radio
+    // that was checked earlier but has since been superseded by a
+    // different one wouldn't realise it needs to do anything.
+    const radioEntries = [];
 
     items.forEach(item => {
 
@@ -396,48 +631,115 @@ function showOverlayContextMenu(x, y, items, returnFocusTo) {
         menuItem.style.outline = 'none';
         menuItem.style.userSelect = 'none';
 
-        // A real bordered box (checked: a tick inside it) rather than a
-        // character-plus-blank-space hack, so it reads as an actual
-        // checkbox rather than unexplained indentation - only added for a
-        // checkbox item below, so a plain action item (eg "Reset") stays
-        // flush left rather than indented to match. `currentColor` (not a
-        // fixed colour) so this stays visible against both this item's
-        // normal background and the teal background the focus/blur
-        // handlers below switch its text colour against.
-        const checkbox = document.createElement('span');
-        checkbox.setAttribute('aria-hidden', 'true');
-        checkbox.style.display = 'inline-flex';
-        checkbox.style.alignItems = 'center';
-        checkbox.style.justifyContent = 'center';
-        checkbox.style.width = '14px';
-        checkbox.style.height = '14px';
-        checkbox.style.flexShrink = '0';
-        checkbox.style.boxSizing = 'border-box';
-        checkbox.style.fontSize = '11px';
-        checkbox.style.lineHeight = '1';
+        // A real bordered box/circle (checked: a tick or dot inside it)
+        // rather than a character-plus-blank-space hack, so it reads as
+        // an actual checkbox/radio rather than unexplained indentation -
+        // only added for a checkbox/radio item below, so a plain action
+        // or submenu item (eg "Reset") stays flush left rather than
+        // indented to match. `currentColor` (not a fixed colour) so this
+        // stays visible against both this item's normal background and
+        // the teal background the focus/blur handlers below switch its
+        // text colour against.
+        const indicator = document.createElement('span');
+        indicator.setAttribute('aria-hidden', 'true');
+        indicator.style.display = 'inline-flex';
+        indicator.style.alignItems = 'center';
+        indicator.style.justifyContent = 'center';
+        indicator.style.width = '14px';
+        indicator.style.height = '14px';
+        indicator.style.flexShrink = '0';
+        indicator.style.boxSizing = 'border-box';
+        indicator.style.fontSize = '11px';
+        indicator.style.lineHeight = '1';
 
         const label = document.createElement('span');
         label.textContent = item.label;
+        label.style.flex = '1 1 auto';
 
         if (item.type === 'checkbox') {
             menuItem.setAttribute('role', 'menuitemcheckbox');
             menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
-            checkbox.style.border = '1.5px solid currentColor';
-            checkbox.style.borderRadius = '3px';
-            checkbox.textContent = item.checked ? '✓' : '';
-            menuItem.append(checkbox);
+            indicator.style.border = '1.5px solid currentColor';
+            indicator.style.borderRadius = '3px';
+            indicator.textContent = item.checked ? '✓' : '';
+            menuItem.append(indicator);
+        } else if (item.type === 'radio') {
+            menuItem.setAttribute('role', 'menuitemradio');
+            menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+            indicator.style.border = '1.5px solid currentColor';
+            indicator.style.borderRadius = '50%';
+            // Always created (not conditionally, only when checked) so
+            // selecting a different radio in the same group can toggle
+            // this dot's visibility in place - see activate() below,
+            // which keeps the menu open rather than closing and rebuilding
+            // it from scratch every time.
+            const dot = document.createElement('span');
+            dot.setAttribute('data-radio-dot', '');
+            dot.style.width = '6px';
+            dot.style.height = '6px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = 'currentColor';
+            dot.style.visibility = item.checked ? 'visible' : 'hidden';
+            indicator.append(dot);
+            menuItem.append(indicator);
+            radioEntries.push({item, menuItem, dot});
+        } else if (item.type === 'submenu') {
+            menuItem.setAttribute('role', 'menuitem');
+            menuItem.setAttribute('aria-haspopup', 'true');
+            menuItem.setAttribute('aria-expanded', 'false');
         } else {
             menuItem.setAttribute('role', 'menuitem');
         }
 
         menuItem.append(label);
 
+        if (item.type === 'submenu') {
+            const arrow = document.createElement('span');
+            arrow.setAttribute('aria-hidden', 'true');
+            arrow.textContent = '▶';
+            arrow.style.fontSize = '10px';
+            arrow.style.flexShrink = '0';
+            menuItem.append(arrow);
+        }
+
+        // Checkbox/radio items update themselves in place and leave the
+        // menu open - unlike an action (eg "Reset"), a setting is
+        // something you typically want to keep adjusting (tick Maintain
+        // Aspect Ratio, then pick a ratio, maybe flip orientation, all in
+        // one sitting) rather than having the menu vanish and need
+        // reopening after each individual change.
         function activate() {
-            if (item.type === 'checkbox') {
-                item.onToggle(!item.checked);
-            } else {
-                item.onActivate();
+
+            if (item.type === 'submenu') {
+                openOverlaySubmenuFor(menuItem, item.items);
+                return;
             }
+
+            if (item.type === 'checkbox') {
+                item.checked = !item.checked;
+                menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+                indicator.textContent = item.checked ? '✓' : '';
+                item.onToggle(item.checked);
+                return;
+            }
+
+            if (item.type === 'radio') {
+                if (!item.checked) {
+                    // Resets every *other* radio in this same group - both
+                    // its DOM and its own `checked` flag (see radioEntries
+                    // above) - before checking this one.
+                    radioEntries.forEach(entry => {
+                        const checked = entry.item === item;
+                        entry.item.checked = checked;
+                        entry.menuItem.setAttribute('aria-checked', checked ? 'true' : 'false');
+                        entry.dot.style.visibility = checked ? 'visible' : 'hidden';
+                    });
+                    item.onToggle(true);
+                }
+                return;
+            }
+
+            item.onActivate();
             closeOverlayContextMenu();
         }
 
@@ -447,12 +749,26 @@ function showOverlayContextMenu(x, y, items, returnFocusTo) {
         // indicator at all.
         menuItem.addEventListener('focus', () => { menuItem.style.background = RESIZE_HANDLE_COLOUR; menuItem.style.color = '#fff'; });
         menuItem.addEventListener('blur', () => { menuItem.style.background = ''; menuItem.style.color = ''; });
-        menuItem.addEventListener('mouseenter', () => menuItem.focus());
+        menuItem.addEventListener('mouseenter', () => {
+            menuItem.focus();
+            if (item.type === 'submenu') {
+                openOverlaySubmenuFor(menuItem, item.items);
+            } else if (closesSubmenuOnHover && openOverlaySubmenu) {
+                // Only at the root level - hovering one of the submenu's
+                // *own* items (this same branch, when buildMenuElement is
+                // building that submenu) must never close the very menu
+                // it's a part of.
+                closeOverlaySubmenu(false);
+            }
+        });
         menuItem.addEventListener('click', activate);
         menuItem.addEventListener('keydown', event => {
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 activate();
+            } else if (event.key === 'ArrowRight' && item.type === 'submenu') {
+                event.preventDefault();
+                openOverlaySubmenuFor(menuItem, item.items);
             }
         });
 
@@ -472,21 +788,56 @@ function showOverlayContextMenu(x, y, items, returnFocusTo) {
             focusableItems[(currentIndex - 1 + focusableItems.length) % focusableItems.length].focus();
         } else if (event.key === 'Escape') {
             event.preventDefault();
-            closeOverlayContextMenu();
+            onEscape();
+        } else if (event.key === 'ArrowLeft' && onArrowLeft) {
+            event.preventDefault();
+            onArrowLeft();
         }
     });
 
-    document.body.append(menu);
+    return {element: menu, focusableItems};
+}
 
-    // Keeps the menu fully on-screen rather than letting it spill past the
-    // right/bottom edge of the viewport when opened near a corner.
-    const bounds = menu.getBoundingClientRect();
-    if (bounds.right > window.innerWidth) {
-        menu.style.left = Math.max(0, window.innerWidth - bounds.width) + 'px';
+// Opens (or, hovering across several submenu items in a row, replaces)
+// the one submenu a menu can have open at a time, positioned immediately
+// to the right of whichever item it belongs to (positionMenuElement pulls
+// it back on-screen if that would spill off the right/bottom edge).
+function openOverlaySubmenuFor(parentItem, items) {
+
+    if (openOverlaySubmenu && openOverlaySubmenu.parentItem === parentItem) {
+        return;
     }
-    if (bounds.bottom > window.innerHeight) {
-        menu.style.top = Math.max(0, window.innerHeight - bounds.height) + 'px';
+    closeOverlaySubmenu(false);
+
+    const {element: submenu, focusableItems} = buildMenuElement(
+        items,
+        () => closeOverlaySubmenu(true),
+        () => closeOverlaySubmenu(true)
+    );
+
+    document.body.append(submenu);
+    const parentBounds = parentItem.getBoundingClientRect();
+    positionMenuElement(submenu, parentBounds.right, parentBounds.top);
+
+    parentItem.setAttribute('aria-expanded', 'true');
+    openOverlaySubmenu = {element: submenu, parentItem};
+
+    if (focusableItems.length) {
+        focusableItems[0].focus();
     }
+}
+
+// `returnFocusTo` gets focus back once the whole menu closes (Escape, a
+// click outside, or an item being activated all close it) - see
+// buildMenuElement's own doc comment for the shape of `items`.
+function showOverlayContextMenu(x, y, items, returnFocusTo) {
+
+    closeOverlayContextMenu();
+
+    const {element: menu, focusableItems} = buildMenuElement(items, closeOverlayContextMenu, null, true);
+
+    document.body.append(menu);
+    positionMenuElement(menu, x, y);
 
     openOverlayMenu = {element: menu, returnFocusTo};
 
@@ -661,9 +1012,13 @@ if (typeof rotInit === 'undefined') {
             const dpr = window.devicePixelRatio || 1;
 
             let handleElements = null;
+            let flipControl = null;
 
             function currentOverride() {
-                return controlElement.imageOverrides.get(image) || {resizeEnabled: false, rect: null};
+                return controlElement.imageOverrides.get(image) || {
+                    resizeEnabled: false, rect: null, maintainAspectRatio: false,
+                    aspectRatioPreset: 'original', aspectOrientationFlipped: false
+                };
             }
 
             function setRect(rect) {
@@ -716,7 +1071,109 @@ if (typeof rotInit === 'undefined') {
                         handleElements[handleId].style.top = position.y + 'px';
                     });
                 }
+
+                if (flipControl) {
+                    flipControl.style.left = (rect.x + rect.w / 2) + 'px';
+                    flipControl.style.top = (rect.y + rect.h / 2) + 'px';
+
+                    const override = currentOverride();
+                    const ratio = effectiveAspectRatio(override.aspectRatioPreset, override.aspectOrientationFlipped, w, h);
+                    if (ratio !== null) {
+                        const display = orientationFlipDisplay(ratio);
+                        flipControl.title = display.title;
+                        const shape = flipControl.firstChild;
+                        shape.style.width = (display.targetIsPortrait ? 6 : 10) + 'px';
+                        shape.style.height = (display.targetIsPortrait ? 10 : 6) + 'px';
+                    }
+                }
             }
+
+            // Shows/hides the on-canvas orientation flip control (see
+            // createOrientationFlipControl) - only meaningful, so only
+            // shown, once a forced non-"Original" preset actually has
+            // something to flip.
+            function syncFlipControl() {
+
+                const override = currentOverride();
+                const shouldShow = override.resizeEnabled && override.maintainAspectRatio && override.aspectRatioPreset !== 'original';
+
+                if (shouldShow && !flipControl) {
+                    flipControl = createOrientationFlipControl(container, toggleOrientationFlipped);
+                } else if (!shouldShow && flipControl) {
+                    flipControl.remove();
+                    flipControl = null;
+                }
+            }
+
+            // "Resize Options" > a preset other than "Original", combined
+            // with Maintain Aspect Ratio, forces the rectangle to exactly
+            // that ratio rather than just following whatever shape a drag
+            // leaves it in - this is what does the forcing: snaps to the
+            // largest rectangle at that ratio, anchored at the rectangle's
+            // own current top-left corner (or the image's, (0, 0), if it
+            // hasn't been resized yet - activeResizeRect already resolves
+            // that). Called whenever any of the three things that could
+            // newly make this apply do - Enable Resize, Maintain Aspect
+            // Ratio, or the preset/orientation themselves changing - and
+            // harmlessly does nothing otherwise.
+            function applyForcedAspectRatio() {
+
+                const override = currentOverride();
+                if (!override.resizeEnabled || !override.maintainAspectRatio) {
+                    return;
+                }
+
+                const ratio = effectiveAspectRatio(override.aspectRatioPreset, override.aspectOrientationFlipped, w, h);
+                if (ratio === null) {
+                    return;
+                }
+
+                const anchor = activeResizeRect(override, w, h);
+                setRect(maxRectAtAnchor(anchor.x, anchor.y, ratio, w, h));
+                redraw();
+            }
+
+            // Drags the rectangle itself (not resizing it - see
+            // dragMoveRect) when the pointer goes down anywhere inside it
+            // that isn't a handle or the orientation flip control - both
+            // are separate elements layered on top of this canvas, so a
+            // pointerdown starting on either is delivered to that element
+            // instead and never reaches this listener at all; no
+            // exclusion check needed here for them. A pointerdown outside
+            // the rectangle (the dimmed, cropped-out area) is ignored too
+            // - there's nothing there to drag.
+            canvas.addEventListener('pointerdown', event => {
+
+                const override = currentOverride();
+                if (!override.resizeEnabled) {
+                    return;
+                }
+
+                const startRect = activeResizeRect(override, w, h);
+                if (event.offsetX < startRect.x || event.offsetX > startRect.x + startRect.w ||
+                    event.offsetY < startRect.y || event.offsetY > startRect.y + startRect.h) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const startX = event.clientX;
+                const startY = event.clientY;
+                canvas.setPointerCapture(event.pointerId);
+
+                function onPointerMove(moveEvent) {
+                    setRect(dragMoveRect(startRect, moveEvent.clientX - startX, moveEvent.clientY - startY, w, h));
+                    redraw();
+                }
+
+                function onPointerUp() {
+                    canvas.removeEventListener('pointermove', onPointerMove);
+                    canvas.removeEventListener('pointerup', onPointerUp);
+                }
+
+                canvas.addEventListener('pointermove', onPointerMove);
+                canvas.addEventListener('pointerup', onPointerUp, {once: true});
+            });
 
             function setResizeEnabled(enabled) {
 
@@ -730,18 +1187,61 @@ if (typeof rotInit === 'undefined') {
                     Object.values(handleElements).forEach(element => element.remove());
                     handleElements = null;
                 }
+                // A hint that the rectangle itself (not just its handles)
+                // is now draggable - the canvas's own pointerdown listener
+                // above already only acts within it regardless.
+                canvas.style.cursor = enabled ? 'move' : '';
+                syncFlipControl();
+                applyForcedAspectRatio();
                 redraw();
             }
 
+            function setMaintainAspectRatio(enabled) {
+
+                const override = currentOverride();
+                override.maintainAspectRatio = enabled;
+                controlElement.imageOverrides.set(image, override);
+                syncFlipControl();
+                applyForcedAspectRatio();
+            }
+
+            // "If user changes aspect after resizing then take same
+            // approach" - see applyForcedAspectRatio.
+            function setAspectRatioPreset(presetId) {
+
+                const override = currentOverride();
+                override.aspectRatioPreset = presetId;
+                controlElement.imageOverrides.set(image, override);
+                syncFlipControl();
+                applyForcedAspectRatio();
+            }
+
+            // The on-canvas flip control and the submenu's fallback action
+            // (see registerOverlayContextMenu) both call this - it's what
+            // lets a forced preset apply as portrait instead of landscape,
+            // or vice versa, overriding what the image's own shape would
+            // otherwise pick (see effectiveAspectRatio).
+            function toggleOrientationFlipped() {
+
+                const override = currentOverride();
+                override.aspectOrientationFlipped = !override.aspectOrientationFlipped;
+                controlElement.imageOverrides.set(image, override);
+                applyForcedAspectRatio();
+            }
+
             // Snaps the grid back to covering the whole image, and turns
-            // "Enable Resize" back off too if it was on - having Reset
-            // leave resize mode active would just leave 8 handles sitting
-            // at the full image's own edges, ready to immediately drag it
-            // out of shape again, when the point of Reset is a clean slate.
+            // "Enable Resize"/"Maintain Aspect Ratio" (and its own Resize
+            // Options) back off too if any were set - having Reset leave
+            // resize mode active would just leave 8 handles sitting at the
+            // full image's own edges, ready to immediately drag it out of
+            // shape again, when the point of Reset is a clean slate.
             function resetOverride() {
 
                 const override = currentOverride();
                 override.rect = null;
+                override.maintainAspectRatio = false;
+                override.aspectRatioPreset = 'original';
+                override.aspectOrientationFlipped = false;
                 if (override.resizeEnabled) {
                     override.resizeEnabled = false;
                     if (handleElements) {
@@ -750,14 +1250,17 @@ if (typeof rotInit === 'undefined') {
                     }
                 }
                 controlElement.imageOverrides.set(image, override);
+                syncFlipControl();
                 redraw();
             }
 
-            registerOverlayContextMenu(container, currentOverride, setResizeEnabled, resetOverride);
+            registerOverlayContextMenu(container, w, h, currentOverride, setResizeEnabled, setMaintainAspectRatio, setAspectRatioPreset, toggleOrientationFlipped, resetOverride);
 
             if (currentOverride().resizeEnabled) {
                 handleElements = createResizeHandles(container, w, h, currentOverride, setRect, redraw);
+                canvas.style.cursor = 'move';
             }
+            syncFlipControl();
             redraw();
 
             (image.offsetParent || document.body).append(container);
@@ -802,7 +1305,24 @@ if (typeof rotInit === 'undefined') {
                     handle.setPointerCapture(event.pointerId);
 
                     function onPointerMove(moveEvent) {
-                        setRect(dragResizeRect(startRect, handleId, moveEvent.clientX - startX, moveEvent.clientY - startY, w, h));
+
+                        const dx = moveEvent.clientX - startX;
+                        const dy = moveEvent.clientY - startY;
+                        const override = currentOverride();
+
+                        if (!override.maintainAspectRatio) {
+                            setRect(dragResizeRect(startRect, handleId, dx, dy, w, h));
+                        } else {
+                            // A forced non-"Original" preset drags at that
+                            // fixed ratio; otherwise (still Maintain Aspect
+                            // Ratio, but "Original") dragResizeRectLocked's
+                            // own default - startRect's own current shape -
+                            // applies, same as before this feature existed.
+                            const forcedRatio = effectiveAspectRatio(override.aspectRatioPreset, override.aspectOrientationFlipped, w, h);
+                            setRect(forcedRatio === null
+                                ? dragResizeRectLocked(startRect, handleId, dx, dy, w, h)
+                                : dragResizeRectLocked(startRect, handleId, dx, dy, w, h, forcedRatio));
+                        }
                         redraw();
                     }
 
@@ -822,13 +1342,81 @@ if (typeof rotInit === 'undefined') {
             return elements;
         }
 
+        // A 9th, visually distinct control (a filled circle at the
+        // rectangle's own centre, where none of the 8 resize handles
+        // sit) for switching a forced aspect-ratio preset between
+        // portrait and landscape - the "come up with a way to switch"
+        // part of Resize Options. A modifier key held mid-drag was
+        // considered and dropped: it's invisible until discovered by
+        // accident and easy to trigger without realising, whereas a
+        // control that's only ever shown while it's actually relevant
+        // (see syncFlipControl) is self-explanatory by being there at
+        // all. The submenu's own "Switch to Portrait/Landscape" action
+        // (see registerOverlayContextMenu) does the same thing, for
+        // anyone who'd rather use the menu.
+        function createOrientationFlipControl(container, onFlip) {
+
+            const flip = document.createElement('div');
+            flip.setAttribute('role', 'presentation');
+            flip.setAttribute('aria-hidden', 'true');
+            // Icon and title are set by redraw() (orientationFlipDisplay) -
+            // it always runs immediately after this is created (see
+            // syncFlipControl/applyForcedAspectRatio), so there's no
+            // meaningful placeholder to set here first.
+            flip.style.position = 'absolute';
+            flip.style.width = (RESIZE_HANDLE_SIZE + 8) + 'px';
+            flip.style.height = (RESIZE_HANDLE_SIZE + 8) + 'px';
+            flip.style.marginLeft = (-(RESIZE_HANDLE_SIZE + 8) / 2) + 'px';
+            flip.style.marginTop = (-(RESIZE_HANDLE_SIZE + 8) / 2) + 'px';
+            flip.style.boxSizing = 'border-box';
+            flip.style.borderRadius = '50%';
+            flip.style.background = RESIZE_HANDLE_COLOUR;
+            flip.style.border = '1px solid #fff';
+            flip.style.boxShadow = '0 0 2px rgba(0, 0, 0, 0.6)';
+            flip.style.display = 'flex';
+            flip.style.alignItems = 'center';
+            flip.style.justifyContent = 'center';
+            flip.style.cursor = 'pointer';
+            flip.style.touchAction = 'none';
+
+            // The actual rectangle icon - a plain white block, sized by
+            // redraw() (orientationFlipDisplay) to be tall or wide - kept
+            // as its own child element (not text) so its shape is exactly
+            // what's set, not left to however a Unicode glyph happens to
+            // render at 12px in whatever font a given system substitutes.
+            const shape = document.createElement('span');
+            shape.setAttribute('aria-hidden', 'true');
+            shape.style.display = 'block';
+            shape.style.background = '#fff';
+            shape.style.borderRadius = '1px';
+            flip.append(shape);
+
+            // Same reasoning as each resize handle's own pointerdown
+            // below - stops this reaching the page underneath, and stops
+            // a click here also being read as "click outside the menu"
+            // by a context menu that happened to still be open.
+            flip.addEventListener('pointerdown', event => {
+                event.preventDefault();
+                event.stopPropagation();
+            });
+            flip.addEventListener('click', event => {
+                event.stopPropagation();
+                onFlip();
+            });
+
+            container.append(flip);
+            return flip;
+        }
+
         // The overlay's own right-click menu (see showOverlayContextMenu) -
         // "Enable Resize" toggles the 8 handles above on or off without
         // touching whatever rectangle is already set (so turning resize
         // off leaves the grid exactly as last positioned, for a clean,
         // uncluttered view of it), and "Reset" discards this image's
-        // override entirely, back to covering the whole image.
-        function registerOverlayContextMenu(container, currentOverride, setResizeEnabled, resetOverride) {
+        // override entirely, back to covering the whole image. "Resize
+        // Options" (see below) covers Maintain Aspect Ratio and its own
+        // forced-preset controls.
+        function registerOverlayContextMenu(container, w, h, currentOverride, setResizeEnabled, setMaintainAspectRatio, setAspectRatioPreset, toggleOrientationFlipped, resetOverride) {
 
             container.addEventListener('contextmenu', (event) => {
 
@@ -836,12 +1424,46 @@ if (typeof rotInit === 'undefined') {
 
                 const override = currentOverride();
 
+                const resizeOptionsItems = [
+                    {
+                        type: 'checkbox',
+                        label: 'Maintain Aspect Ratio',
+                        checked: override.maintainAspectRatio,
+                        onToggle: setMaintainAspectRatio
+                    },
+                    {type: 'separator'},
+                    ...Object.keys(ASPECT_RATIO_PRESETS).map(presetId => ({
+                        type: 'radio',
+                        label: ASPECT_RATIO_PRESETS[presetId].label,
+                        checked: override.aspectRatioPreset === presetId,
+                        onToggle: () => setAspectRatioPreset(presetId)
+                    }))
+                ];
+
+                // Only meaningful (so only shown) once a forced non-
+                // "Original" preset actually has an orientation to flip -
+                // same condition as the on-canvas control (syncFlipControl).
+                if (override.maintainAspectRatio && override.aspectRatioPreset !== 'original') {
+                    const ratio = effectiveAspectRatio(override.aspectRatioPreset, override.aspectOrientationFlipped, w, h);
+                    resizeOptionsItems.push({type: 'separator'});
+                    resizeOptionsItems.push({
+                        type: 'action',
+                        label: ratio >= 1 ? 'Switch to Portrait' : 'Switch to Landscape',
+                        onActivate: toggleOrientationFlipped
+                    });
+                }
+
                 showOverlayContextMenu(event.clientX, event.clientY, [
                     {
                         type: 'checkbox',
                         label: 'Enable Resize',
                         checked: override.resizeEnabled,
                         onToggle: setResizeEnabled
+                    },
+                    {
+                        type: 'submenu',
+                        label: 'Resize Options',
+                        items: resizeOptionsItems
                     },
                     {type: 'separator'},
                     {
@@ -970,6 +1592,7 @@ if (typeof rotInit === 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum,
-        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, resizeMaskRects, resizeBorderRects
+        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, dragResizeRectLocked, fitRectToImage,
+        resizeMaskRects, resizeBorderRects, ASPECT_RATIO_PRESETS, effectiveAspectRatio, maxRectAtAnchor, orientationFlipDisplay, dragMoveRect
     };
 }
