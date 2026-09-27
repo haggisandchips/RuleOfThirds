@@ -1,4 +1,5 @@
 const DEFAULT_OPTIONS = {
+    overlayStyle: 'grid',
     renderGrid: true,
     gridRows: 3,
     gridColumns: 3,
@@ -16,7 +17,14 @@ const DEFAULT_OPTIONS = {
     applyToFrames: false,
     minImageWidth: 100,
     minImageHeight: 50,
-    eitherOrientation: true
+    eitherOrientation: true,
+    renderPhiGrid: true,
+    phiRatio: [1, 0.618, 1],
+    phiRowLines: [true, true],
+    phiColumnLines: [true, true],
+    phiCircleLines: [[true, true], [true, true]],
+    goldenRatioDirection: 'clockwise',
+    goldenRatioStart: 'bottom-left'
 };
 
 const MIN_GRID_LINES = 1;
@@ -27,13 +35,36 @@ const MAX_GRID_LINES = 9;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_OPACITY = 0;
 const MIN_IMAGE_SIZE = 1;
+// Unlike Grid, Phi Grid's row/column count is fixed, not user-editable -
+// only the ratio between its (always 3) bands can be changed.
+const PHI_GRID_BAND_COUNT = 3;
+const PHI_RATIO_INPUT_IDS = ['phi-ratio-1', 'phi-ratio-2', 'phi-ratio-3'];
+const MIN_PHI_RATIO = 0.01;
+// 100 is already far more skewed than any real composition guide needs -
+// just enough to rule out a ratio so lopsided the narrow band collapses
+// toward an unusable sliver, without capping the field somewhere a user
+// could plausibly want to experiment.
+const MAX_PHI_RATIO = 100;
+const PHI_RATIO_DECIMALS = 3;
+// How long to wait, after the last keystroke in a ratio field, before
+// re-rendering the Customise preview live - short enough to feel
+// immediate, long enough that a fast typist doesn't trigger a redraw per
+// character.
+const PHI_RATIO_PREVIEW_DEBOUNCE_MS = 150;
 
 // Per-line/per-circle enabled state for the "Customise" preview - kept as
 // plain module state (rather than re-read from the DOM) since there's no
-// input element backing each one, only the preview canvas itself.
+// input element backing each one, only the preview canvas itself. Grid and
+// Phi Grid each get their own independent set, even though both are
+// "weighted grid" styles sharing the same Customise UI (see
+// weightedGridStyles below) - they're still separate overlays, so hiding a
+// line in one shouldn't silently affect the other.
 let gridRowLineStates = DEFAULT_OPTIONS.gridRowLines.slice();
 let gridColumnLineStates = DEFAULT_OPTIONS.gridColumnLines.slice();
 let circleLineStates = DEFAULT_OPTIONS.circleLines.map(row => row.slice());
+let phiRowLineStates = DEFAULT_OPTIONS.phiRowLines.slice();
+let phiColumnLineStates = DEFAULT_OPTIONS.phiColumnLines.slice();
+let phiCircleLineStates = DEFAULT_OPTIONS.phiCircleLines.map(row => row.slice());
 
 // Restores options from chrome.storage
 const loadOptions = () => {
@@ -49,6 +80,7 @@ const loadOptions = () => {
 // something other than the default "Options saved." toast.
 const saveOptions = (event, successMessage = 'Options saved.', successAction) => {
 
+    const overlayStyle = getSelectedOption('overlay-style');
     const renderGrid = document.getElementById('render-grid').checked;
     syncDependentFieldsEnabled();
 
@@ -91,9 +123,14 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
     const minImageWidth = parseValidInt('min-image-width', MIN_IMAGE_SIZE, DEFAULT_OPTIONS.minImageWidth);
     const minImageHeight = parseValidInt('min-image-height', MIN_IMAGE_SIZE, DEFAULT_OPTIONS.minImageHeight);
     const eitherOrientation = document.getElementById('either-orientation').checked;
+    const renderPhiGrid = document.getElementById('render-phi-grid').checked;
+    const phiRatio = readPhiRatio();
+    const goldenRatioDirection = getSelectedOption('golden-ratio-direction');
+    const goldenRatioStart = getSelectedOption('golden-ratio-start');
 
     chrome.storage.sync.set(
         {
+            overlayStyle,
             renderGrid,
             gridRows,
             gridColumns,
@@ -111,7 +148,14 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
             applyToFrames,
             minImageWidth,
             minImageHeight,
-            eitherOrientation
+            eitherOrientation,
+            renderPhiGrid,
+            phiRatio,
+            phiRowLines: phiRowLineStates,
+            phiColumnLines: phiColumnLineStates,
+            phiCircleLines: phiCircleLineStates,
+            goldenRatioDirection,
+            goldenRatioStart
         },
         () => {
             showToast(chrome.runtime.lastError
@@ -139,8 +183,26 @@ const restoreDefaultOptions = () => {
     });
 };
 
+// Restores just the Phi Grid ratio to its default (1 : 0.618 : 1), leaving
+// every other option - including Phi Grid's own Enabled toggle - untouched,
+// unlike the page-wide Restore Defaults above.
+const restorePhiRatioDefaults = () => {
+
+    const previousRatio = readPhiRatio();
+
+    writePhiRatio(DEFAULT_OPTIONS.phiRatio);
+    saveOptions(undefined, 'Ratio reset to default.', {
+        label: 'Undo',
+        onClick: () => {
+            writePhiRatio(previousRatio);
+            saveOptions();
+        }
+    });
+};
+
 function setOptions(options) {
 
+    selectOption('overlay-style', options.overlayStyle);
     document.getElementById('render-grid').checked = options.renderGrid;
     document.getElementById('grid-rows').value = options.gridRows;
     document.getElementById('grid-columns').value = options.gridColumns;
@@ -163,7 +225,16 @@ function setOptions(options) {
     document.getElementById('min-image-width').value = options.minImageWidth;
     document.getElementById('min-image-height').value = options.minImageHeight;
     document.getElementById('either-orientation').checked = options.eitherOrientation;
+    document.getElementById('render-phi-grid').checked = options.renderPhiGrid;
+    writePhiRatio(options.phiRatio);
+    phiRowLineStates = resizeLineStates(options.phiRowLines, PHI_GRID_BAND_COUNT - 1);
+    phiColumnLineStates = resizeLineStates(options.phiColumnLines, PHI_GRID_BAND_COUNT - 1);
+    phiCircleLineStates = resizeCircleStates(options.phiCircleLines, PHI_GRID_BAND_COUNT - 1, PHI_GRID_BAND_COUNT - 1);
     syncDependentFieldsEnabled();
+    selectOption('golden-ratio-direction', options.goldenRatioDirection);
+    selectOption('golden-ratio-start', options.goldenRatioStart);
+    syncGoldenRatioThumbnailSelection();
+    syncOverlayStyleVisibility();
     // Depends on every field set above, since an accurate preview needs all
     // of them (colours, opacity, style, both enabled toggles, and the photo
     // toggle) - layoutGridCustomiseCanvases() sizes the canvases and then
@@ -193,10 +264,17 @@ function syncDependentFieldsEnabled() {
 
     const gridEnabled = document.getElementById('render-grid').checked;
     const circleEnabled = document.getElementById('render-circle').checked;
+    const phiGridEnabled = document.getElementById('render-phi-grid').checked;
 
     setFieldsEnabled(GRID_DIMENSION_FIELD_IDS, gridEnabled || circleEnabled);
     setSectionFieldsEnabled(GRID_ONLY_FIELD_IDS, 'line-colour-quick', gridEnabled);
     setSectionFieldsEnabled(CIRCLE_ONLY_FIELD_IDS, 'circle-colour-quick', circleEnabled);
+    // Like GRID_DIMENSION_FIELD_IDS above, the ratio positions BOTH Phi
+    // Grid's lines (while Phi Grid is enabled) AND the circle
+    // intersections (while Circles is enabled, independent of Phi Grid -
+    // drawWeightedGridOverlay's circle loop isn't gated on linesEnabled at
+    // all) - only disable it once *neither* section would use it.
+    setFieldsEnabled(PHI_RATIO_INPUT_IDS, phiGridEnabled || circleEnabled);
 }
 
 function setFieldsEnabled(fieldIds, enabled) {
@@ -208,6 +286,135 @@ function setSectionFieldsEnabled(fieldIds, quickSwatchGroupId, enabled) {
 
     setFieldsEnabled(fieldIds, enabled);
     document.querySelectorAll('#' + quickSwatchGroupId + ' .quick-swatch').forEach(button => { button.disabled = !enabled; });
+}
+
+// Each thumbnail is a clickable preview of one direction/starting-point
+// combination - drawn once since they don't depend on saved options, only
+// on the fixed direction/start pair baked into their data attributes.
+function drawGoldenRatioThumbnails() {
+
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
+        const canvas = button.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#666';
+        traceGoldenSpiralPath(ctx, canvas.width, canvas.height, button.dataset.direction, button.dataset.start);
+        ctx.stroke();
+    });
+}
+
+// Highlights whichever thumbnail matches the current direction/starting-
+// point radios, whether they were just set by a thumbnail click, the
+// radios themselves, or arrow-key navigation (see
+// onGoldenRatioThumbKeyDown). The 8 thumbnails are a role="radiogroup" -
+// aria-checked carries the selected one to assistive tech (the
+// border-colour highlight alone is only visible), and only the selected
+// thumbnail keeps tabindex="0" (a "roving tabindex": Tab reaches the group
+// once, at whichever one is currently selected, same as a native radio
+// group - arrow keys move *within* it instead of Tab hopping to all 8).
+function syncGoldenRatioThumbnailSelection() {
+
+    const direction = getSelectedOption('golden-ratio-direction');
+    const start = getSelectedOption('golden-ratio-start');
+
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
+        const selected = button.dataset.direction === direction && button.dataset.start === start;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-checked', selected);
+        button.tabIndex = selected ? 0 : -1;
+    });
+}
+
+const GOLDEN_RATIO_THUMB_NAVIGATION_KEYS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+
+// Arrow-key navigation for the thumbnail radiogroup - "selection follows
+// focus", same as a native radio group: moving focus also selects and
+// saves immediately, with no separate Enter/Space needed (unlike the
+// Customise Control canvas's Enter/Space-to-toggle, which is a different
+// pattern since that's independent per-line/circle toggles, not a single
+// mutually-exclusive choice).
+function onGoldenRatioThumbKeyDown(event) {
+
+    if (!GOLDEN_RATIO_THUMB_NAVIGATION_KEYS.includes(event.key)) {
+        return;
+    }
+    event.preventDefault();
+
+    const thumbs = Array.from(document.querySelectorAll('.golden-ratio-thumb'));
+    const currentIndex = Math.max(thumbs.indexOf(event.currentTarget), 0);
+    let nextIndex;
+
+    switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            nextIndex = (currentIndex + 1) % thumbs.length;
+            break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            nextIndex = (currentIndex - 1 + thumbs.length) % thumbs.length;
+            break;
+        case 'Home':
+            nextIndex = 0;
+            break;
+        case 'End':
+            nextIndex = thumbs.length - 1;
+            break;
+    }
+
+    const nextThumb = thumbs[nextIndex];
+    selectOption('golden-ratio-direction', nextThumb.dataset.direction);
+    selectOption('golden-ratio-start', nextThumb.dataset.start);
+    syncGoldenRatioThumbnailSelection();
+    nextThumb.focus();
+    saveOptions();
+}
+
+// Every overlay style's settings are mutually exclusive - only the active
+// style's are shown, though all of them remain saved in storage so
+// switching back and forth doesn't lose any style's configuration. Each row
+// declares which style(s) it belongs to via data-overlay-styles (a
+// space-separated list, since eg Circles/Customise belong to both Grid and
+// Phi Grid) - adding another overlay style later just means adding that
+// value to whichever rows need it, not a new branch here.
+function syncOverlayStyleVisibility() {
+
+    const overlayStyle = getSelectedOption('overlay-style');
+
+    document.querySelectorAll('[data-overlay-styles]').forEach(row => {
+        const styles = row.dataset.overlayStyles.split(' ');
+        row.style.display = styles.includes(overlayStyle) ? '' : 'none';
+    });
+
+    syncGridPhiGridColumnWidths(overlayStyle);
+}
+
+// Phi Grid's own content (the Ratio row, its help text and "Restore
+// Default Ratio" button) needs more room than Grid's plain Rows/Columns
+// fields, so the shared Grid/Circles row's column split widens for it -
+// Grid's own split is untouched. One more entry here, not a new branch,
+// if a future weighted-grid style needs its own split too.
+const GRID_PHI_GRID_COLUMN_WIDTHS = {
+    grid: {left: 'm3', right: 'm9'},
+    'phi-grid': {left: 'm4', right: 'm8'}
+};
+
+function syncGridPhiGridColumnWidths(overlayStyle) {
+
+    const widths = GRID_PHI_GRID_COLUMN_WIDTHS[overlayStyle];
+    if (!widths) {
+        return;
+    }
+
+    const left = document.getElementById('grid-phi-grid-columns-left');
+    const right = document.getElementById('grid-phi-grid-columns-right');
+
+    Object.values(GRID_PHI_GRID_COLUMN_WIDTHS).forEach(other => {
+        left.classList.remove(other.left);
+        right.classList.remove(other.right);
+    });
+    left.classList.add(widths.left);
+    right.classList.add(widths.right);
 }
 
 // Shows the slider's current value as text (eg "75%"), since the native
@@ -305,6 +512,59 @@ function clampInt(value, min, fallback, max = Infinity) {
     return Number.isNaN(parsed) ? fallback : Math.min(Math.max(parsed, min), max);
 }
 
+// Same contract as parseValidInt/clampInt, but for the Phi Grid ratio
+// fields - a decimal (eg 0.618), not a whole number, so parseInt would
+// truncate it to 0. `decimals`, if given, rounds the result (see
+// roundTo) - the field is left showing that rounded value, not whatever
+// extra precision was typed, unless `write` is false: a live-typing
+// preview (see the ratio fields' 'input' listener) reads the in-progress
+// value without correcting the field out from under the user mid-edit -
+// eg clamping a momentary "0" up to the minimum while they're still
+// typing "0.05" would stomp on what they're about to type next.
+function parseValidFloat(elementId, min, fallback, decimals, max, write = true) {
+
+    const element = document.getElementById(elementId);
+    const value = clampFloat(element.value, min, fallback, decimals, max);
+
+    if (write) {
+        element.value = value;
+    }
+    return value;
+}
+
+function clampFloat(value, min, fallback, decimals, max = Infinity) {
+
+    const parsed = parseFloat(value);
+    if (Number.isNaN(parsed)) {
+        return fallback;
+    }
+    const clamped = Math.min(Math.max(parsed, min), max);
+    return decimals === undefined ? clamped : roundTo(clamped, decimals);
+}
+
+// Rounds to at most `decimals` places without padding trailing zeros - eg
+// roundTo(1, 3) is 1, not 1.000, since the result is a plain number and
+// JS's own number-to-string conversion (assigning it to an <input>'s
+// .value, or String(...)) never adds them back.
+function roundTo(value, decimals) {
+
+    const factor = 10 ** decimals;
+    return Math.round(value * factor) / factor;
+}
+
+// Reads/writes the three Phi Grid ratio fields as one array, in the same
+// order they're declared in options.html (outer, middle, outer). `write`
+// is passed straight through to parseValidFloat - see its comment.
+function readPhiRatio(write = true) {
+
+    return PHI_RATIO_INPUT_IDS.map((id, index) => parseValidFloat(id, MIN_PHI_RATIO, DEFAULT_OPTIONS.phiRatio[index], PHI_RATIO_DECIMALS, MAX_PHI_RATIO, write));
+}
+
+function writePhiRatio(ratio) {
+
+    PHI_RATIO_INPUT_IDS.forEach((id, index) => { document.getElementById(id).value = roundTo(ratio[index], PHI_RATIO_DECIMALS); });
+}
+
 // Defensively matches a line-state array to the current line count (eg
 // when loading a value saved before Rows/Columns last changed elsewhere) -
 // NOT used when the user edits Rows/Columns themselves, since that always
@@ -393,10 +653,14 @@ function parseHexColour(hex) {
     };
 }
 
-// The full set of "live" (not-yet-saved) grid/circle options, read straight
-// from the form plus the customise-only line/circle states - everything
-// drawGridOverlay() and the Customise preview itself need.
-function buildLiveGridCustomiseOptions() {
+// The full set of "live" (not-yet-saved) options, read straight from the
+// form plus the customise-only line/circle states - a superset covering
+// every overlay style's own fields (Grid's, Phi Grid's, and the ones they
+// share), so it can be handed to whichever style's draw function is
+// currently active without the caller needing to build a different shape
+// per style. `write`, passed straight through to readPhiRatio, is false
+// only for the ratio fields' live-typing preview (see renderGridCustomisePreview).
+function buildLiveGridCustomiseOptions(write = true) {
 
     return {
         renderGrid: document.getElementById('render-grid').checked,
@@ -404,6 +668,11 @@ function buildLiveGridCustomiseOptions() {
         gridColumns: clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns, MAX_GRID_LINES),
         gridRowLines: gridRowLineStates,
         gridColumnLines: gridColumnLineStates,
+        renderPhiGrid: document.getElementById('render-phi-grid').checked,
+        phiRatio: readPhiRatio(write),
+        phiRowLines: phiRowLineStates,
+        phiColumnLines: phiColumnLineStates,
+        phiCircleLines: phiCircleLineStates,
         lineColour: document.getElementById('line-colour').value,
         lineOpacity: clampInt(document.getElementById('line-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity),
         renderCircle: document.getElementById('render-circle').checked,
@@ -414,6 +683,89 @@ function buildLiveGridCustomiseOptions() {
         circleLines: circleLineStates,
         previewBackgroundImage: document.getElementById('preview-background-image').checked
     };
+}
+
+// Grid and Phi Grid are both "weighted grid" overlay styles: same circles/
+// Customise machinery, just different row/column weights and their own
+// independent line/circle visibility (see the module state above). Every
+// Customise function goes through this instead of checking the overlay
+// style itself, so adding a third weighted-grid style later means adding
+// one more entry here, not a new branch scattered through rendering,
+// hit-testing and keyboard navigation.
+function weightedGridStyles(liveOptions) {
+
+    return {
+        grid: {
+            rowWeights: new Array(liveOptions.gridRows).fill(1),
+            columnWeights: new Array(liveOptions.gridColumns).fill(1),
+            linesEnabled: liveOptions.renderGrid,
+            rowLineStates: gridRowLineStates,
+            columnLineStates: gridColumnLineStates,
+            circleLineStates: circleLineStates,
+            drawOverlay: drawGridOverlay
+        },
+        'phi-grid': {
+            rowWeights: liveOptions.phiRatio,
+            columnWeights: liveOptions.phiRatio,
+            linesEnabled: liveOptions.renderPhiGrid,
+            rowLineStates: phiRowLineStates,
+            columnLineStates: phiColumnLineStates,
+            circleLineStates: phiCircleLineStates,
+            drawOverlay: drawPhiGridOverlay
+        }
+    };
+}
+
+// Only meaningful while a weighted-grid style (Grid or Phi Grid) is active -
+// the Customise Control canvas is hidden (and unfocusable/unclickable) for
+// any other style, so nothing calls this while eg Fibonacci Spiral is
+// selected.
+function currentWeightedGridStyle(liveOptions) {
+
+    return weightedGridStyles(liveOptions)[getSelectedOption('overlay-style')];
+}
+
+// The generic "shape" every Customise function (renderGridCustomiseReference/
+// findGridCustomiseTarget/listGridCustomiseTargets/drawGridCustomiseFocus)
+// operates on, resolved for whichever weighted-grid style is currently
+// active.
+function currentCustomiseShape(liveOptions) {
+
+    const style = currentWeightedGridStyle(liveOptions);
+
+    return {
+        rowWeights: style.rowWeights,
+        columnWeights: style.columnWeights,
+        linesEnabled: style.linesEnabled,
+        rowLines: style.rowLineStates,
+        columnLines: style.columnLineStates,
+        circlesEnabled: liveOptions.renderCircle,
+        circleLines: style.circleLineStates,
+        circleRadius: liveOptions.circleRadius
+    };
+}
+
+// Local duplicate of grid-render.js's weight math (see its own comments for
+// the rationale) - kept self-contained, like every other file in this
+// extension, so these stay directly unit-testable via a plain
+// `require('../WebContent/options/options.js')` without also needing
+// grid-render.js's browser-global side of things.
+function weightedLinePositions(weights) {
+
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    const positions = [];
+    let cumulative = 0;
+    for (let ii = 0; ii < weights.length - 1; ii++) {
+        cumulative += weights[ii];
+        positions.push(cumulative / total);
+    }
+    return positions;
+}
+
+function smallestWeightedBand(weights) {
+
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    return Math.min(...weights) / total;
 }
 
 // The greyscale photo used as an optional Preview background - loaded once
@@ -473,7 +825,18 @@ function drawPreviewBackground(ctx, w, h, options, image) {
 // fixed white/black/grey reference map, drawn the same way regardless of
 // the user's actual colours, so there's always an obvious, unambiguous spot
 // to click.
-function renderGridCustomisePreview() {
+function renderGridCustomisePreview(write = true) {
+
+    const liveOptions = buildLiveGridCustomiseOptions(write);
+    const style = currentWeightedGridStyle(liveOptions);
+    if (!style) {
+        // Customise (the Preview/Hide-Show canvases) only applies to
+        // weighted-grid styles (Grid, Phi Grid) - its whole row is hidden
+        // for any other style (eg Fibonacci Spiral, which has no per-line
+        // state for currentWeightedGridStyle to resolve), so there's
+        // nothing to draw.
+        return;
+    }
 
     // setTransform() (not scale()) since this function redraws the same
     // two persistent canvases repeatedly over the page's lifetime -
@@ -485,22 +848,28 @@ function renderGridCustomisePreview() {
     const previewCtx = previewCanvas.getContext('2d');
     const previewSize = getCanvasLogicalSize(previewCanvas);
     previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const liveOptions = buildLiveGridCustomiseOptions();
 
-    drawPreviewBackground(previewCtx, previewSize.width, previewSize.height, liveOptions, previewPhotoLoaded ? previewPhotoImage : null);
-    drawGridOverlay(previewCtx, previewSize.width, previewSize.height, liveOptions);
+    drawPreviewBackground(previewCtx, previewSize.width, previewSize.height, {
+        previewBackgroundImage: liveOptions.previewBackgroundImage,
+        lineColour: liveOptions.lineColour,
+        circleColour: liveOptions.circleColour,
+        renderGrid: style.linesEnabled,
+        renderCircle: liveOptions.renderCircle
+    }, previewPhotoLoaded ? previewPhotoImage : null);
+    style.drawOverlay(previewCtx, previewSize.width, previewSize.height, liveOptions);
 
     const controlCanvas = document.getElementById('grid-customise-control');
     const controlCtx = controlCanvas.getContext('2d');
     const controlSize = getCanvasLogicalSize(controlCanvas);
     controlCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    renderGridCustomiseReference(controlCtx, controlSize.width, controlSize.height, liveOptions);
+    const shape = currentCustomiseShape(liveOptions);
+    renderGridCustomiseReference(controlCtx, controlSize.width, controlSize.height, shape);
 
     if (document.activeElement === controlCanvas) {
-        const targets = listGridCustomiseTargets(liveOptions);
+        const targets = listGridCustomiseTargets(shape);
         if (targets.length > 0) {
             customiseFocusIndex = Math.min(customiseFocusIndex, targets.length - 1);
-            drawGridCustomiseFocus(controlCtx, controlSize.width, controlSize.height, liveOptions, targets[customiseFocusIndex]);
+            drawGridCustomiseFocus(controlCtx, controlSize.width, controlSize.height, shape, targets[customiseFocusIndex]);
         }
     }
 }
@@ -600,31 +969,35 @@ const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';
 // of it, while staying visibly lighter than the enabled colour.
 const GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#787878';
 
-// Draws every line/circle position the grid could have, in black when it's
-// enabled and grey when it's not - a permanently legible map of what's
-// clickable, independent of whatever colours the user has actually chosen.
-// A line/circle whose axis is disabled overall (renderGrid/renderCircle) is
-// left off entirely, same as the real preview: there's nothing to un-hide
-// if the master toggle for it is off.
-function renderGridCustomiseReference(ctx, w, h, options) {
+// Draws every line/circle position a weighted-grid `shape` (see
+// currentCustomiseShape) could have, in black when it's enabled and grey
+// when it's not - a permanently legible map of what's clickable,
+// independent of whatever colours the user has actually chosen. A
+// line/circle whose axis is disabled overall (linesEnabled/circlesEnabled)
+// is left off entirely, same as the real preview: there's nothing to
+// un-hide if the master toggle for it is off.
+function renderGridCustomiseReference(ctx, w, h, shape) {
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
     ctx.lineWidth = 1;
 
-    if (options.renderGrid) {
-        options.gridRowLines.forEach((enabled, index) => {
-            const y = (index + 1) * h / options.gridRows;
-            ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
+    const rowPositions = weightedLinePositions(shape.rowWeights);
+    const columnPositions = weightedLinePositions(shape.columnWeights);
+
+    if (shape.linesEnabled) {
+        rowPositions.forEach((frac, index) => {
+            const y = frac * h;
+            ctx.strokeStyle = shape.rowLines[index] ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(w, y);
             ctx.stroke();
         });
 
-        options.gridColumnLines.forEach((enabled, index) => {
-            const x = (index + 1) * w / options.gridColumns;
-            ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
+        columnPositions.forEach((frac, index) => {
+            const x = frac * w;
+            ctx.strokeStyle = shape.columnLines[index] ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, h);
@@ -632,23 +1005,24 @@ function renderGridCustomiseReference(ctx, w, h, options) {
         });
     }
 
-    if (options.renderCircle) {
-        const radius = Math.min((w / options.gridColumns) / 2, (h / options.gridRows) / 2, options.circleRadius);
+    if (shape.circlesEnabled) {
+        const radius = Math.min(
+            (smallestWeightedBand(shape.rowWeights) * h) / 2,
+            (smallestWeightedBand(shape.columnWeights) * w) / 2,
+            shape.circleRadius);
 
-        options.gridRowLines.forEach((rowEnabled, rowIndex) => {
-            if (!rowEnabled) {
+        rowPositions.forEach((cyFrac, rowIndex) => {
+            if (!shape.rowLines[rowIndex]) {
                 return;
             }
-            options.gridColumnLines.forEach((columnEnabled, columnIndex) => {
-                if (!columnEnabled) {
+            columnPositions.forEach((cxFrac, columnIndex) => {
+                if (!shape.columnLines[columnIndex]) {
                     return;
                 }
-                const enabled = options.circleLines[rowIndex][columnIndex];
-                const x = (columnIndex + 1) * w / options.gridColumns;
-                const y = (rowIndex + 1) * h / options.gridRows;
+                const enabled = shape.circleLines[rowIndex][columnIndex];
                 ctx.strokeStyle = enabled ? GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR : GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR;
                 ctx.beginPath();
-                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                ctx.arc(cxFrac * w, cyFrac * h, radius, 0, 2 * Math.PI);
                 ctx.stroke();
             });
         });
@@ -664,23 +1038,23 @@ const GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE = 10;
 // first since they sit on top of a line intersection; a circle is only ever
 // a target when both of its lines are enabled, since that's the only time
 // it's eligible to be drawn (or ghosted) at all - matching
-// drawGridCustomiseGhosts/drawGridOverlay's own rule.
-function findGridCustomiseTarget(x, y, w, h, options) {
+// renderGridCustomiseReference/drawWeightedGridOverlay's own rule.
+function findGridCustomiseTarget(x, y, w, h, shape) {
 
-    const gridRows = options.gridRows;
-    const gridColumns = options.gridColumns;
+    const rowPositions = weightedLinePositions(shape.rowWeights);
+    const columnPositions = weightedLinePositions(shape.columnWeights);
 
-    if (options.renderCircle) {
-        for (let columnIndex = 0; columnIndex < gridColumns - 1; columnIndex++) {
-            if (!options.gridColumnLines[columnIndex]) {
+    if (shape.circlesEnabled) {
+        for (let columnIndex = 0; columnIndex < columnPositions.length; columnIndex++) {
+            if (!shape.columnLines[columnIndex]) {
                 continue;
             }
-            for (let rowIndex = 0; rowIndex < gridRows - 1; rowIndex++) {
-                if (!options.gridRowLines[rowIndex]) {
+            for (let rowIndex = 0; rowIndex < rowPositions.length; rowIndex++) {
+                if (!shape.rowLines[rowIndex]) {
                     continue;
                 }
-                const cx = (columnIndex + 1) * w / gridColumns;
-                const cy = (rowIndex + 1) * h / gridRows;
+                const cx = columnPositions[columnIndex] * w;
+                const cy = rowPositions[rowIndex] * h;
                 if (Math.hypot(x - cx, y - cy) <= GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE) {
                     return {type: 'circle', row: rowIndex, column: columnIndex};
                 }
@@ -688,15 +1062,15 @@ function findGridCustomiseTarget(x, y, w, h, options) {
         }
     }
 
-    if (options.renderGrid) {
-        for (let rowIndex = 0; rowIndex < gridRows - 1; rowIndex++) {
-            const ly = (rowIndex + 1) * h / gridRows;
+    if (shape.linesEnabled) {
+        for (let rowIndex = 0; rowIndex < rowPositions.length; rowIndex++) {
+            const ly = rowPositions[rowIndex] * h;
             if (Math.abs(y - ly) <= GRID_CUSTOMISE_LINE_HIT_TOLERANCE) {
                 return {type: 'row', index: rowIndex};
             }
         }
-        for (let columnIndex = 0; columnIndex < gridColumns - 1; columnIndex++) {
-            const lx = (columnIndex + 1) * w / gridColumns;
+        for (let columnIndex = 0; columnIndex < columnPositions.length; columnIndex++) {
+            const lx = columnPositions[columnIndex] * w;
             if (Math.abs(x - lx) <= GRID_CUSTOMISE_LINE_HIT_TOLERANCE) {
                 return {type: 'column', index: columnIndex};
             }
@@ -711,31 +1085,31 @@ function findGridCustomiseTarget(x, y, w, h, options) {
 // eligibility rules as findGridCustomiseTarget (a circle only counts once
 // both of its crossing lines are enabled) - drives keyboard navigation,
 // since a canvas has no DOM children of its own to tab between.
-function listGridCustomiseTargets(options) {
+function listGridCustomiseTargets(shape) {
 
     const targets = [];
 
-    if (options.renderGrid) {
-        options.gridRowLines.forEach((enabled, index) => {
+    if (shape.linesEnabled) {
+        shape.rowLines.forEach((enabled, index) => {
             targets.push({type: 'row', index, enabled, label: 'Row line ' + (index + 1)});
         });
-        options.gridColumnLines.forEach((enabled, index) => {
+        shape.columnLines.forEach((enabled, index) => {
             targets.push({type: 'column', index, enabled, label: 'Column line ' + (index + 1)});
         });
     }
 
-    if (options.renderCircle) {
-        options.gridRowLines.forEach((rowEnabled, rowIndex) => {
+    if (shape.circlesEnabled) {
+        shape.rowLines.forEach((rowEnabled, rowIndex) => {
             if (!rowEnabled) {
                 return;
             }
-            options.gridColumnLines.forEach((columnEnabled, columnIndex) => {
+            shape.columnLines.forEach((columnEnabled, columnIndex) => {
                 if (!columnEnabled) {
                     return;
                 }
                 targets.push({
                     type: 'circle', row: rowIndex, column: columnIndex,
-                    enabled: options.circleLines[rowIndex][columnIndex],
+                    enabled: shape.circleLines[rowIndex][columnIndex],
                     label: 'Circle at row ' + (rowIndex + 1) + ', column ' + (columnIndex + 1)
                 });
             });
@@ -747,58 +1121,74 @@ function listGridCustomiseTargets(options) {
 
 // Shared by the click handler and the keyboard Enter/Space handler - the
 // same toggle findGridCustomiseTarget's and listGridCustomiseTargets'
-// results both feed into.
-function toggleGridCustomiseTarget(target) {
+// results both feed into. Mutates whichever style's state arrays are
+// currently active (see currentWeightedGridStyle) in place, rather than
+// hardcoding Grid's, so this keeps working unmodified as more weighted-grid
+// styles are added.
+function toggleGridCustomiseTarget(target, rowLineStates, columnLineStates, circleLineStates) {
 
     if (target.type === 'row') {
-        gridRowLineStates[target.index] = !gridRowLineStates[target.index];
+        rowLineStates[target.index] = !rowLineStates[target.index];
     } else if (target.type === 'column') {
-        gridColumnLineStates[target.index] = !gridColumnLineStates[target.index];
+        columnLineStates[target.index] = !columnLineStates[target.index];
     } else {
         circleLineStates[target.row][target.column] = !circleLineStates[target.row][target.column];
     }
 }
 
 const GRID_CUSTOMISE_FOCUS_COLOUR = '#26a69a'; // matches --color-primary in css/style.css
-
-const GRID_CUSTOMISE_FOCUS_MARKER_SIZE = 10;
+// Same colour as GRID_CUSTOMISE_FOCUS_COLOUR (#26a69a = rgb(38, 166, 154)),
+// translucent - canvas fillStyle has no separate opacity property, so the
+// alpha has to be baked into the colour string itself.
+const GRID_CUSTOMISE_FOCUS_BAND_FILL = 'rgba(38, 166, 154, 0.35)';
+// A fixed pixel margin either side of the line, not sized off the cell
+// itself (eg via smallestWeightedBand) - that made the band grow to fill
+// most of the cell on a plain 3x3 grid, well past what's needed just to
+// show which line has focus.
+const GRID_CUSTOMISE_FOCUS_BAND_MARGIN = 15;
 
 // Draws the Control canvas's only visible focus indicator - a canvas gets
 // no native browser focus ring of its own the way a real form control
-// would. A row/column line gets a small chevron at the canvas edge instead
-// of a highlight traced along its whole length, so the line's own black/
-// grey colour - its actual shown/hidden state - stays fully visible rather
-// than being painted over; a circle gets a ring drawn around it instead of
-// over it, for the same reason.
-function drawGridCustomiseFocus(ctx, w, h, options, target) {
+// would. A row/column line gets a translucent band a fixed few pixels
+// either side of it, rather than being painted over directly, so its own
+// black/grey shown-hidden colour stays visible through the tint; a circle
+// gets a ring drawn around it instead of over it, for the same reason.
+function drawGridCustomiseFocus(ctx, w, h, shape, target) {
 
     if (!target) {
         return;
     }
 
-    const marker = GRID_CUSTOMISE_FOCUS_MARKER_SIZE;
-    ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
+    const rowPositions = weightedLinePositions(shape.rowWeights);
+    const columnPositions = weightedLinePositions(shape.columnWeights);
 
     if (target.type === 'row') {
-        const y = (target.index + 1) * h / options.gridRows;
-        ctx.moveTo(marker, y - marker);
-        ctx.lineTo(0, y);
-        ctx.lineTo(marker, y + marker);
+        const y = rowPositions[target.index] * h;
+        ctx.fillStyle = GRID_CUSTOMISE_FOCUS_BAND_FILL;
+        ctx.fillRect(0, y - GRID_CUSTOMISE_FOCUS_BAND_MARGIN, w, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2);
+        ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, y - GRID_CUSTOMISE_FOCUS_BAND_MARGIN + 0.5, w - 1, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2 - 1);
     } else if (target.type === 'column') {
-        const x = (target.index + 1) * w / options.gridColumns;
-        ctx.moveTo(x - marker, marker);
-        ctx.lineTo(x, 0);
-        ctx.lineTo(x + marker, marker);
+        const x = columnPositions[target.index] * w;
+        ctx.fillStyle = GRID_CUSTOMISE_FOCUS_BAND_FILL;
+        ctx.fillRect(x - GRID_CUSTOMISE_FOCUS_BAND_MARGIN, 0, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2, h);
+        ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - GRID_CUSTOMISE_FOCUS_BAND_MARGIN + 0.5, 0.5, GRID_CUSTOMISE_FOCUS_BAND_MARGIN * 2 - 1, h - 1);
     } else {
-        const radius = Math.min((w / options.gridColumns) / 2, (h / options.gridRows) / 2, options.circleRadius) + 4;
-        const x = (target.column + 1) * w / options.gridColumns;
-        const y = (target.row + 1) * h / options.gridRows;
+        const radius = Math.min(
+            (smallestWeightedBand(shape.rowWeights) * h) / 2,
+            (smallestWeightedBand(shape.columnWeights) * w) / 2,
+            shape.circleRadius) + 4;
+        const x = columnPositions[target.column] * w;
+        const y = rowPositions[target.row] * h;
+        ctx.strokeStyle = GRID_CUSTOMISE_FOCUS_COLOUR;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
     }
-
-    ctx.stroke();
 }
 
 // Converts a mouse event's page position into the canvas's own pixel
@@ -823,19 +1213,21 @@ function onGridCustomiseClick(event) {
 
     const canvas = event.currentTarget;
     const {x, y} = gridCustomiseEventPosition(event);
-    const options = buildLiveGridCustomiseOptions();
+    const liveOptions = buildLiveGridCustomiseOptions();
+    const style = currentWeightedGridStyle(liveOptions);
+    const shape = currentCustomiseShape(liveOptions);
 
-    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, options);
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, shape);
     if (!target) {
         return;
     }
 
-    toggleGridCustomiseTarget(target);
+    toggleGridCustomiseTarget(target, style.rowLineStates, style.columnLineStates, style.circleLineStates);
 
     // Keeps keyboard focus in step with the mouse, so switching to the
     // keyboard afterwards continues from the line/circle just clicked
     // rather than wherever the focus ring last was.
-    const targets = listGridCustomiseTargets(buildLiveGridCustomiseOptions());
+    const targets = listGridCustomiseTargets(currentCustomiseShape(buildLiveGridCustomiseOptions()));
     const clickedIndex = targets.findIndex(candidate =>
         candidate.type === target.type && candidate.index === target.index &&
         candidate.row === target.row && candidate.column === target.column);
@@ -860,7 +1252,9 @@ function onGridCustomiseKeyDown(event) {
         return;
     }
 
-    const targets = listGridCustomiseTargets(buildLiveGridCustomiseOptions());
+    const liveOptions = buildLiveGridCustomiseOptions();
+    const style = currentWeightedGridStyle(liveOptions);
+    const targets = listGridCustomiseTargets(currentCustomiseShape(liveOptions));
     if (targets.length === 0) {
         return;
     }
@@ -884,13 +1278,13 @@ function onGridCustomiseKeyDown(event) {
             break;
         case 'Enter':
         case ' ':
-            toggleGridCustomiseTarget(targets[customiseFocusIndex]);
+            toggleGridCustomiseTarget(targets[customiseFocusIndex], style.rowLineStates, style.columnLineStates, style.circleLineStates);
             saveOptions();
             break;
     }
 
     renderGridCustomisePreview();
-    announceGridCustomiseFocus(listGridCustomiseTargets(buildLiveGridCustomiseOptions())[customiseFocusIndex]);
+    announceGridCustomiseFocus(listGridCustomiseTargets(currentCustomiseShape(buildLiveGridCustomiseOptions()))[customiseFocusIndex]);
 }
 
 // The Control canvas has no DOM children a screen reader can read, so its
@@ -912,7 +1306,7 @@ function onGridCustomiseHover(event) {
     const canvas = event.currentTarget;
     const {x, y} = gridCustomiseEventPosition(event);
 
-    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, buildLiveGridCustomiseOptions());
+    const target = findGridCustomiseTarget(x, y, canvas.width, canvas.height, currentCustomiseShape(buildLiveGridCustomiseOptions()));
     canvas.style.cursor = target ? 'pointer' : 'default';
 }
 
@@ -966,13 +1360,34 @@ if (typeof document !== 'undefined') {
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
 
+    // Live-updates the ratio as it's typed, not just once the field is
+    // committed (blur/Enter) - debounced so a burst of keystrokes (or the
+    // native number input's up/down arrow keys, held down) triggers one
+    // update shortly after typing pauses, not one per keystroke. Writes
+    // just the phiRatio key to chrome.storage.sync (a merge, not a full
+    // options save - every other key is left untouched) so the real
+    // overlay on any other tab picks it up via the same storage.onChanged
+    // listener content.js already reacts to for a saved change, for
+    // side-by-side editing with the page the overlay's actually on.
+    // write:false throughout (see renderGridCustomisePreview/readPhiRatio)
+    // so this never clamps-and-rewrites the field mid-edit - only
+    // saveOptions (on 'change') does that, once typing is actually done.
+    let phiRatioPreviewTimeoutId;
+    document.querySelectorAll('.phi-ratio-row input').forEach(input => input.addEventListener('input', () => {
+        clearTimeout(phiRatioPreviewTimeoutId);
+        phiRatioPreviewTimeoutId = setTimeout(() => {
+            renderGridCustomisePreview(false);
+            chrome.storage.sync.set({phiRatio: readPhiRatio(false)});
+        }, PHI_RATIO_PREVIEW_DEBOUNCE_MS);
+    }));
+
     const gridCustomiseControl = document.getElementById('grid-customise-control');
     gridCustomiseControl.addEventListener('click', onGridCustomiseClick);
     gridCustomiseControl.addEventListener('mousemove', onGridCustomiseHover);
     gridCustomiseControl.addEventListener('mouseleave', () => { gridCustomiseControl.style.cursor = 'default'; });
     gridCustomiseControl.addEventListener('keydown', onGridCustomiseKeyDown);
     gridCustomiseControl.addEventListener('focus', () => {
-        const targets = listGridCustomiseTargets(buildLiveGridCustomiseOptions());
+        const targets = listGridCustomiseTargets(currentCustomiseShape(buildLiveGridCustomiseOptions()));
         if (targets.length === 0) {
             return;
         }
@@ -992,6 +1407,7 @@ if (typeof document !== 'undefined') {
     }));
 
     document.getElementById('restoreDefaults').addEventListener('click', restoreDefaultOptions);
+    document.getElementById('restorePhiRatioDefaults').addEventListener('click', restorePhiRatioDefaults);
 
     loadPreviewPhoto();
 
@@ -999,12 +1415,29 @@ if (typeof document !== 'undefined') {
     // what actually matters is the row's own width - which can also change
     // from things a window resize wouldn't catch (eg a scrollbar appearing).
     new ResizeObserver(() => layoutGridCustomiseCanvases()).observe(document.getElementById('grid-customise-col'));
+
+    document.querySelectorAll('input[name="overlay-style"]').forEach(input => input.addEventListener('change', syncOverlayStyleVisibility));
+
+    drawGoldenRatioThumbnails();
+
+    document.querySelectorAll('input[name="golden-ratio-direction"], input[name="golden-ratio-start"]').forEach(input => input.addEventListener('change', syncGoldenRatioThumbnailSelection));
+
+    document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
+        button.addEventListener('click', () => {
+            selectOption('golden-ratio-direction', button.dataset.direction);
+            selectOption('golden-ratio-start', button.dataset.start);
+            syncGoldenRatioThumbnailSelection();
+            saveOptions();
+        });
+        button.addEventListener('keydown', onGoldenRatioThumbKeyDown);
+    });
 }
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        DEFAULT_OPTIONS, MIN_GRID_LINES, MAX_GRID_LINES, MIN_CIRCLE_RADIUS, clampInt, minGridLines, computeGridLineMinimums,
+        DEFAULT_OPTIONS, MIN_GRID_LINES, MAX_GRID_LINES, MIN_CIRCLE_RADIUS, MIN_PHI_RATIO, MAX_PHI_RATIO, PHI_RATIO_DECIMALS, clampInt, clampFloat, roundTo, minGridLines, computeGridLineMinimums,
         resizeLineStates, resetLineStates, resizeCircleStates, resetCircleStates,
+        weightedLinePositions, smallestWeightedBand,
         computePreviewBackground, findGridCustomiseTarget, renderGridCustomiseReference, drawPreviewBackground,
         listGridCustomiseTargets, drawGridCustomiseFocus
     };

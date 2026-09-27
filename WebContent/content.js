@@ -24,6 +24,49 @@ function shouldRender(computedStyle, w, h, minWidth, minHeight, eitherOrientatio
     return visibility !== 'hidden' && display !== 'none' && isMinSize(w, h, minWidth, minHeight, eitherOrientation);
 }
 
+// Phi Grid is always 3 bands per axis (see PHI_GRID_BAND_COUNT in
+// options.js) - unlike Grid, it has no user-editable row/column count.
+// `var`, not `const` - like every other top-level declaration in this file
+// (see HEX_COLOUR_PATTERN below), it must be safe to redeclare when this
+// file is injected into the same page more than once.
+var PHI_GRID_LINE_COUNT = 2;
+var DEFAULT_PHI_RATIO = [1, 0.618, 1];
+// Matches the Options page's MAX_PHI_RATIO - already far more skewed than
+// any real composition guide needs, just enough to rule out a ratio so
+// lopsided the narrow band collapses toward an unusable sliver.
+var MAX_PHI_RATIO = 100;
+
+// Storage may hold a ratio saved by an older/corrupted version, or with the
+// wrong number of entries - falls back per-entry (not as a whole array) so
+// a single bad value doesn't discard two otherwise-valid ones.
+function sanitizePhiRatio(value) {
+
+    if (!Array.isArray(value) || value.length !== DEFAULT_PHI_RATIO.length) {
+        return DEFAULT_PHI_RATIO.slice();
+    }
+    return value.map((entry, index) => {
+        const parsed = parseFloat(entry);
+        return Number.isFinite(parsed) && parsed > 0 && parsed <= MAX_PHI_RATIO ? parsed : DEFAULT_PHI_RATIO[index];
+    });
+}
+
+// overlayStyle/goldenRatioDirection/goldenRatioStart all drive a lookup
+// (OVERLAY_STYLE_DRAWERS below, configureControl in golden-ratio.js) that
+// has no safe fallback of its own for a value outside its known set - an
+// unrecognized one throws and aborts applyOverlays() partway through,
+// leaving some images without an overlay and the toolbar icon out of sync.
+// Storage could hold anything (a sync conflict with an older/newer
+// version, manual tampering), so every enum-shaped field is validated here
+// rather than trusted as-is.
+var VALID_OVERLAY_STYLES = ['grid', 'phi-grid', 'golden-ratio'];
+var VALID_GOLDEN_RATIO_DIRECTIONS = ['clockwise', 'counter-clockwise'];
+var VALID_GOLDEN_RATIO_STARTS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+
+function sanitizeEnum(value, validValues, fallback) {
+
+    return validValues.includes(value) ? value : fallback;
+}
+
 // Storage may hold values saved by an older version of the options page
 // (numbers saved as strings, or missing bounds checks), so re-validate on
 // every read rather than trusting what was persisted.
@@ -48,7 +91,14 @@ function sanitizeOptions(data) {
         circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100),
         circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1),
         lineColour: sanitizeColour(data.lineColour, '#ffffff'),
-        circleColour: sanitizeColour(data.circleColour, '#ff0000')
+        circleColour: sanitizeColour(data.circleColour, '#ff0000'),
+        phiRatio: sanitizePhiRatio(data.phiRatio),
+        phiRowLines: sanitizeLineStates(data.phiRowLines, PHI_GRID_LINE_COUNT),
+        phiColumnLines: sanitizeLineStates(data.phiColumnLines, PHI_GRID_LINE_COUNT),
+        phiCircleLines: sanitizeCircleStates(data.phiCircleLines, PHI_GRID_LINE_COUNT, PHI_GRID_LINE_COUNT),
+        overlayStyle: sanitizeEnum(data.overlayStyle, VALID_OVERLAY_STYLES, 'grid'),
+        goldenRatioDirection: sanitizeEnum(data.goldenRatioDirection, VALID_GOLDEN_RATIO_DIRECTIONS, 'clockwise'),
+        goldenRatioStart: sanitizeEnum(data.goldenRatioStart, VALID_GOLDEN_RATIO_STARTS, 'bottom-left')
     };
 }
 
@@ -66,7 +116,7 @@ var HEX_COLOUR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 // A malformed stored colour (eg from external tampering, a future format
 // change, or plain corruption) would otherwise reach hexToRgba() as-is,
 // which turns it into rgba(NaN, NaN, NaN, ...) - canvas silently draws
-// nothing for that, so the grid can vanish with no error or explanation.
+// nothing for that, so the overlay can vanish with no error or explanation.
 function sanitizeColour(value, fallback) {
 
     return typeof value === 'string' && HEX_COLOUR_PATTERN.test(value) ? value : fallback;
@@ -123,8 +173,8 @@ if (typeof rotInit === 'undefined') {
                 if (area === 'sync'/* && changes.options?.newValue*/) {
                     if (controlElement.getAttribute('active') === 'true') {
                         readOptions().then(() => {
-                            removeGrids();
-                            applyGrids();
+                            removeOverlays();
+                            applyOverlays();
                         })
                     }
                 }
@@ -132,7 +182,7 @@ if (typeof rotInit === 'undefined') {
         }
 
         promise.then(() => {
-            toggleGrids();
+            toggleOverlays();
             reportState();
         });
 
@@ -141,6 +191,7 @@ if (typeof rotInit === 'undefined') {
             return new Promise((resolve) => {
                 chrome.storage.sync.get(
                     {
+                        overlayStyle: 'grid',
                         renderGrid: true,
                         gridRows: 3,
                         gridColumns: 3,
@@ -156,7 +207,14 @@ if (typeof rotInit === 'undefined') {
                         circleLines: [[true, true], [true, true]],
                         minImageWidth: 100,
                         minImageHeight: 50,
-                        eitherOrientation: true
+                        eitherOrientation: true,
+                        renderPhiGrid: true,
+                        phiRatio: DEFAULT_PHI_RATIO,
+                        phiRowLines: [true, true],
+                        phiColumnLines: [true, true],
+                        phiCircleLines: [[true, true], [true, true]],
+                        goldenRatioDirection: 'clockwise',
+                        goldenRatioStart: 'bottom-left'
                     },
                     (data) => {
                         options = sanitizeOptions(data);
@@ -166,18 +224,18 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        function toggleGrids() {
+        function toggleOverlays() {
 
             if (controlElement.getAttribute('active') === 'false') {
-                applyGrids();
+                applyOverlays();
             } else {
-                removeGrids();
+                removeOverlays();
             }
         }
 
         // Lets the service worker reflect this tab's on/off state on the
         // toolbar icon - it has no other way to know, since applying and
-        // removing the grid only ever changes DOM state inside this page.
+        // removing the overlay only ever changes DOM state inside this page.
         function reportState() {
 
             chrome.runtime.sendMessage({
@@ -186,7 +244,7 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        function applyGrids() {
+        function applyOverlays() {
 
             const images = document.getElementsByTagName('img');
             for (let ii = 0; ii < images.length; ii++) {
@@ -232,13 +290,35 @@ if (typeof rotInit === 'undefined') {
             // call can keep using CSS-pixel coordinates (w/h) unchanged.
             ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
 
-            // Draw Rule of Thirds grid
-            drawGridOverlay(ctx, w, h, options);
+            OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, w, h, options);
 
             (image.offsetParent || document.body).append(canvas);
         }
 
-        function removeGrids() {
+        // Every overlay style's draw function shares this one signature -
+        // adding a new style (alongside Grid/Phi Grid/Fibonacci Spiral)
+        // means adding one more entry here, not a new branch in
+        // renderImageOverlay.
+        const OVERLAY_STYLE_DRAWERS = {
+            grid: drawGridOverlay,
+            'phi-grid': drawPhiGridOverlay,
+            'golden-ratio': drawGoldenSpiral
+        };
+
+        // Fibonacci Spiral, Grid and Phi Grid are mutually-exclusive
+        // overlay "modes" (see Composition Overlay on the Options page) -
+        // only ever one at a time, never more than one at once.
+        function drawGoldenSpiral(ctx, w, h, options) {
+
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
+
+            traceGoldenSpiralPath(ctx, w, h, options.goldenRatioDirection, options.goldenRatioStart);
+
+            ctx.stroke();
+        }
+
+        function removeOverlays() {
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
             controlElement.setAttribute('active', 'false');
@@ -295,5 +375,5 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour};
+    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum};
 }

@@ -91,6 +91,17 @@ h5 {
     .row > .m9 { flex-basis: 75%; max-width: 75%; }
     .row > .offset-m1 { margin-left: 8.3333%; }
 
+    /* The direction/starting-point radio columns are much narrower than
+       their fixed m3/m4 widths, which left a large dead gap before the
+       thumbnails. Sizing just those columns to their content instead
+       closes that gap (the heading/divider column above them keeps the
+       full-width s12 base rule so the divider still spans the row). */
+    .golden-ratio-mode-row > .m3,
+    .golden-ratio-mode-row > .m4,
+    .golden-ratio-mode-row > .m5 {
+        flex: 0 1 auto;
+        max-width: none;
+    }
 }
 
 .divider {
@@ -399,6 +410,127 @@ input:disabled {
     outline-offset: 2px;
 }
 
+/* Direction/starting-point radios have a visual twin in each thumbnail -
+   either method selects both underlying radios, so they're kept in sync. */
+.golden-ratio-thumbnails {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    align-items: center;
+    justify-items: center;
+    gap: 0.4rem;
+    margin: 0;
+}
+
+.golden-ratio-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.golden-ratio-thumb:hover {
+    border-color: var(--color-divider);
+}
+
+.golden-ratio-thumb.selected {
+    border-color: var(--color-primary);
+}
+
+/* Every other custom control on this page (quick-swatch, btn-large,
+   btn-small, grid-customise-control, overlay-style-option) gets a matching
+   themed focus-visible outline instead of the browser default - this was
+   the one left relying on the default, easy to miss since it's still
+   visible, just inconsistent. */
+.golden-ratio-thumb:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.golden-ratio-thumb canvas {
+    display: block;
+}
+
+/* Composition Overlay picks between two entirely different overlays (see
+   syncOverlayStyleVisibility in options.js, which shows/hides every other
+   section based on this) - a plain pair of radio buttons undersold how big
+   a switch that is, so this is a large, unmissable two-way toggle instead
+   of just another form field. The whole label is the click target; the
+   native radio is kept (visually hidden below) rather than removed, so
+   this stays a real, keyboard-operable radio group. */
+.overlay-style-toggle {
+    display: flex;
+    gap: 0.75rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+/* Same visually-hidden-but-focusable technique as .sr-only, just with
+   higher specificity than the generic input[type="radio"] rule (which
+   would otherwise win on source order and force this back to an 18px
+   visible circle). */
+.overlay-style-option input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Specificity note: the generic `label:not([for])` rule above (display,
+   gap, cursor, margin) outranks a bare `.overlay-style-option` class
+   selector, so this is qualified with its parent to win the cascade
+   instead of fighting it with !important. */
+.overlay-style-toggle .overlay-style-option {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 1.1rem 1rem;
+    border: 2px solid var(--color-divider);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Higher-specificity `.overlay-style-toggle .overlay-style-option span`
+   form used throughout below so these all outrank the generic
+   `input[type="radio"]:checked + span` colour rule further up the file. */
+.overlay-style-toggle .overlay-style-option span {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.overlay-style-toggle .overlay-style-option:hover {
+    border-color: var(--color-primary);
+}
+
+.overlay-style-toggle .overlay-style-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.overlay-style-toggle .overlay-style-option:has(input:focus-visible) {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.overlay-style-toggle .overlay-style-option:has(input:checked) span {
+    color: var(--color-primary-dark);
+}
+
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;
@@ -420,6 +552,59 @@ input:disabled {
 .btn-large:focus-visible {
     outline: 3px solid var(--color-primary-dark);
     outline-offset: 2px;
+}
+
+/* A smaller, less dominant sibling to .btn-large - for a scoped action (eg
+   "Restore Default Ratio") that shouldn't visually compete with the page's
+   one main Restore Defaults button. */
+.btn-small {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    background: transparent;
+    color: var(--color-primary-dark);
+    border: 1px solid var(--color-primary);
+    border-radius: 2px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-small:hover {
+    background: var(--color-primary-light);
+}
+
+.btn-small:focus-visible {
+    outline: 3px solid var(--color-primary-dark);
+    outline-offset: 2px;
+}
+
+/* The three Phi Grid ratio fields sit side by side with ":" separators
+   (eg "1 : 0.618 : 1"), rather than stacking like every other labelled
+   number field, since they're only meaningful read together as one ratio. */
+.phi-ratio-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.phi-ratio-row input[type="number"] {
+    width: 4rem;
+    flex: 0 0 auto;
+}
+
+/* A ratio field reads worse with spin-button arrows cluttering it, and
+   step-clicking them one thousandth at a time isn't a useful way to edit
+   one anyway - still type="number" underneath (numeric-only input, decimal
+   keyboard on mobile), just without the spinner UI. */
+.no-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 #toast-container {

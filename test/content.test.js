@@ -8,7 +8,8 @@ const {
     sanitizeOptions,
     sanitizeLineStates,
     sanitizeCircleStates,
-    sanitizeColour
+    sanitizeColour,
+    sanitizeEnum
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation by default', () => {
@@ -126,7 +127,14 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         circleStyle: 'outline',
         circleLines: [[true, true], [true, true]],
         minImageWidth: 100,
-        minImageHeight: 50
+        minImageHeight: 50,
+        phiRatio: [1, 0.618, 1],
+        phiRowLines: [true, true],
+        phiColumnLines: [true, true],
+        phiCircleLines: [[true, true], [true, true]],
+        overlayStyle: 'grid',
+        goldenRatioDirection: 'clockwise',
+        goldenRatioStart: 'bottom-left'
     });
 });
 
@@ -224,4 +232,67 @@ test('sanitizeCircleStates resizes each row to the current column count', () => 
     // entry has no stored data, so it defaults to enabled.
     const result = sanitizeCircleStates([[false, false]], 2, 3);
     assert.deepEqual(result, [[false, false, true], [true, true, true]]);
+});
+
+test('sanitizeOptions falls back to the default Phi ratio when missing or malformed', () => {
+    assert.deepEqual(sanitizeOptions({}).phiRatio, [1, 0.618, 1]);
+    assert.deepEqual(sanitizeOptions({phiRatio: 'not an array'}).phiRatio, [1, 0.618, 1]);
+    assert.deepEqual(sanitizeOptions({phiRatio: [1, 2]}).phiRatio, [1, 0.618, 1], 'wrong length falls back entirely');
+});
+
+test('sanitizeOptions falls back per-entry for an invalid Phi ratio value, not the whole array', () => {
+    const result = sanitizeOptions({phiRatio: [2, 'not a number', -1]});
+    assert.deepEqual(result.phiRatio, [2, 0.618, 1]);
+});
+
+test('sanitizeOptions falls back per-entry for a Phi ratio value over the maximum', () => {
+    const result = sanitizeOptions({phiRatio: [1, 999999, 1]});
+    assert.deepEqual(result.phiRatio, [1, 0.618, 1]);
+});
+
+test('sanitizeOptions accepts a Phi ratio value exactly at the maximum', () => {
+    const result = sanitizeOptions({phiRatio: [1, 100, 1]});
+    assert.deepEqual(result.phiRatio, [1, 100, 1]);
+});
+
+test('sanitizeOptions treats a missing Phi Grid line/circle state as every line/circle enabled', () => {
+    const result = sanitizeOptions({});
+    assert.deepEqual(result.phiRowLines, [true, true]);
+    assert.deepEqual(result.phiColumnLines, [true, true]);
+    assert.deepEqual(result.phiCircleLines, [[true, true], [true, true]]);
+});
+
+test('sanitizeEnum passes through a value that is in the valid set', () => {
+    assert.equal(sanitizeEnum('phi-grid', ['grid', 'phi-grid'], 'grid'), 'phi-grid');
+});
+
+test('sanitizeEnum falls back for a value outside the valid set, including missing/wrong-type values', () => {
+    assert.equal(sanitizeEnum('not-a-style', ['grid', 'phi-grid'], 'grid'), 'grid');
+    assert.equal(sanitizeEnum(undefined, ['grid', 'phi-grid'], 'grid'), 'grid');
+    assert.equal(sanitizeEnum(null, ['grid', 'phi-grid'], 'grid'), 'grid');
+    assert.equal(sanitizeEnum(42, ['grid', 'phi-grid'], 'grid'), 'grid');
+});
+
+test('sanitizeOptions falls back to safe defaults for a corrupted overlayStyle/goldenRatioDirection/goldenRatioStart', () => {
+    const result = sanitizeOptions({
+        overlayStyle: 'not-a-real-style',
+        goldenRatioDirection: 'diagonally',
+        goldenRatioStart: 'the-middle'
+    });
+
+    assert.equal(result.overlayStyle, 'grid');
+    assert.equal(result.goldenRatioDirection, 'clockwise');
+    assert.equal(result.goldenRatioStart, 'bottom-left');
+});
+
+test('sanitizeOptions leaves a valid overlayStyle/goldenRatioDirection/goldenRatioStart untouched', () => {
+    const result = sanitizeOptions({
+        overlayStyle: 'golden-ratio',
+        goldenRatioDirection: 'counter-clockwise',
+        goldenRatioStart: 'top-right'
+    });
+
+    assert.equal(result.overlayStyle, 'golden-ratio');
+    assert.equal(result.goldenRatioDirection, 'counter-clockwise');
+    assert.equal(result.goldenRatioStart, 'top-right');
 });

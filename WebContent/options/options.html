@@ -15,6 +15,29 @@
 
       <div class="row">
         <div class="col s12">
+          <h5>Composition Overlay</h5>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12">
+          <div class="overlay-style-toggle">
+            <label class="overlay-style-option">
+              <input type="radio" id="overlay-style-grid" name="overlay-style" value="grid">
+              <span>Grid</span>
+            </label>
+            <label class="overlay-style-option">
+              <input type="radio" id="overlay-style-phi-grid" name="overlay-style" value="phi-grid">
+              <span>Phi Grid</span>
+            </label>
+            <label class="overlay-style-option">
+              <input type="radio" id="overlay-style-golden-ratio" name="overlay-style" value="golden-ratio">
+              <span>Fibonacci Spiral</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
           <h5>Line Colour</h5>
           <div class="divider"></div>
         </div>
@@ -45,9 +68,9 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="col s12 m3">
-          <div class="row">
+      <div class="row" data-overlay-styles="grid phi-grid">
+        <div class="col s12 m3" id="grid-phi-grid-columns-left">
+          <div class="row" data-overlay-styles="grid">
             <div class="col s12">
               <h5>Grid</h5>
               <div class="divider"></div>
@@ -69,8 +92,43 @@
               </p>
             </div>
           </div>
+          <div class="row" data-overlay-styles="phi-grid">
+            <div class="col s12">
+              <h5>Phi Grid</h5>
+              <div class="divider"></div>
+            </div>
+            <div class="col s12">
+              <p>
+                <label>
+                  <input type="checkbox" id="render-phi-grid"/>
+                  <span>Enabled</span>
+                </label>
+              </p>
+              <p class="help-text">
+                Fixed at 3x3. Lines and circles are placed by the ratio below (outer : middle :
+                outer), the same in both directions.
+              </p>
+              <p>
+                <span class="field-caption">Ratio</span>
+                <span class="phi-ratio-row">
+                  <input type="number" id="phi-ratio-1" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="First outer ratio"/>
+                  <span aria-hidden="true">:</span>
+                  <input type="number" id="phi-ratio-2" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="Middle ratio"/>
+                  <span aria-hidden="true">:</span>
+                  <input type="number" id="phi-ratio-3" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="Second outer ratio"/>
+                </span>
+              </p>
+              <p class="help-text">
+                The default 1 : 0.618 : 1 is the classic "Phi Grid" composition guide. Circles
+                use the same settings as Circles, to the right.
+              </p>
+              <p class="left-align">
+                <button type="button" id="restorePhiRatioDefaults" class="btn-small">Restore Golden Ratio</button>
+              </p>
+            </div>
+          </div>
         </div>
-        <div class="col s12 m9">
+        <div class="col s12 m9" id="grid-phi-grid-columns-right">
           <div class="row">
             <div class="col s12">
               <h5>Circles</h5>
@@ -131,7 +189,7 @@
         </div>
       </div>
 
-      <div class="row">
+      <div class="row" data-overlay-styles="grid phi-grid">
         <div class="col s12">
           <h5>Customise</h5>
           <div class="divider"></div>
@@ -144,7 +202,7 @@
             <span class="field-caption">Hide / Show</span>
             <canvas class="grid-customise-control" id="grid-customise-control" width="360" height="240"
                     tabindex="0" role="application"
-                    aria-label="Grid line and circle visibility. Use the arrow keys to select a line or circle, then Enter or Space to show or hide it."
+                    aria-label="Line and circle visibility. Use the arrow keys to select a line or circle, then Enter or Space to show or hide it."
                     aria-describedby="grid-customise-status"></canvas>
             <div id="grid-customise-status" class="sr-only" aria-live="polite"></div>
           </div>
@@ -161,6 +219,81 @@
         </div>
       </div>
 
+      <div class="row" data-overlay-styles="golden-ratio">
+        <div class="col s12">
+          <h5>Fibonacci Spiral</h5>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12 m3">
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-clockwise" name="golden-ratio-direction" value="clockwise">
+              <span>Clockwise</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-counter-clockwise" name="golden-ratio-direction" value="counter-clockwise">
+              <span>Counter-Clockwise</span>
+            </label>
+          </p>
+        </div>
+        <div class="col s12 m2">
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-top-left" name="golden-ratio-start" value="top-left">
+              <span>Top Left</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-top-right" name="golden-ratio-start" value="top-right">
+              <span>Top Right</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-bottom-left" name="golden-ratio-start" value="bottom-left">
+              <span>Bottom Left</span>
+            </label>
+          </p>
+          <p>
+            <label>
+              <input type="radio" id="golden-ratio-bottom-right" name="golden-ratio-start" value="bottom-right">
+              <span>Bottom Right</span>
+            </label>
+          </p>
+        </div>
+        <div class="col s12 m7">
+          <p class="golden-ratio-thumbnails" role="radiogroup" aria-label="Direction and starting corner">
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-left" aria-label="Clockwise, starting top left" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="60" height="90"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-right" aria-label="Clockwise, starting top right" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="90" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-left" aria-label="Clockwise, starting bottom left" role="radio" aria-checked="true" tabindex="0">
+              <canvas width="90" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-right" aria-label="Clockwise, starting bottom right" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="60" height="90"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-left" aria-label="Counter-clockwise, starting top left" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="90" height="60"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-right" aria-label="Counter-clockwise, starting top right" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="60" height="90"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-left" aria-label="Counter-clockwise, starting bottom left" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="60" height="90"></canvas>
+            </button>
+            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-right" aria-label="Counter-clockwise, starting bottom right" role="radio" aria-checked="false" tabindex="-1">
+              <canvas width="90" height="60"></canvas>
+            </button>
+          </p>
+        </div>
+      </div>
+
       <div class="row">
         <div class="col s12">
           <h5>Embedded Frames</h5>
@@ -168,16 +301,16 @@
           <p>
             <label>
               <input type="checkbox" id="apply-to-frames"/>
-              <span>Apply grid inside embedded frames (iframes)</span>
+              <span>Apply overlay inside embedded frames (iframes)</span>
             </label>
           </p>
           <p class="help-text">
             Off by default: embedded frames are often adverts, comment widgets or other
-            content you probably don't want a grid drawn over. Turn this on only if you
+            content you probably don't want an overlay drawn over. Turn this on only if you
             specifically need images inside frames covered too.
           </p>
           <p class="help-text">
-            Takes effect the next time you toggle the grids on a page - changing it won't
+            Takes effect the next time you toggle the overlay on a page - changing it won't
             take immediate effect as per other options.
           </p>
         </div>
@@ -203,7 +336,7 @@
         <div class="col s12">
           <p class="help-text">
             Images smaller than this are skipped - tiny icons, hidden elements and
-            decorative spacers are never worth grid lines.
+            decorative spacers are never worth an overlay.
           </p>
           <p>
             <label>
@@ -231,6 +364,7 @@
     </div>
 
     <script src="../grid-render.js"></script>
+    <script src="../golden-ratio.js"></script>
     <script src="options.js"></script>
   </body>
 </html>
