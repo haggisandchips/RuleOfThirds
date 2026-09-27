@@ -15,29 +15,6 @@
 
       <div class="row">
         <div class="col s12">
-          <h5>Composition Overlay</h5>
-          <div class="divider"></div>
-        </div>
-        <div class="col s12">
-          <div class="overlay-style-toggle">
-            <label class="overlay-style-option">
-              <input type="radio" id="overlay-style-grid" name="overlay-style" value="grid">
-              <span>Grid</span>
-            </label>
-            <label class="overlay-style-option">
-              <input type="radio" id="overlay-style-phi-grid" name="overlay-style" value="phi-grid">
-              <span>Phi Grid</span>
-            </label>
-            <label class="overlay-style-option">
-              <input type="radio" id="overlay-style-golden-ratio" name="overlay-style" value="golden-ratio">
-              <span>Fibonacci Spiral</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col s12">
           <h5>Line Colour</h5>
           <div class="divider"></div>
         </div>
@@ -68,229 +45,241 @@
         </div>
       </div>
 
-      <div class="row" data-overlay-styles="grid phi-grid">
-        <div class="col s12 m3" id="grid-phi-grid-columns-left">
-          <div class="row" data-overlay-styles="grid">
-            <div class="col s12">
-              <h5>Grid</h5>
-              <div class="divider"></div>
-            </div>
-            <div class="col s12">
-              <p>
-                <label>
-                  <input type="checkbox" id="render-grid"/>
-                  <span>Enabled</span>
-                </label>
-              </p>
-              <p>
-                <label for="grid-rows">Rows</label>
-                <input type="number" id="grid-rows" min="1" max="9"/>
-              </p>
-              <p>
-                <label for="grid-columns">Columns</label>
-                <input type="number" id="grid-columns" min="1" max="9"/>
-              </p>
-            </div>
-          </div>
-          <div class="row" data-overlay-styles="phi-grid">
-            <div class="col s12">
-              <h5>Phi Grid</h5>
-              <div class="divider"></div>
-            </div>
-            <div class="col s12">
-              <p>
-                <label>
-                  <input type="checkbox" id="render-phi-grid"/>
-                  <span>Enabled</span>
-                </label>
-              </p>
-              <p class="help-text">
-                Fixed at 3x3. Lines and circles are placed by the ratio below (outer : middle :
-                outer), the same in both directions.
-              </p>
-              <p>
-                <span class="field-caption">Ratio</span>
-                <span class="phi-ratio-row">
-                  <input type="number" id="phi-ratio-1" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="First outer ratio"/>
-                  <span aria-hidden="true">:</span>
-                  <input type="number" id="phi-ratio-2" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="Middle ratio"/>
-                  <span aria-hidden="true">:</span>
-                  <input type="number" id="phi-ratio-3" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="Second outer ratio"/>
-                </span>
-              </p>
-              <p class="help-text">
-                The default 1 : 0.618 : 1 is the classic "Phi Grid" composition guide. Circles
-                use the same settings as Circles, to the right.
-              </p>
-              <p class="left-align">
-                <button type="button" id="restorePhiRatioDefaults" class="btn-small">Restore Golden Ratio</button>
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="col s12 m9" id="grid-phi-grid-columns-right">
-          <div class="row">
-            <div class="col s12">
-              <h5>Circles</h5>
-              <div class="divider"></div>
-            </div>
-            <div class="col s12">
-              <p>
-                <label>
-                  <input type="checkbox" id="render-circle"/>
-                  <span>Enabled</span>
-                </label>
-              </p>
-            </div>
-            <div class="col s12 m2">
-              <p>
-                <label for="circle-radius">Radius</label>
-                <input type="number" id="circle-radius" min="1"/>
-              </p>
-              <p>
-                <label>
-                  <input type="radio" id="circle-style-outline" name="circle-style" value="outline">
-                  <span>Outline</span>
-                </label>
-              </p>
-              <p>
-                <label>
-                  <input type="radio" id="circle-style-filled" name="circle-style" value="filled">
-                  <span>Filled</span>
-                </label>
-              </p>
-            </div>
-            <div class="col s12 m7 offset-m1">
-              <p>
-                <label for="circle-colour">Circle Colour</label>
-                <span class="colour-row">
-                  <input type="color" id="circle-colour" value="#ff0000"/>
-                  <span class="quick-swatch-group" id="circle-colour-quick" data-for="circle-colour">
-                    <button type="button" class="quick-swatch" data-value="#000000" style="--swatch-colour:#000000" aria-label="Black"></button>
-                    <button type="button" class="quick-swatch" data-value="#ffffff" style="--swatch-colour:#ffffff" aria-label="White"></button>
-                    <button type="button" class="quick-swatch" data-value="#ff0000" style="--swatch-colour:#ff0000" aria-label="Red"></button>
-                    <button type="button" class="quick-swatch" data-value="#ffff00" style="--swatch-colour:#ffff00" aria-label="Yellow"></button>
-                    <button type="button" class="quick-swatch" data-value="#00ff00" style="--swatch-colour:#00ff00" aria-label="Green"></button>
-                    <button type="button" class="quick-swatch" data-value="#0000ff" style="--swatch-colour:#0000ff" aria-label="Blue"></button>
-                    <button type="button" class="quick-swatch" data-value="#ff00ff" style="--swatch-colour:#ff00ff" aria-label="Magenta"></button>
-                    <button type="button" class="quick-swatch" data-value="#00ffff" style="--swatch-colour:#00ffff" aria-label="Cyan"></button>
-                  </span>
-                </span>
-              </p>
-              <p>
-                <label for="circle-opacity">Opacity</label>
-                <span class="opacity-row">
-                  <input type="range" id="circle-opacity" min="0" max="100"/>
-                  <span class="opacity-value" id="circle-opacity-value"></span>
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row" data-overlay-styles="grid phi-grid">
+      <div class="row overlay-style-tabs">
         <div class="col s12">
-          <h5>Customise</h5>
-          <div class="divider"></div>
-          <p class="help-text">
-            Click a line or circle in the map below to show or hide it - "Preview" shows the result.
-          </p>
-        </div>
-        <div class="col s12 grid-customise-col" id="grid-customise-col">
-          <div class="grid-customise-panel">
-            <span class="field-caption">Hide / Show</span>
-            <canvas class="grid-customise-control" id="grid-customise-control" width="360" height="240"
-                    tabindex="0" role="application"
-                    aria-label="Line and circle visibility. Use the arrow keys to select a line or circle, then Enter or Space to show or hide it."
-                    aria-describedby="grid-customise-status"></canvas>
-            <div id="grid-customise-status" class="sr-only" aria-live="polite"></div>
-          </div>
-          <div class="grid-customise-panel">
-            <span class="field-caption">Preview</span>
-            <canvas class="grid-customise-preview" id="grid-customise-preview" width="360" height="240"></canvas>
-            <p class="grid-customise-photo-toggle">
-              <label>
-                <input type="checkbox" id="preview-background-image"/>
-                <span>Use background photo</span>
+          <fieldset class="overlay-style-fieldset">
+            <legend class="sr-only">Composition Overlay</legend>
+            <div class="overlay-style-toggle">
+              <label class="overlay-style-option">
+                <input type="radio" id="overlay-style-grid" name="overlay-style" value="grid">
+                <span>Grid</span>
               </label>
-            </p>
-          </div>
-        </div>
-      </div>
+              <label class="overlay-style-option">
+                <input type="radio" id="overlay-style-phi-grid" name="overlay-style" value="phi-grid">
+                <span>Phi Grid</span>
+              </label>
+              <label class="overlay-style-option">
+                <input type="radio" id="overlay-style-golden-ratio" name="overlay-style" value="golden-ratio">
+                <span>Fibonacci Spiral</span>
+              </label>
+            </div>
+          </fieldset>
 
-      <div class="row" data-overlay-styles="golden-ratio">
-        <div class="col s12">
-          <h5>Fibonacci Spiral</h5>
-          <div class="divider"></div>
-        </div>
-        <div class="col s12 m3">
-          <p>
-            <label>
-              <input type="radio" id="golden-ratio-clockwise" name="golden-ratio-direction" value="clockwise">
-              <span>Clockwise</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="golden-ratio-counter-clockwise" name="golden-ratio-direction" value="counter-clockwise">
-              <span>Counter-Clockwise</span>
-            </label>
-          </p>
-        </div>
-        <div class="col s12 m2">
-          <p>
-            <label>
-              <input type="radio" id="golden-ratio-top-left" name="golden-ratio-start" value="top-left">
-              <span>Top Left</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="golden-ratio-top-right" name="golden-ratio-start" value="top-right">
-              <span>Top Right</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="golden-ratio-bottom-left" name="golden-ratio-start" value="bottom-left">
-              <span>Bottom Left</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input type="radio" id="golden-ratio-bottom-right" name="golden-ratio-start" value="bottom-right">
-              <span>Bottom Right</span>
-            </label>
-          </p>
-        </div>
-        <div class="col s12 m7">
-          <p class="golden-ratio-thumbnails" role="radiogroup" aria-label="Direction and starting corner">
-            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-left" aria-label="Clockwise, starting top left" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="60" height="90"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-right" aria-label="Clockwise, starting top right" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="90" height="60"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-left" aria-label="Clockwise, starting bottom left" role="radio" aria-checked="true" tabindex="0">
-              <canvas width="90" height="60"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-right" aria-label="Clockwise, starting bottom right" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="60" height="90"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-left" aria-label="Counter-clockwise, starting top left" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="90" height="60"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-right" aria-label="Counter-clockwise, starting top right" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="60" height="90"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-left" aria-label="Counter-clockwise, starting bottom left" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="60" height="90"></canvas>
-            </button>
-            <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-right" aria-label="Counter-clockwise, starting bottom right" role="radio" aria-checked="false" tabindex="-1">
-              <canvas width="90" height="60"></canvas>
-            </button>
-          </p>
+          <div class="overlay-style-panel">
+            <div class="row" data-overlay-styles="grid phi-grid">
+              <div class="col s12 m3" id="grid-phi-grid-columns-left">
+                <div class="row" data-overlay-styles="grid">
+                  <div class="col s12">
+                    <p>
+                      <label>
+                        <input type="checkbox" id="render-grid"/>
+                        <span>Enabled</span>
+                      </label>
+                    </p>
+                    <p>
+                      <label for="grid-rows">Rows</label>
+                      <input type="number" id="grid-rows" min="1" max="9"/>
+                    </p>
+                    <p>
+                      <label for="grid-columns">Columns</label>
+                      <input type="number" id="grid-columns" min="1" max="9"/>
+                    </p>
+                  </div>
+                </div>
+                <div class="row" data-overlay-styles="phi-grid">
+                  <div class="col s12">
+                    <p>
+                      <label>
+                        <input type="checkbox" id="render-phi-grid"/>
+                        <span>Enabled</span>
+                      </label>
+                    </p>
+                    <p class="help-text">
+                      Fixed at 3x3. Lines and circles are placed by the ratio below (outer : middle :
+                      outer), the same in both directions.
+                    </p>
+                    <p>
+                      <span class="field-caption">Ratio</span>
+                      <span class="phi-ratio-row">
+                        <input type="number" id="phi-ratio-1" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="First outer ratio"/>
+                        <span aria-hidden="true">:</span>
+                        <input type="number" id="phi-ratio-2" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="Middle ratio"/>
+                        <span aria-hidden="true">:</span>
+                        <input type="number" id="phi-ratio-3" min="0.01" max="100" step="0.001" class="no-spinner" aria-label="Second outer ratio"/>
+                      </span>
+                    </p>
+                    <p class="help-text">
+                      The default 1 : 0.618 : 1 is the classic "Phi Grid" composition guide. Circles
+                      use the same settings as Circles, to the right.
+                    </p>
+                    <p class="left-align">
+                      <button type="button" id="restorePhiRatioDefaults" class="btn-small">Restore Golden Ratio</button>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col s12 m9" id="grid-phi-grid-columns-right">
+                <div class="row">
+                  <div class="col s12">
+                    <h5>Circles</h5>
+                    <div class="divider"></div>
+                  </div>
+                  <div class="col s12">
+                    <p>
+                      <label>
+                        <input type="checkbox" id="render-circle"/>
+                        <span>Enabled</span>
+                      </label>
+                    </p>
+                  </div>
+                  <div class="col s12 m2">
+                    <p>
+                      <label for="circle-radius">Radius</label>
+                      <input type="number" id="circle-radius" min="1"/>
+                    </p>
+                    <p>
+                      <label>
+                        <input type="radio" id="circle-style-outline" name="circle-style" value="outline">
+                        <span>Outline</span>
+                      </label>
+                    </p>
+                    <p>
+                      <label>
+                        <input type="radio" id="circle-style-filled" name="circle-style" value="filled">
+                        <span>Filled</span>
+                      </label>
+                    </p>
+                  </div>
+                  <div class="col s12 m7 offset-m1">
+                    <p>
+                      <label for="circle-colour">Circle Colour</label>
+                      <span class="colour-row">
+                        <input type="color" id="circle-colour" value="#ff0000"/>
+                        <span class="quick-swatch-group" id="circle-colour-quick" data-for="circle-colour">
+                          <button type="button" class="quick-swatch" data-value="#000000" style="--swatch-colour:#000000" aria-label="Black"></button>
+                          <button type="button" class="quick-swatch" data-value="#ffffff" style="--swatch-colour:#ffffff" aria-label="White"></button>
+                          <button type="button" class="quick-swatch" data-value="#ff0000" style="--swatch-colour:#ff0000" aria-label="Red"></button>
+                          <button type="button" class="quick-swatch" data-value="#ffff00" style="--swatch-colour:#ffff00" aria-label="Yellow"></button>
+                          <button type="button" class="quick-swatch" data-value="#00ff00" style="--swatch-colour:#00ff00" aria-label="Green"></button>
+                          <button type="button" class="quick-swatch" data-value="#0000ff" style="--swatch-colour:#0000ff" aria-label="Blue"></button>
+                          <button type="button" class="quick-swatch" data-value="#ff00ff" style="--swatch-colour:#ff00ff" aria-label="Magenta"></button>
+                          <button type="button" class="quick-swatch" data-value="#00ffff" style="--swatch-colour:#00ffff" aria-label="Cyan"></button>
+                        </span>
+                      </span>
+                    </p>
+                    <p>
+                      <label for="circle-opacity">Opacity</label>
+                      <span class="opacity-row">
+                        <input type="range" id="circle-opacity" min="0" max="100"/>
+                        <span class="opacity-value" id="circle-opacity-value"></span>
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" data-overlay-styles="grid phi-grid">
+              <div class="col s12">
+                <h5>Customise</h5>
+                <div class="divider"></div>
+                <p class="help-text">
+                  Click a line or circle in the map below to show or hide it - "Preview" shows the result.
+                </p>
+              </div>
+              <div class="col s12 grid-customise-col" id="grid-customise-col">
+                <div class="grid-customise-panel">
+                  <span class="field-caption">Hide / Show</span>
+                  <canvas class="grid-customise-control" id="grid-customise-control" width="360" height="240"
+                          tabindex="0" role="application"
+                          aria-label="Line and circle visibility. Use the arrow keys to select a line or circle, then Enter or Space to show or hide it."
+                          aria-describedby="grid-customise-status"></canvas>
+                  <div id="grid-customise-status" class="sr-only" aria-live="polite"></div>
+                </div>
+                <div class="grid-customise-panel">
+                  <span class="field-caption">Preview</span>
+                  <canvas class="grid-customise-preview" id="grid-customise-preview" width="360" height="240"></canvas>
+                  <p class="grid-customise-photo-toggle">
+                    <label>
+                      <input type="checkbox" id="preview-background-image"/>
+                      <span>Use background photo</span>
+                    </label>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" data-overlay-styles="golden-ratio">
+              <div class="col s12 m3">
+                <p>
+                  <label>
+                    <input type="radio" id="golden-ratio-clockwise" name="golden-ratio-direction" value="clockwise">
+                    <span>Clockwise</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input type="radio" id="golden-ratio-counter-clockwise" name="golden-ratio-direction" value="counter-clockwise">
+                    <span>Counter-Clockwise</span>
+                  </label>
+                </p>
+              </div>
+              <div class="col s12 m2">
+                <p>
+                  <label>
+                    <input type="radio" id="golden-ratio-top-left" name="golden-ratio-start" value="top-left">
+                    <span>Top Left</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input type="radio" id="golden-ratio-top-right" name="golden-ratio-start" value="top-right">
+                    <span>Top Right</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input type="radio" id="golden-ratio-bottom-left" name="golden-ratio-start" value="bottom-left">
+                    <span>Bottom Left</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input type="radio" id="golden-ratio-bottom-right" name="golden-ratio-start" value="bottom-right">
+                    <span>Bottom Right</span>
+                  </label>
+                </p>
+              </div>
+              <div class="col s12 m7">
+                <p class="golden-ratio-thumbnails" role="radiogroup" aria-label="Direction and starting corner">
+                  <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-left" aria-label="Clockwise, starting top left" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="60" height="90"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="top-right" aria-label="Clockwise, starting top right" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="90" height="60"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-left" aria-label="Clockwise, starting bottom left" role="radio" aria-checked="true" tabindex="0">
+                    <canvas width="90" height="60"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="clockwise" data-start="bottom-right" aria-label="Clockwise, starting bottom right" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="60" height="90"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-left" aria-label="Counter-clockwise, starting top left" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="90" height="60"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="top-right" aria-label="Counter-clockwise, starting top right" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="60" height="90"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-left" aria-label="Counter-clockwise, starting bottom left" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="60" height="90"></canvas>
+                  </button>
+                  <button type="button" class="golden-ratio-thumb" data-direction="counter-clockwise" data-start="bottom-right" aria-label="Counter-clockwise, starting bottom right" role="radio" aria-checked="false" tabindex="-1">
+                    <canvas width="90" height="60"></canvas>
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

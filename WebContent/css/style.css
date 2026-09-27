@@ -455,17 +455,27 @@ input:disabled {
     display: block;
 }
 
-/* Composition Overlay picks between two entirely different overlays (see
+/* Composition Overlay picks between three entirely different overlays (see
    syncOverlayStyleVisibility in options.js, which shows/hides every other
-   section based on this) - a plain pair of radio buttons undersold how big
-   a switch that is, so this is a large, unmissable two-way toggle instead
-   of just another form field. The whole label is the click target; the
-   native radio is kept (visually hidden below) rather than removed, so
-   this stays a real, keyboard-operable radio group. */
+   section based on this) - styled as a tab strip sitting on top of the
+   panel of controls it switches between (.overlay-style-panel below), so
+   the "which mode am I in" choice reads as one connected control rather
+   than a heading plus a separate row of buttons. The whole label is the
+   click target; the native radio is kept (visually hidden below) rather
+   than removed, so this stays a real, keyboard-operable radio group - its
+   accessible name now comes from the <fieldset>/<legend class="sr-only">
+   wrapping it in options.html, since there's no visible heading left for
+   it to inherit context from. */
+.overlay-style-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
 .overlay-style-toggle {
     display: flex;
-    gap: 0.75rem;
-    margin: 0.5rem 0 0.25rem;
+    gap: 0.25rem;
+    margin: 0.5rem 0 0;
 }
 
 /* Same visually-hidden-but-focusable technique as .sr-only, just with
@@ -487,27 +497,40 @@ input:disabled {
 /* Specificity note: the generic `label:not([for])` rule above (display,
    gap, cursor, margin) outranks a bare `.overlay-style-option` class
    selector, so this is qualified with its parent to win the cascade
-   instead of fighting it with !important. */
+   instead of fighting it with !important.
+
+   Flush against .overlay-style-panel's top border (negative margin equal
+   to that border's width) and missing its own bottom border only when
+   checked, so the selected tab visually merges into the panel below it -
+   the classic "open folder tab" look - while the other two stay closed.
+   Top/left/right are teal, matching the panel this strip sits above, but
+   the bottom edge stays the neutral --color-divider grey when unselected
+   - it's what's hiding the panel's own teal top border along most of the
+   strip's width, so only the small gaps between tabs (nothing there to
+   hide it) show that teal through, as a deliberate accent rather than
+   the whole line. :has(input:checked) below still overrides this bottom
+   edge to white for whichever tab is selected, same as before. */
 .overlay-style-toggle .overlay-style-option {
     flex: 1 1 0;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin: 0;
-    padding: 1.1rem 1rem;
-    border: 2px solid var(--color-divider);
-    border-radius: 6px;
-    background: #fff;
+    margin: 0 0 -2px;
+    padding: 0.9rem 1rem calc(0.9rem + 2px);
+    border: 2px solid var(--color-primary);
+    border-bottom-color: var(--color-divider);
+    border-radius: 6px 6px 0 0;
+    background: #f0f0f0;
     cursor: pointer;
-    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 /* Higher-specificity `.overlay-style-toggle .overlay-style-option span`
    form used throughout below so these all outrank the generic
    `input[type="radio"]:checked + span` colour rule further up the file. */
 .overlay-style-toggle .overlay-style-option span {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
@@ -518,8 +541,9 @@ input:disabled {
 
 .overlay-style-toggle .overlay-style-option:has(input:checked) {
     border-color: var(--color-primary);
-    background: var(--color-primary-light);
-    box-shadow: 0 0 0 1px var(--color-primary);
+    border-bottom-color: #fff;
+    background: #fff;
+    padding-bottom: 0.9rem;
 }
 
 .overlay-style-toggle .overlay-style-option:has(input:focus-visible) {
@@ -529,6 +553,17 @@ input:disabled {
 
 .overlay-style-toggle .overlay-style-option:has(input:checked) span {
     color: var(--color-primary-dark);
+}
+
+/* The panel of controls belonging to whichever tab above is selected -
+   its top border lines up with, and is hidden behind, the selected tab's
+   missing bottom border (see the negative margin above), so the two read
+   as one continuous shape. */
+.overlay-style-panel {
+    border: 2px solid var(--color-primary);
+    border-radius: 0 6px 6px 6px;
+    background: #fff;
+    padding: 1.25rem 1rem 0.5rem;
 }
 
 .btn-large {
