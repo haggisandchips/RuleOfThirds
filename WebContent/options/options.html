@@ -18,7 +18,7 @@
           <h5>Line Colour</h5>
           <div class="divider"></div>
         </div>
-        <div class="col s12 m5">
+        <div class="col s12 m5 col-align-bottom">
           <p>
             <label for="line-colour">Colour</label>
             <span class="colour-row">
@@ -43,18 +43,17 @@
             </span>
           </p>
         </div>
-        <div class="col s12 m6">
+        <div class="col s12 m6 col-align-bottom">
+          <p class="help-text">
+            When an overlay's right-click "Enable Resize" confines it to part of an image, this
+            dims the rest of the image outside it. 0 leaves that area undimmed.
+          </p>
           <p>
             <label for="resize-mask-opacity">Cropped Area Opacity</label>
             <span class="opacity-row">
               <input type="range" id="resize-mask-opacity" min="0" max="100"/>
               <span class="opacity-value" id="resize-mask-opacity-value"></span>
             </span>
-          </p>
-          <p class="help-text">
-            When an overlay's right-click "Enable Resize" confines it to part of an image, this
-            dims the rest of the image outside it, so it's obvious at a glance which part the
-            composition guide currently applies to. 0 leaves that area undimmed.
           </p>
         </div>
       </div>

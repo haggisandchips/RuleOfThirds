@@ -348,21 +348,49 @@ function showOverlayContextMenu(x, y, items, returnFocusTo) {
 
         const menuItem = document.createElement('div');
         menuItem.tabIndex = -1;
+        menuItem.style.display = 'flex';
+        menuItem.style.alignItems = 'center';
+        menuItem.style.gap = '0.5rem';
         menuItem.style.padding = '6px 14px';
         menuItem.style.cursor = 'pointer';
         menuItem.style.outline = 'none';
         menuItem.style.userSelect = 'none';
 
+        // A real bordered box (checked: a tick inside it) rather than a
+        // character-plus-blank-space hack, so it reads as an actual
+        // checkbox rather than unexplained indentation - only added for a
+        // checkbox item below, so a plain action item (eg "Reset") stays
+        // flush left rather than indented to match. `currentColor` (not a
+        // fixed colour) so this stays visible against both this item's
+        // normal background and the teal background the focus/blur
+        // handlers below switch its text colour against.
+        const checkbox = document.createElement('span');
+        checkbox.setAttribute('aria-hidden', 'true');
+        checkbox.style.display = 'inline-flex';
+        checkbox.style.alignItems = 'center';
+        checkbox.style.justifyContent = 'center';
+        checkbox.style.width = '14px';
+        checkbox.style.height = '14px';
+        checkbox.style.flexShrink = '0';
+        checkbox.style.boxSizing = 'border-box';
+        checkbox.style.fontSize = '11px';
+        checkbox.style.lineHeight = '1';
+
+        const label = document.createElement('span');
+        label.textContent = item.label;
+
         if (item.type === 'checkbox') {
             menuItem.setAttribute('role', 'menuitemcheckbox');
             menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
-            // U+2713 (check mark) / an equal-width blank, so unchecked and
-            // checked labels still line up rather than jumping sideways.
-            menuItem.textContent = (item.checked ? '✓' : ' ') + ' ' + item.label;
+            checkbox.style.border = '1.5px solid currentColor';
+            checkbox.style.borderRadius = '3px';
+            checkbox.textContent = item.checked ? '✓' : '';
+            menuItem.append(checkbox);
         } else {
             menuItem.setAttribute('role', 'menuitem');
-            menuItem.textContent = item.label;
         }
+
+        menuItem.append(label);
 
         function activate() {
             if (item.type === 'checkbox') {
@@ -659,15 +687,22 @@ if (typeof rotInit === 'undefined') {
                 redraw();
             }
 
-            // Resets just the rectangle, not resizeEnabled - "Reset" should
-            // snap the grid back to covering the whole image without
-            // silently switching resize off (or on) as a side effect, and
-            // without leaving the handles wherever the rectangle used to be
-            // if resize is currently enabled.
+            // Snaps the grid back to covering the whole image, and turns
+            // "Enable Resize" back off too if it was on - having Reset
+            // leave resize mode active would just leave 8 handles sitting
+            // at the full image's own edges, ready to immediately drag it
+            // out of shape again, when the point of Reset is a clean slate.
             function resetOverride() {
 
                 const override = currentOverride();
                 override.rect = null;
+                if (override.resizeEnabled) {
+                    override.resizeEnabled = false;
+                    if (handleElements) {
+                        Object.values(handleElements).forEach(element => element.remove());
+                        handleElements = null;
+                    }
+                }
                 controlElement.imageOverrides.set(image, override);
                 redraw();
             }
