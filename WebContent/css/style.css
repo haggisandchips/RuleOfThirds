@@ -276,6 +276,21 @@ input:disabled {
     text-align: right;
 }
 
+/* Turns this column into its own flex column, so its last child sits
+   flush with the bottom of the row via margin-top:auto below - the
+   column itself is already stretched to match its tallest row sibling
+   (.row's flex default), so this keeps two opacity sliders in adjacent
+   columns level with each other even when whatever precedes them (eg a
+   colour picker row vs a help paragraph) isn't the same height. */
+.col-align-bottom {
+    display: flex;
+    flex-direction: column;
+}
+
+.col-align-bottom > :last-child {
+    margin-top: auto;
+}
+
 /* Puts the native colour picker and the quick-pick swatches on one line.
    No visible label on the swatches - proximity, the hover scale-up and the
    selection ring already read as "quick alternatives to the picker" (each

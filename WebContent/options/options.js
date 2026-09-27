@@ -7,6 +7,7 @@ const DEFAULT_OPTIONS = {
     gridColumnLines: [true, true],
     lineColour: '#ffffff',
     lineOpacity: 100,
+    resizeMaskOpacity: 50,
     renderCircle: true,
     circleColour: '#ff0000',
     circleOpacity: 100,
@@ -113,6 +114,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
 
     const lineColour = document.getElementById('line-colour').value;
     const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
+    const resizeMaskOpacity = parseValidInt('resize-mask-opacity', MIN_OPACITY, DEFAULT_OPTIONS.resizeMaskOpacity);
     const renderCircle = document.getElementById('render-circle').checked;
     const circleColour = document.getElementById('circle-colour').value;
     const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
@@ -138,6 +140,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
             gridColumnLines: gridColumnLineStates,
             lineColour,
             lineOpacity,
+            resizeMaskOpacity,
             renderCircle,
             circleColour,
             circleOpacity,
@@ -213,6 +216,8 @@ function setOptions(options) {
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
     updateOpacityLabel('line-opacity');
+    document.getElementById('resize-mask-opacity').value = options.resizeMaskOpacity;
+    updateOpacityLabel('resize-mask-opacity');
     document.getElementById('render-circle').checked = options.renderCircle;
     document.getElementById('circle-colour').value = options.circleColour;
     syncQuickPickSelection('circle-colour');
@@ -1359,6 +1364,7 @@ if (typeof document !== 'undefined') {
 
     document.getElementById('line-opacity').addEventListener('input', () => updateOpacityLabel('line-opacity'));
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
+    document.getElementById('resize-mask-opacity').addEventListener('input', () => updateOpacityLabel('resize-mask-opacity'));
 
     // Live-updates the ratio as it's typed, not just once the field is
     // committed (blur/Enter) - debounced so a burst of keystrokes (or the
