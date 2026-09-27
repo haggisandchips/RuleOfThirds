@@ -304,6 +304,18 @@ var RESIZE_HANDLE_COLOUR = '#26a69a';
 //
 // Only one instance is ever open at a time - opening a new one closes
 // whichever was already showing, same as a native context menu.
+//
+// KNOWN GAP: "keyboard-accessible" above is about the menu's own internals
+// once it's open, not how to open it - the overlay's container has
+// tabIndex=-1 (a valid focus() target so returning focus here on close
+// works) but is deliberately not in the page's own Tab order, so there's
+// currently no keyboard path to trigger the browser's own Shift+F10/Menu-
+// key "contextmenu" event on it at all. The resize handles (see
+// createResizeHandles below) are pointer-only too - role="presentation"/
+// aria-hidden="true", no keyboard equivalent for nudging one. Flagged
+// rather than fixed here since a real fix (Tab reaching the overlay,
+// Tab/arrow keys between handles, arrow keys to nudge, Shift+arrow for
+// bigger steps) is a proper feature in its own right, not a quick patch.
 var openOverlayMenu = null;
 
 function closeOverlayContextMenu() {
