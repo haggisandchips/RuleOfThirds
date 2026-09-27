@@ -15,7 +15,8 @@ const {
     activeResizeRect,
     resizeHandlePosition,
     dragResizeRect,
-    resizeMaskRects
+    resizeMaskRects,
+    resizeBorderRects
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation by default', () => {
@@ -398,5 +399,23 @@ test('resizeMaskRects tiles the area outside the rectangle without gaps or overl
         {x: 0, y: 60, w: 200, h: 40},
         {x: 0, y: 10, w: 20, h: 50},
         {x: 120, y: 10, w: 80, h: 50}
+    ]);
+});
+
+test('resizeBorderRects traces a 1px frame exactly one pixel outside the rectangle, without gaps or overlap', () => {
+    const rect = {x: 20, y: 10, w: 100, h: 50};
+    const rects = resizeBorderRects(rect);
+
+    // A 1px frame's area is its perimeter: two strips as long as the
+    // (1px wider) rectangle, plus two as long as the (1px taller) one,
+    // each already 1px thick.
+    const totalArea = rects.reduce((sum, r) => sum + r.w * r.h, 0);
+    assert.equal(totalArea, 2 * (rect.w + 2) + 2 * rect.h);
+
+    assert.deepEqual(rects, [
+        {x: 19, y: 9, w: 102, h: 1},
+        {x: 19, y: 60, w: 102, h: 1},
+        {x: 19, y: 10, w: 1, h: 50},
+        {x: 120, y: 10, w: 1, h: 50}
     ]);
 });

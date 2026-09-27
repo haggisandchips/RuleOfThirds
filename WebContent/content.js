@@ -253,6 +253,34 @@ function resizeMaskRects(rect, w, h) {
     ];
 }
 
+// The four 1px-wide strips forming a border exactly one pixel *outside*
+// `rect` - drawn in the main Line Colour (at the Cropped Area Opacity, not
+// the line's own opacity) so there's a visible edge marking exactly where
+// a resized overlay stops, without that line ever overlapping the overlay
+// style's own drawing inside `rect` itself.
+//
+// Same non-overlapping-strip approach as resizeMaskRects (top/bottom span
+// the full outer width including corners; left/right only the height
+// between them) so the translucent fill doesn't stack extra opacity into
+// the corners. Naturally invisible (clipped by the canvas's own bounds)
+// once `rect` already covers the whole image, the same way
+// resizeMaskRects naturally degenerates to zero-area rectangles then -
+// callers don't need to special-case "not actually resized" here either.
+function resizeBorderRects(rect) {
+
+    const outerX = rect.x - 1;
+    const outerY = rect.y - 1;
+    const outerW = rect.w + 2;
+    const outerH = rect.h + 2;
+
+    return [
+        {x: outerX, y: outerY, w: outerW, h: 1}, // top
+        {x: outerX, y: outerY + outerH - 1, w: outerW, h: 1}, // bottom
+        {x: outerX, y: outerY + 1, w: 1, h: outerH - 2}, // left
+        {x: outerX + outerW - 1, y: outerY + 1, w: 1, h: outerH - 2} // right
+    ];
+}
+
 // Diameter of a handle's own visible circle, in CSS pixels - centred on
 // its resizeHandlePosition() by createResizeHandles() below.
 var RESIZE_HANDLE_SIZE = 12;
@@ -659,6 +687,12 @@ if (typeof rotInit === 'undefined') {
                 ctx.fillStyle = hexToRgba('#000000', options.resizeMaskOpacity);
                 resizeMaskRects(rect, w, h).forEach(maskRect => ctx.fillRect(maskRect.x, maskRect.y, maskRect.w, maskRect.h));
 
+                // Marks exactly where the resize rectangle ends, in the
+                // main Line Colour but at the Cropped Area Opacity (not
+                // the line's own opacity) - see resizeBorderRects.
+                ctx.fillStyle = hexToRgba(options.lineColour, options.resizeMaskOpacity);
+                resizeBorderRects(rect).forEach(borderRect => ctx.fillRect(borderRect.x, borderRect.y, borderRect.w, borderRect.h));
+
                 ctx.translate(rect.x, rect.y);
 
                 OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, rect.w, rect.h, options);
@@ -924,6 +958,6 @@ if (typeof rotInit === 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum,
-        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, resizeMaskRects
+        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, resizeMaskRects, resizeBorderRects
     };
 }
