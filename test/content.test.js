@@ -9,7 +9,12 @@ const {
     sanitizeLineStates,
     sanitizeCircleStates,
     sanitizeColour,
-    sanitizeEnum
+    sanitizeEnum,
+    MIN_RESIZE_DIMENSION,
+    RESIZE_HANDLES,
+    activeResizeRect,
+    resizeHandlePosition,
+    dragResizeRect
 } = require('../WebContent/content.js');
 
 test('isMinSize accepts either orientation by default', () => {
@@ -295,4 +300,79 @@ test('sanitizeOptions leaves a valid overlayStyle/goldenRatioDirection/goldenRat
     assert.equal(result.overlayStyle, 'golden-ratio');
     assert.equal(result.goldenRatioDirection, 'counter-clockwise');
     assert.equal(result.goldenRatioStart, 'top-right');
+});
+
+test('activeResizeRect falls back to the whole image when there is no override', () => {
+    assert.deepEqual(activeResizeRect(undefined, 200, 100), {x: 0, y: 0, w: 200, h: 100});
+    assert.deepEqual(activeResizeRect({resizeEnabled: true, rect: null}, 200, 100), {x: 0, y: 0, w: 200, h: 100});
+});
+
+test('activeResizeRect returns the override\'s own rect when one is set', () => {
+    const rect = {x: 10, y: 20, w: 30, h: 40};
+    assert.deepEqual(activeResizeRect({resizeEnabled: true, rect}, 200, 100), rect);
+});
+
+test('resizeHandlePosition places every handle at the expected fraction of the rectangle', () => {
+    const rect = {x: 100, y: 200, w: 40, h: 20};
+
+    assert.deepEqual(resizeHandlePosition(rect, 'nw'), {x: 100, y: 200});
+    assert.deepEqual(resizeHandlePosition(rect, 'n'), {x: 120, y: 200});
+    assert.deepEqual(resizeHandlePosition(rect, 'ne'), {x: 140, y: 200});
+    assert.deepEqual(resizeHandlePosition(rect, 'e'), {x: 140, y: 210});
+    assert.deepEqual(resizeHandlePosition(rect, 'se'), {x: 140, y: 220});
+    assert.deepEqual(resizeHandlePosition(rect, 's'), {x: 120, y: 220});
+    assert.deepEqual(resizeHandlePosition(rect, 'sw'), {x: 100, y: 220});
+    assert.deepEqual(resizeHandlePosition(rect, 'w'), {x: 100, y: 210});
+});
+
+test('RESIZE_HANDLES covers all 8 handles with a cursor for each', () => {
+    assert.deepEqual(Object.keys(RESIZE_HANDLES).sort(), ['e', 'n', 'ne', 'nw', 's', 'se', 'sw', 'w']);
+    Object.values(RESIZE_HANDLES).forEach(handle => assert.equal(typeof handle.cursor, 'string'));
+});
+
+test('dragResizeRect: a corner handle moves both its adjacent edges, not the other two', () => {
+    const rect = {x: 50, y: 50, w: 100, h: 80};
+    const result = dragResizeRect(rect, 'se', 20, 10, 1000, 1000);
+
+    assert.deepEqual(result, {x: 50, y: 50, w: 120, h: 90});
+});
+
+test('dragResizeRect: an edge-midpoint handle only moves the one edge it sits on', () => {
+    const rect = {x: 50, y: 50, w: 100, h: 80};
+    const result = dragResizeRect(rect, 'e', 20, 999, 1000, 1000);
+
+    assert.deepEqual(result, {x: 50, y: 50, w: 120, h: 80}, 'dy is ignored entirely for a purely horizontal handle');
+});
+
+test('dragResizeRect: dragging the top-left corner outward moves x/y and grows w/h to compensate', () => {
+    const rect = {x: 50, y: 50, w: 100, h: 80};
+    const result = dragResizeRect(rect, 'nw', -20, -10, 1000, 1000);
+
+    assert.deepEqual(result, {x: 30, y: 40, w: 120, h: 90});
+});
+
+test('dragResizeRect clamps to the image bounds rather than letting a handle drag outside it', () => {
+    const rect = {x: 10, y: 10, w: 80, h: 60};
+
+    // Dragging the bottom-right corner far past the image's own edge.
+    const grown = dragResizeRect(rect, 'se', 10000, 10000, 100, 100);
+    assert.deepEqual(grown, {x: 10, y: 10, w: 90, h: 90});
+
+    // Dragging the top-left corner past the image's own top-left origin.
+    const shrunkToOrigin = dragResizeRect(rect, 'nw', -10000, -10000, 100, 100);
+    assert.deepEqual(shrunkToOrigin, {x: 0, y: 0, w: 90, h: 70});
+});
+
+test('dragResizeRect never inverts or collapses the rectangle below MIN_RESIZE_DIMENSION', () => {
+    const rect = {x: 40, y: 40, w: 100, h: 100};
+
+    // Dragging the right edge far past the left edge.
+    const collapsedHorizontally = dragResizeRect(rect, 'e', -10000, 0, 1000, 1000);
+    assert.equal(collapsedHorizontally.w, MIN_RESIZE_DIMENSION);
+    assert.equal(collapsedHorizontally.x, rect.x, 'the untouched left edge stays put');
+
+    // Dragging the bottom edge far past the top edge.
+    const collapsedVertically = dragResizeRect(rect, 's', 0, -10000, 1000, 1000);
+    assert.equal(collapsedVertically.h, MIN_RESIZE_DIMENSION);
+    assert.equal(collapsedVertically.y, rect.y, 'the untouched top edge stays put');
 });

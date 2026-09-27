@@ -147,6 +147,269 @@ function sanitizeCircleStates(rows, rowCount, columnCount) {
     return result;
 }
 
+// --- Overlay resize ("Enable Resize" on the overlay's right-click menu) ---
+//
+// A resize rectangle is always in the same coordinate space the overlay is
+// drawn in - CSS pixels relative to the image's own top-left corner,
+// {x, y, w, h}. It's deliberately never persisted to chrome.storage (see
+// rotInit's imageOverrides comment) - pulled out as pure functions here
+// purely so the clamping/dragging maths can be unit tested without a real
+// pointer or DOM.
+
+// Below this, a handle would be fiddlier to grab accurately than it's
+// worth, and a resize could invert the rectangle inside-out.
+var MIN_RESIZE_DIMENSION = 20;
+
+// Each handle moves a subset of the rectangle's four edges - a corner
+// handle (eg 'se') moves both its adjacent edges, an edge-midpoint handle
+// (eg 'e') only the one edge it sits on. `fx`/`fy` (0, 0.5 or 1) place the
+// handle itself as a fraction of the rectangle's width/height, and
+// `cursor` is the resize cursor to show while hovering/dragging it.
+var RESIZE_HANDLES = {
+    nw: {edges: ['n', 'w'], fx: 0, fy: 0, cursor: 'nwse-resize'},
+    n: {edges: ['n'], fx: 0.5, fy: 0, cursor: 'ns-resize'},
+    ne: {edges: ['n', 'e'], fx: 1, fy: 0, cursor: 'nesw-resize'},
+    e: {edges: ['e'], fx: 1, fy: 0.5, cursor: 'ew-resize'},
+    se: {edges: ['s', 'e'], fx: 1, fy: 1, cursor: 'nwse-resize'},
+    s: {edges: ['s'], fx: 0.5, fy: 1, cursor: 'ns-resize'},
+    sw: {edges: ['s', 'w'], fx: 0, fy: 1, cursor: 'nesw-resize'},
+    w: {edges: ['w'], fx: 0, fy: 0.5, cursor: 'ew-resize'}
+};
+
+// The rectangle an overlay draws into for a given image - an override's
+// own rect if one is set (see rotInit's imageOverrides), or the whole
+// image otherwise. Pulled out as its own function so drawing and handle
+// placement both derive the rectangle the same way.
+function activeResizeRect(override, imageWidth, imageHeight) {
+
+    return (override && override.rect) || {x: 0, y: 0, w: imageWidth, h: imageHeight};
+}
+
+function resizeHandlePosition(rect, handleId) {
+
+    const handle = RESIZE_HANDLES[handleId];
+    return {x: rect.x + rect.w * handle.fx, y: rect.y + rect.h * handle.fy};
+}
+
+// Drags one handle of `startRect` by (dx, dy) - the pointer's total
+// movement since the drag began, not a per-frame delta - and returns the
+// resulting rectangle.
+//
+// Clamped to stay fully within the image, (0, 0) to (imageWidth,
+// imageHeight): dragging a handle out over the rest of the page would let
+// the overlay grow past its own image and start overlapping unrelated
+// page content, including another image's own overlay. Also clamped to
+// MIN_RESIZE_DIMENSION so a handle can never invert the rectangle or
+// shrink it to nothing.
+function dragResizeRect(startRect, handleId, dx, dy, imageWidth, imageHeight) {
+
+    const edges = RESIZE_HANDLES[handleId].edges;
+
+    let left = startRect.x;
+    let top = startRect.y;
+    let right = startRect.x + startRect.w;
+    let bottom = startRect.y + startRect.h;
+
+    if (edges.includes('n')) { top += dy; }
+    if (edges.includes('s')) { bottom += dy; }
+    if (edges.includes('w')) { left += dx; }
+    if (edges.includes('e')) { right += dx; }
+
+    left = Math.max(0, left);
+    top = Math.max(0, top);
+    right = Math.min(imageWidth, right);
+    bottom = Math.min(imageHeight, bottom);
+
+    // The edge(s) this handle doesn't move are never touched above, so
+    // they're still exactly where they started - safe to measure the
+    // minimum size against.
+    if (edges.includes('n')) { top = Math.min(top, bottom - MIN_RESIZE_DIMENSION); }
+    if (edges.includes('s')) { bottom = Math.max(bottom, top + MIN_RESIZE_DIMENSION); }
+    if (edges.includes('w')) { left = Math.min(left, right - MIN_RESIZE_DIMENSION); }
+    if (edges.includes('e')) { right = Math.max(right, left + MIN_RESIZE_DIMENSION); }
+
+    return {x: left, y: top, w: right - left, h: bottom - top};
+}
+
+// Diameter of a handle's own visible circle, in CSS pixels - centred on
+// its resizeHandlePosition() by createResizeHandles() below.
+var RESIZE_HANDLE_SIZE = 12;
+// Matches the Options page's own --color-primary, for visual continuity
+// between the overlay and its own extension UI - this file runs on
+// arbitrary third-party pages, so it can't reach that CSS variable, only
+// its value.
+var RESIZE_HANDLE_COLOUR = '#26a69a';
+
+// --- Overlay context menu ---
+//
+// A small, generic, keyboard-accessible replacement for the page's own
+// right-click menu when it's opened on the overlay - deliberately built
+// around a declarative list of items (see showOverlayContextMenu's `items`
+// parameter) rather than bespoke DOM for "Enable Resize" and "Reset"
+// specifically, since more per-image overrides are expected to grow this
+// menu later. Follows the WAI-ARIA menu pattern (role="menu" containing
+// role="menuitem"/"menuitemcheckbox", arrow keys to move between them,
+// Enter/Space to activate, Escape or a click outside to close and return
+// focus to whatever opened it).
+//
+// Only one instance is ever open at a time - opening a new one closes
+// whichever was already showing, same as a native context menu.
+var openOverlayMenu = null;
+
+function closeOverlayContextMenu() {
+
+    if (!openOverlayMenu) {
+        return;
+    }
+
+    const {element, returnFocusTo} = openOverlayMenu;
+    element.remove();
+    document.removeEventListener('pointerdown', onOverlayMenuPointerDown, true);
+    document.removeEventListener('scroll', closeOverlayContextMenu, true);
+    openOverlayMenu = null;
+
+    // The trigger (the overlay's own container) rather than the page's
+    // default focus target, so keyboard users land back exactly where
+    // they opened the menu from.
+    if (returnFocusTo && typeof returnFocusTo.focus === 'function') {
+        returnFocusTo.focus();
+    }
+}
+
+function onOverlayMenuPointerDown(event) {
+
+    if (openOverlayMenu && !openOverlayMenu.element.contains(event.target)) {
+        closeOverlayContextMenu();
+    }
+}
+
+// `items` is an array of:
+//   {type: 'checkbox', label, checked, onToggle(newChecked)}
+//   {type: 'action', label, onActivate()}
+//   {type: 'separator'}
+// `returnFocusTo` gets focus back once the menu closes (Escape, a click
+// outside, or an item being activated all close it).
+function showOverlayContextMenu(x, y, items, returnFocusTo) {
+
+    closeOverlayContextMenu();
+
+    const menu = document.createElement('div');
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('data-extension', 'rule-of-thirds');
+    menu.style.position = 'fixed';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    // Higher than anything a host page would plausibly use, so the menu
+    // never ends up hidden behind the page's own fixed-position content.
+    menu.style.zIndex = '2147483647';
+    menu.style.background = '#fff';
+    menu.style.color = '#212121';
+    menu.style.border = '1px solid #d0d0d0';
+    menu.style.borderRadius = '4px';
+    menu.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.25)';
+    menu.style.padding = '4px 0';
+    menu.style.minWidth = '180px';
+    menu.style.font = '14px "Helvetica Neue", Helvetica, Arial, sans-serif';
+
+    const focusableItems = [];
+
+    items.forEach(item => {
+
+        if (item.type === 'separator') {
+            const separator = document.createElement('div');
+            separator.setAttribute('role', 'separator');
+            separator.style.margin = '4px 0';
+            separator.style.borderTop = '1px solid #d0d0d0';
+            menu.append(separator);
+            return;
+        }
+
+        const menuItem = document.createElement('div');
+        menuItem.tabIndex = -1;
+        menuItem.style.padding = '6px 14px';
+        menuItem.style.cursor = 'pointer';
+        menuItem.style.outline = 'none';
+        menuItem.style.userSelect = 'none';
+
+        if (item.type === 'checkbox') {
+            menuItem.setAttribute('role', 'menuitemcheckbox');
+            menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+            // U+2713 (check mark) / an equal-width blank, so unchecked and
+            // checked labels still line up rather than jumping sideways.
+            menuItem.textContent = (item.checked ? '✓' : ' ') + ' ' + item.label;
+        } else {
+            menuItem.setAttribute('role', 'menuitem');
+            menuItem.textContent = item.label;
+        }
+
+        function activate() {
+            if (item.type === 'checkbox') {
+                item.onToggle(!item.checked);
+            } else {
+                item.onActivate();
+            }
+            closeOverlayContextMenu();
+        }
+
+        // outline:none above removes the browser's default focus ring (it
+        // sits awkwardly against this menu's own box-shadow styling) - this
+        // is what replaces it, a themed highlight instead of no visible
+        // indicator at all.
+        menuItem.addEventListener('focus', () => { menuItem.style.background = RESIZE_HANDLE_COLOUR; menuItem.style.color = '#fff'; });
+        menuItem.addEventListener('blur', () => { menuItem.style.background = ''; menuItem.style.color = ''; });
+        menuItem.addEventListener('mouseenter', () => menuItem.focus());
+        menuItem.addEventListener('click', activate);
+        menuItem.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                activate();
+            }
+        });
+
+        menu.append(menuItem);
+        focusableItems.push(menuItem);
+    });
+
+    menu.addEventListener('keydown', event => {
+
+        const currentIndex = focusableItems.indexOf(document.activeElement);
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            focusableItems[(currentIndex + 1) % focusableItems.length].focus();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            focusableItems[(currentIndex - 1 + focusableItems.length) % focusableItems.length].focus();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            closeOverlayContextMenu();
+        }
+    });
+
+    document.body.append(menu);
+
+    // Keeps the menu fully on-screen rather than letting it spill past the
+    // right/bottom edge of the viewport when opened near a corner.
+    const bounds = menu.getBoundingClientRect();
+    if (bounds.right > window.innerWidth) {
+        menu.style.left = Math.max(0, window.innerWidth - bounds.width) + 'px';
+    }
+    if (bounds.bottom > window.innerHeight) {
+        menu.style.top = Math.max(0, window.innerHeight - bounds.height) + 'px';
+    }
+
+    openOverlayMenu = {element: menu, returnFocusTo};
+
+    if (focusableItems.length) {
+        focusableItems[0].focus();
+    }
+
+    // Deferred so the same right-click that opened the menu (which is a
+    // pointerdown too) doesn't immediately bubble up and close it again.
+    setTimeout(() => document.addEventListener('pointerdown', onOverlayMenuPointerDown, true), 0);
+    document.addEventListener('scroll', closeOverlayContextMenu, true);
+}
+
 // This check is always true: `rotInit` is declared with `const` *inside*
 // this block, so it's block-scoped and never persists between separate
 // injections of this file into the same tab (each toolbar click re-runs
@@ -167,6 +430,18 @@ if (typeof rotInit === 'undefined') {
             controlElement = document.createElement('div');
             controlElement.id = 'rule-of-thirds';
             controlElement.setAttribute('active', 'false');
+            // Per-image resize state (the "Enable Resize" context-menu
+            // item) - attached directly to this persistent element rather
+            // than a variable inside this closure, since a *fresh*
+            // rotInit() closure runs on every toolbar click (see the
+            // file-header comment on the `if` this sits inside) but
+            // #rule-of-thirds itself survives across them. A plain
+            // variable here would silently reset on every click instead
+            // of only when the whole overlay is deliberately toggled off
+            // (see toggleOverlays). Deliberately never written to
+            // chrome.storage - this is transient by design, lost on
+            // toggle-off/on or a full page reload, whichever comes first.
+            controlElement.imageOverrides = new Map();
             document.body.appendChild(controlElement);
 
             chrome.storage.onChanged.addListener((changes, area) => {
@@ -229,6 +504,13 @@ if (typeof rotInit === 'undefined') {
             if (controlElement.getAttribute('active') === 'false') {
                 applyOverlays();
             } else {
+                // Resize is explicitly transient (see imageOverrides
+                // above) - turning the overlay off is the one point
+                // that's guaranteed to happen between any two "sessions"
+                // of using it, so it's the natural place to drop every
+                // per-image adjustment and start clean next time.
+                controlElement.imageOverrides.clear();
+                closeOverlayContextMenu();
                 removeOverlays();
             }
         }
@@ -281,18 +563,181 @@ if (typeof rotInit === 'undefined') {
                 return;
             }
 
-            const canvas = createCanvas(w, h, image, computedStyle);
+            const container = createOverlayContainer(w, h, image, computedStyle);
+            const canvas = createCanvas(w, h);
+            container.append(canvas);
             const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
 
-            // The backing store is sized up by devicePixelRatio in
-            // createCanvas() for a crisp result on HiDPI/zoomed displays -
-            // this scales the context back down so every subsequent draw
-            // call can keep using CSS-pixel coordinates (w/h) unchanged.
-            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+            let handleElements = null;
 
-            OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, w, h, options);
+            function currentOverride() {
+                return controlElement.imageOverrides.get(image) || {resizeEnabled: false, rect: null};
+            }
 
-            (image.offsetParent || document.body).append(canvas);
+            function setRect(rect) {
+                const override = currentOverride();
+                override.rect = rect;
+                controlElement.imageOverrides.set(image, override);
+            }
+
+            // Redraws the overlay into whichever rectangle currentOverride()
+            // currently resolves to, and (if resize is enabled) moves the
+            // handles to match - called once up front and again on every
+            // pointermove while dragging a handle, so this repaints the
+            // existing canvas/handle elements in place rather than tearing
+            // anything down and rebuilding it.
+            function redraw() {
+
+                const rect = activeResizeRect(currentOverride(), w, h);
+
+                // The backing store is sized up by devicePixelRatio in
+                // createCanvas() for a crisp result on HiDPI/zoomed
+                // displays - resetting the transform first (rather than
+                // ctx.scale() accumulating on top of a previous redraw's
+                // translate()) keeps every redraw starting from the same
+                // clean slate.
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.clearRect(0, 0, w, h);
+                ctx.translate(rect.x, rect.y);
+
+                OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, rect.w, rect.h, options);
+
+                if (handleElements) {
+                    Object.keys(RESIZE_HANDLES).forEach(handleId => {
+                        const position = resizeHandlePosition(rect, handleId);
+                        handleElements[handleId].style.left = position.x + 'px';
+                        handleElements[handleId].style.top = position.y + 'px';
+                    });
+                }
+            }
+
+            function setResizeEnabled(enabled) {
+
+                const override = currentOverride();
+                override.resizeEnabled = enabled;
+                controlElement.imageOverrides.set(image, override);
+
+                if (enabled && !handleElements) {
+                    handleElements = createResizeHandles(container, w, h, currentOverride, setRect, redraw);
+                } else if (!enabled && handleElements) {
+                    Object.values(handleElements).forEach(element => element.remove());
+                    handleElements = null;
+                }
+                redraw();
+            }
+
+            // Resets just the rectangle, not resizeEnabled - "Reset" should
+            // snap the grid back to covering the whole image without
+            // silently switching resize off (or on) as a side effect, and
+            // without leaving the handles wherever the rectangle used to be
+            // if resize is currently enabled.
+            function resetOverride() {
+
+                const override = currentOverride();
+                override.rect = null;
+                controlElement.imageOverrides.set(image, override);
+                redraw();
+            }
+
+            registerOverlayContextMenu(container, currentOverride, setResizeEnabled, resetOverride);
+
+            if (currentOverride().resizeEnabled) {
+                handleElements = createResizeHandles(container, w, h, currentOverride, setRect, redraw);
+            }
+            redraw();
+
+            (image.offsetParent || document.body).append(container);
+        }
+
+        // One draggable handle per entry in RESIZE_HANDLES - small circles
+        // layered on top of the canvas as real DOM elements (not drawn on
+        // the canvas itself) so each can capture its own pointer events
+        // independently, rather than hand-rolling hit-testing against
+        // canvas coordinates.
+        function createResizeHandles(container, w, h, currentOverride, setRect, redraw) {
+
+            const elements = {};
+
+            Object.keys(RESIZE_HANDLES).forEach(handleId => {
+
+                const handle = document.createElement('div');
+                handle.setAttribute('role', 'presentation');
+                handle.setAttribute('aria-hidden', 'true');
+                handle.style.position = 'absolute';
+                handle.style.width = RESIZE_HANDLE_SIZE + 'px';
+                handle.style.height = RESIZE_HANDLE_SIZE + 'px';
+                handle.style.marginLeft = (-RESIZE_HANDLE_SIZE / 2) + 'px';
+                handle.style.marginTop = (-RESIZE_HANDLE_SIZE / 2) + 'px';
+                handle.style.boxSizing = 'border-box';
+                handle.style.borderRadius = '50%';
+                handle.style.background = RESIZE_HANDLE_COLOUR;
+                handle.style.border = '1px solid #fff';
+                handle.style.boxShadow = '0 0 2px rgba(0, 0, 0, 0.6)';
+                handle.style.cursor = RESIZE_HANDLES[handleId].cursor;
+                handle.style.touchAction = 'none';
+
+                handle.addEventListener('pointerdown', (event) => {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const startRect = activeResizeRect(currentOverride(), w, h);
+                    const startX = event.clientX;
+                    const startY = event.clientY;
+
+                    handle.setPointerCapture(event.pointerId);
+
+                    function onPointerMove(moveEvent) {
+                        setRect(dragResizeRect(startRect, handleId, moveEvent.clientX - startX, moveEvent.clientY - startY, w, h));
+                        redraw();
+                    }
+
+                    function onPointerUp() {
+                        handle.removeEventListener('pointermove', onPointerMove);
+                        handle.removeEventListener('pointerup', onPointerUp);
+                    }
+
+                    handle.addEventListener('pointermove', onPointerMove);
+                    handle.addEventListener('pointerup', onPointerUp, {once: true});
+                });
+
+                container.append(handle);
+                elements[handleId] = handle;
+            });
+
+            return elements;
+        }
+
+        // The overlay's own right-click menu (see showOverlayContextMenu) -
+        // "Enable Resize" toggles the 8 handles above on or off without
+        // touching whatever rectangle is already set (so turning resize
+        // off leaves the grid exactly as last positioned, for a clean,
+        // uncluttered view of it), and "Reset" discards this image's
+        // override entirely, back to covering the whole image.
+        function registerOverlayContextMenu(container, currentOverride, setResizeEnabled, resetOverride) {
+
+            container.addEventListener('contextmenu', (event) => {
+
+                event.preventDefault();
+
+                const override = currentOverride();
+
+                showOverlayContextMenu(event.clientX, event.clientY, [
+                    {
+                        type: 'checkbox',
+                        label: 'Enable Resize',
+                        checked: override.resizeEnabled,
+                        onToggle: setResizeEnabled
+                    },
+                    {type: 'separator'},
+                    {
+                        type: 'action',
+                        label: 'Reset',
+                        onActivate: resetOverride
+                    }
+                ], container);
+            });
         }
 
         // Every overlay style's draw function shares this one signature -
@@ -324,7 +769,63 @@ if (typeof rotInit === 'undefined') {
             controlElement.setAttribute('active', 'false');
         }
 
-        function createCanvas(w, h, image, computedStyle) {
+        // Positions and sizes a wrapper over the image - everything for
+        // that image (the drawing canvas, and the resize handles when
+        // enabled) is appended inside this one element, so removeOverlays()
+        // only has to find and remove this single data-extension node per
+        // image, not track its children separately.
+        function createOverlayContainer(w, h, image, computedStyle) {
+
+            const container = document.createElement('div');
+
+            container.style.width = w + 'px';
+            container.style.height = h + 'px';
+            // No overflow:hidden here (unlike the canvas this used to be
+            // set on) - a resize handle straddles the edge of its
+            // rectangle by design (see RESIZE_HANDLE_SIZE), including the
+            // full-image rectangle's own edges, and hiding that overflow
+            // would clip every handle in half.
+            container.style.padding = computedStyle.padding;
+            container.style.margin = computedStyle.margin;
+            container.setAttribute('data-extension', 'rule-of-thirds');
+            // Not in the page's own tab order (a plain image wasn't
+            // before, and this shouldn't change that) - but still a valid
+            // focus() target, which showOverlayContextMenu relies on to
+            // return focus here (rather than falling back to <body>) once
+            // its context menu closes. outline:none since this is an
+            // invisible interaction layer, not a control anyone tabs to
+            // themselves - the browser's default focus ring would
+            // otherwise flash around the whole image right after closing
+            // the menu.
+            container.tabIndex = -1;
+            container.style.outline = 'none';
+
+            if (image.offsetParent) {
+                container.style.position = 'absolute';
+                if (image.style['margin'] !== 'auto') {
+                    container.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
+                    container.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
+                }
+            } else {
+                // offsetParent is null exactly when the image's own position
+                // is `fixed` (the only case that reaches here - the
+                // getClientRects() check above already filters out images
+                // that aren't rendered at all). There's no positioned
+                // ancestor to measure an offset against, so the container is
+                // fixed-positioned too, using the image's on-screen
+                // (viewport-relative) rect instead.
+                const rect = image.getBoundingClientRect();
+                container.style.position = 'fixed';
+                container.style.left = rect.left + 'px';
+                container.style.top = rect.top + 'px';
+            }
+
+            return container;
+        }
+
+        // Just the drawing surface now - sized and positioned by its
+        // createOverlayContainer() wrapper, not itself (see above).
+        function createCanvas(w, h) {
 
             const canvas = document.createElement('canvas');
             const dpr = window.devicePixelRatio || 1;
@@ -332,36 +833,15 @@ if (typeof rotInit === 'undefined') {
             // Backing store at devicePixelRatio for a crisp result on
             // HiDPI/zoomed displays, CSS size kept at the logical w/h so it
             // still occupies the same on-page space (see the ctx.scale()
-            // call in renderImageOverlay, which is what actually draws
-            // sharper rather than just bigger).
+            // call in renderImageOverlay's redraw(), which is what actually
+            // draws sharper rather than just bigger).
             canvas.width = w * dpr;
             canvas.height = h * dpr;
+            canvas.style.position = 'absolute';
+            canvas.style.left = '0';
+            canvas.style.top = '0';
             canvas.style.width = w + 'px';
             canvas.style.height = h + 'px';
-            canvas.style.overflow = 'hidden';
-            canvas.style.padding = computedStyle.padding;
-            canvas.style.margin = computedStyle.margin;
-            canvas.setAttribute('data-extension', 'rule-of-thirds');
-
-            if (image.offsetParent) {
-                canvas.style.position = 'absolute';
-                if (image.style['margin'] !== 'auto') {
-                    canvas.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
-                    canvas.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
-                }
-            } else {
-                // offsetParent is null exactly when the image's own position
-                // is `fixed` (the only case that reaches here - the
-                // getClientRects() check above already filters out images
-                // that aren't rendered at all). There's no positioned
-                // ancestor to measure an offset against, so the canvas is
-                // fixed-positioned too, using the image's on-screen
-                // (viewport-relative) rect instead.
-                const rect = image.getBoundingClientRect();
-                canvas.style.position = 'fixed';
-                canvas.style.left = rect.left + 'px';
-                canvas.style.top = rect.top + 'px';
-            }
 
             return canvas;
         }
@@ -375,5 +855,8 @@ if (typeof rotInit === 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum};
+    module.exports = {
+        isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum,
+        MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect
+    };
 }
