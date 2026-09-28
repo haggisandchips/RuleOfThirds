@@ -928,6 +928,27 @@ if (typeof rotInit === 'undefined') {
                     }
                 }
             });
+
+            // Every overlay's own position (see createOverlayContainer) is
+            // only ever computed once, when it's applied - a page resize
+            // (eg the window itself, or a responsive layout reflowing at a
+            // new breakpoint) can move or resize the underlying image
+            // without anything here finding out, leaving the overlay
+            // behind. Simplest fix is the same one already used for an
+            // options change above - remove and reapply every overlay from
+            // scratch - debounced since resizing (eg dragging the window's
+            // edge) fires this repeatedly, and only the last firing's redo
+            // is still relevant once it settles.
+            let resizeReapplyTimer = null;
+            window.addEventListener('resize', () => {
+                if (controlElement.getAttribute('active') === 'true') {
+                    clearTimeout(resizeReapplyTimer);
+                    resizeReapplyTimer = setTimeout(() => {
+                        removeOverlays();
+                        applyOverlays();
+                    }, 200);
+                }
+            });
         }
 
         promise.then(() => {
