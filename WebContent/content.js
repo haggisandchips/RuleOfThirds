@@ -337,13 +337,24 @@ function dragMoveRect(startRect, dx, dy, imageWidth, imageHeight) {
 // already has).
 var ASPECT_RATIO_PRESETS = {
     original: {label: 'Original', ratio: null},
-    '6x4': {label: '6 x 4', ratio: 3 / 2},
-    '7x5': {label: '7 x 5', ratio: 7 / 5},
-    '8x6': {label: '8 x 6', ratio: 4 / 3},
-    '5x4': {label: '5 x 4', ratio: 5 / 4},
     square: {label: 'Square', ratio: 1},
+    '5x4': {label: '5 x 4', ratio: 5 / 4},
+    '8x6': {label: '8 x 6', ratio: 4 / 3},
+    '7x5': {label: '7 x 5', ratio: 7 / 5},
+    '6x4': {label: '6 x 4', ratio: 3 / 2},
     '16x9': {label: '16 x 9', ratio: 16 / 9}
 };
+
+// Whether a forced preset should currently apply in its landscape form
+// (its own ratio, >= 1) or its portrait form (inverted) - starts out
+// driven by the image's own actual shape (a square counts as landscape,
+// >= not >), then flipped by orientationFlipped (the on-canvas flip
+// control/submenu action) on top of that.
+function targetOrientationIsLandscape(orientationFlipped, imageWidth, imageHeight) {
+
+    const imageIsLandscape = imageWidth >= imageHeight;
+    return imageIsLandscape !== orientationFlipped;
+}
 
 // The actual w/h ratio to resize to for a given preset - its landscape
 // figure (ASPECT_RATIO_PRESETS' own ratio) if the image itself is
@@ -358,10 +369,23 @@ function effectiveAspectRatio(presetId, orientationFlipped, imageWidth, imageHei
         return null;
     }
 
-    const imageIsLandscape = imageWidth >= imageHeight;
-    const targetIsLandscape = imageIsLandscape !== orientationFlipped;
+    const targetIsLandscape = targetOrientationIsLandscape(orientationFlipped, imageWidth, imageHeight);
 
     return targetIsLandscape ? preset.ratio : 1 / preset.ratio;
+}
+
+// Preset ids in the order the "Resize Options" submenu should list them -
+// 'original' always first, the rest ascending by each preset's own
+// (landscape) ratio - fixed regardless of the image's shape or the
+// orientation flip, so flipping between portrait and landscape never
+// reshuffles the list out from under the user.
+function orderedAspectRatioPresetIds() {
+
+    const ids = Object.keys(ASPECT_RATIO_PRESETS)
+        .filter(id => id !== 'original')
+        .sort((a, b) => ASPECT_RATIO_PRESETS[a].ratio - ASPECT_RATIO_PRESETS[b].ratio);
+
+    return ['original', ...ids];
 }
 
 // The largest rectangle at aspectRatio that fits between (anchorX,
@@ -457,6 +481,15 @@ var RESIZE_HANDLE_SIZE = 12;
 // arbitrary third-party pages, so it can't reach that CSS variable, only
 // its value.
 var RESIZE_HANDLE_COLOUR = '#26a69a';
+
+// Short and long side, in CSS pixels, of the on-canvas orientation-flip
+// control (see createOrientationFlipControl) - a plain 6x4/4x6 photo
+// shape (their ratio, 60/40 = 3/2, matches the '6x4' preset's own),
+// oriented tall or wide by redraw() (orientationFlipDisplay), and sized
+// well past the resize handles above so it reads as its own distinct
+// control rather than a 9th handle.
+var ORIENTATION_FLIP_SHORT_SIDE = 40;
+var ORIENTATION_FLIP_LONG_SIDE = 60;
 
 // --- Overlay context menu ---
 //
@@ -1065,37 +1098,55 @@ if (typeof rotInit === 'undefined') {
                 OVERLAY_STYLE_DRAWERS[options.overlayStyle](ctx, rect.w, rect.h, options);
 
                 if (handleElements) {
+                    // A single-edge handle (n/e/s/w) has no edge of its
+                    // own to anchor the other, ratio-derived axis to, so
+                    // dragResizeRectLocked grows/shrinks it evenly around
+                    // the rectangle's centre instead - unlike every
+                    // corner handle, which drives both axes from the
+                    // drag itself. With Maintain Aspect Ratio on, that
+                    // makes the edge handles feel inert rather than
+                    // genuinely useful, so they're hidden entirely -
+                    // only the 4 corners remain.
+                    const hideEdgeHandles = currentOverride().maintainAspectRatio;
                     Object.keys(RESIZE_HANDLES).forEach(handleId => {
                         const position = resizeHandlePosition(rect, handleId);
-                        handleElements[handleId].style.left = position.x + 'px';
-                        handleElements[handleId].style.top = position.y + 'px';
+                        const element = handleElements[handleId];
+                        element.style.left = position.x + 'px';
+                        element.style.top = position.y + 'px';
+                        element.hidden = hideEdgeHandles && RESIZE_HANDLES[handleId].edges.length === 1;
                     });
                 }
 
                 if (flipControl) {
-                    flipControl.style.left = (rect.x + rect.w / 2) + 'px';
-                    flipControl.style.top = (rect.y + rect.h / 2) + 'px';
-
-                    const override = currentOverride();
-                    const ratio = effectiveAspectRatio(override.aspectRatioPreset, override.aspectOrientationFlipped, w, h);
-                    if (ratio !== null) {
-                        const display = orientationFlipDisplay(ratio);
-                        flipControl.title = display.title;
-                        const shape = flipControl.firstChild;
-                        shape.style.width = (display.targetIsPortrait ? 6 : 10) + 'px';
-                        shape.style.height = (display.targetIsPortrait ? 10 : 6) + 'px';
-                    }
+                    // The control itself is drawn as a 6x4/4x6 photo
+                    // shape - the ratio actually being maintained right
+                    // now, whether that's a forced preset's own ratio
+                    // (rect already conforms to it exactly, see
+                    // applyForcedAspectRatio) or, for "Original", just
+                    // whatever shape the rectangle currently happens to
+                    // be - there's no other ratio to show for that case.
+                    const display = orientationFlipDisplay(rect.w / rect.h);
+                    flipControl.title = display.title;
+                    const flipWidth = display.targetIsPortrait ? ORIENTATION_FLIP_SHORT_SIDE : ORIENTATION_FLIP_LONG_SIDE;
+                    const flipHeight = display.targetIsPortrait ? ORIENTATION_FLIP_LONG_SIDE : ORIENTATION_FLIP_SHORT_SIDE;
+                    flipControl.style.width = flipWidth + 'px';
+                    flipControl.style.height = flipHeight + 'px';
+                    flipControl.style.left = (rect.x + rect.w / 2 - flipWidth / 2) + 'px';
+                    flipControl.style.top = (rect.y + rect.h / 2 - flipHeight / 2) + 'px';
                 }
             }
 
             // Shows/hides the on-canvas orientation flip control (see
-            // createOrientationFlipControl) - only meaningful, so only
-            // shown, once a forced non-"Original" preset actually has
-            // something to flip.
+            // createOrientationFlipControl) - shown for every preset
+            // except "Square" (flipping a square's orientation would be
+            // meaningless, since it's the same shape either way),
+            // including "Original" - maintaining the rectangle's own
+            // current shape is still a shape to flip, even with no
+            // preset forcing it.
             function syncFlipControl() {
 
                 const override = currentOverride();
-                const shouldShow = override.resizeEnabled && override.maintainAspectRatio && override.aspectRatioPreset !== 'original';
+                const shouldShow = override.resizeEnabled && override.maintainAspectRatio && override.aspectRatioPreset !== 'square';
 
                 if (shouldShow && !flipControl) {
                     flipControl = createOrientationFlipControl(container, toggleOrientationFlipped);
@@ -1203,6 +1254,12 @@ if (typeof rotInit === 'undefined') {
                 controlElement.imageOverrides.set(image, override);
                 syncFlipControl();
                 applyForcedAspectRatio();
+                // Needed even when applyForcedAspectRatio doesn't itself
+                // redraw (eg still on the 'original' preset) - toggling
+                // this hides/shows the edge handles (see redraw's own
+                // hideEdgeHandles), which needs a redraw of its own to
+                // take effect immediately rather than on the next one.
+                redraw();
             }
 
             // "If user changes aspect after resizing then take same
@@ -1211,9 +1268,22 @@ if (typeof rotInit === 'undefined') {
 
                 const override = currentOverride();
                 override.aspectRatioPreset = presetId;
+                // Unlike every other preset (which forces a shape via
+                // applyForcedAspectRatio below), "Original" means "force
+                // nothing", so switching back to it needs its own
+                // explicit effect: releasing whatever shape a previously
+                // forced preset left behind, back to the image's own
+                // actual (original) shape - otherwise, since
+                // applyForcedAspectRatio does nothing for a null ratio,
+                // switching back to "Original" would leave the overlay
+                // looking untouched by the switch.
+                if (presetId === 'original') {
+                    override.rect = null;
+                }
                 controlElement.imageOverrides.set(image, override);
                 syncFlipControl();
                 applyForcedAspectRatio();
+                redraw();
             }
 
             // The on-canvas flip control and the submenu's fallback action
@@ -1226,7 +1296,18 @@ if (typeof rotInit === 'undefined') {
                 const override = currentOverride();
                 override.aspectOrientationFlipped = !override.aspectOrientationFlipped;
                 controlElement.imageOverrides.set(image, override);
-                applyForcedAspectRatio();
+
+                if (override.aspectRatioPreset === 'original') {
+                    // applyForcedAspectRatio has no forced ratio to
+                    // reapply here - the rectangle's own current shape
+                    // is the only ratio there is, so flipping transposes
+                    // that shape directly instead, anchored the same way.
+                    const anchor = activeResizeRect(override, w, h);
+                    setRect(maxRectAtAnchor(anchor.x, anchor.y, anchor.h / anchor.w, w, h));
+                    redraw();
+                } else {
+                    applyForcedAspectRatio();
+                }
             }
 
             // Snaps the grid back to covering the whole image, and turns
@@ -1342,11 +1423,12 @@ if (typeof rotInit === 'undefined') {
             return elements;
         }
 
-        // A 9th, visually distinct control (a filled circle at the
-        // rectangle's own centre, where none of the 8 resize handles
-        // sit) for switching a forced aspect-ratio preset between
-        // portrait and landscape - the "come up with a way to switch"
-        // part of Resize Options. A modifier key held mid-drag was
+        // A 9th, visually distinct control (a solid teal 6x4/4x6
+        // rectangle at the resize rectangle's own centre, where none of
+        // the 8 resize handles sit) for switching the rectangle's shape
+        // between portrait and landscape while Maintain Aspect Ratio is
+        // on - the "come up with a way to switch" part of Resize
+        // Options. A modifier key held mid-drag was
         // considered and dropped: it's invisible until discovered by
         // accident and easy to trigger without realising, whereas a
         // control that's only ever shown while it's actually relevant
@@ -1359,37 +1441,16 @@ if (typeof rotInit === 'undefined') {
             const flip = document.createElement('div');
             flip.setAttribute('role', 'presentation');
             flip.setAttribute('aria-hidden', 'true');
-            // Icon and title are set by redraw() (orientationFlipDisplay) -
-            // it always runs immediately after this is created (see
-            // syncFlipControl/applyForcedAspectRatio), so there's no
-            // meaningful placeholder to set here first.
+            // Size, position and title are set by redraw()
+            // (orientationFlipDisplay) - it always runs immediately after
+            // this is created (see syncFlipControl/applyForcedAspectRatio),
+            // so there's no meaningful placeholder to set here first.
             flip.style.position = 'absolute';
-            flip.style.width = (RESIZE_HANDLE_SIZE + 8) + 'px';
-            flip.style.height = (RESIZE_HANDLE_SIZE + 8) + 'px';
-            flip.style.marginLeft = (-(RESIZE_HANDLE_SIZE + 8) / 2) + 'px';
-            flip.style.marginTop = (-(RESIZE_HANDLE_SIZE + 8) / 2) + 'px';
             flip.style.boxSizing = 'border-box';
-            flip.style.borderRadius = '50%';
             flip.style.background = RESIZE_HANDLE_COLOUR;
-            flip.style.border = '1px solid #fff';
-            flip.style.boxShadow = '0 0 2px rgba(0, 0, 0, 0.6)';
-            flip.style.display = 'flex';
-            flip.style.alignItems = 'center';
-            flip.style.justifyContent = 'center';
+            flip.style.border = '3px solid #fff';
             flip.style.cursor = 'pointer';
             flip.style.touchAction = 'none';
-
-            // The actual rectangle icon - a plain white block, sized by
-            // redraw() (orientationFlipDisplay) to be tall or wide - kept
-            // as its own child element (not text) so its shape is exactly
-            // what's set, not left to however a Unicode glyph happens to
-            // render at 12px in whatever font a given system substitutes.
-            const shape = document.createElement('span');
-            shape.setAttribute('aria-hidden', 'true');
-            shape.style.display = 'block';
-            shape.style.background = '#fff';
-            shape.style.borderRadius = '1px';
-            flip.append(shape);
 
             // Same reasoning as each resize handle's own pointerdown
             // below - stops this reaching the page underneath, and stops
@@ -1432,7 +1493,7 @@ if (typeof rotInit === 'undefined') {
                         onToggle: setMaintainAspectRatio
                     },
                     {type: 'separator'},
-                    ...Object.keys(ASPECT_RATIO_PRESETS).map(presetId => ({
+                    ...orderedAspectRatioPresetIds().map(presetId => ({
                         type: 'radio',
                         label: ASPECT_RATIO_PRESETS[presetId].label,
                         checked: override.aspectRatioPreset === presetId,
@@ -1440,11 +1501,12 @@ if (typeof rotInit === 'undefined') {
                     }))
                 ];
 
-                // Only meaningful (so only shown) once a forced non-
-                // "Original" preset actually has an orientation to flip -
-                // same condition as the on-canvas control (syncFlipControl).
-                if (override.maintainAspectRatio && override.aspectRatioPreset !== 'original') {
-                    const ratio = effectiveAspectRatio(override.aspectRatioPreset, override.aspectOrientationFlipped, w, h);
+                // Same condition as the on-canvas control (syncFlipControl)
+                // - meaningless only for "Square", where there's no
+                // orientation to flip either way.
+                if (override.maintainAspectRatio && override.aspectRatioPreset !== 'square') {
+                    const rect = activeResizeRect(override, w, h);
+                    const ratio = rect.w / rect.h;
                     resizeOptionsItems.push({type: 'separator'});
                     resizeOptionsItems.push({
                         type: 'action',
@@ -1593,6 +1655,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum,
         MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, dragResizeRectLocked, fitRectToImage,
-        resizeMaskRects, resizeBorderRects, ASPECT_RATIO_PRESETS, effectiveAspectRatio, maxRectAtAnchor, orientationFlipDisplay, dragMoveRect
+        resizeMaskRects, resizeBorderRects, ASPECT_RATIO_PRESETS, effectiveAspectRatio, targetOrientationIsLandscape, orderedAspectRatioPresetIds,
+        maxRectAtAnchor, orientationFlipDisplay, dragMoveRect
     };
 }

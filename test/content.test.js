@@ -21,6 +21,8 @@ const {
     resizeBorderRects,
     ASPECT_RATIO_PRESETS,
     effectiveAspectRatio,
+    targetOrientationIsLandscape,
+    orderedAspectRatioPresetIds,
     maxRectAtAnchor,
     orientationFlipDisplay,
     dragMoveRect
@@ -509,6 +511,22 @@ test('ASPECT_RATIO_PRESETS: every preset except \'original\' is expressed in its
             assert.ok(preset.ratio >= 1, `${id}'s ratio (${preset.ratio}) should be >= 1`);
         }
     });
+});
+
+test('targetOrientationIsLandscape follows the image\'s own shape, treating a square as landscape', () => {
+    assert.equal(targetOrientationIsLandscape(false, 200, 100), true, 'landscape image');
+    assert.equal(targetOrientationIsLandscape(false, 100, 200), false, 'portrait image');
+    assert.equal(targetOrientationIsLandscape(false, 100, 100), true, 'square image counts as landscape');
+});
+
+test('targetOrientationIsLandscape flips the image\'s own shape when orientationFlipped is set', () => {
+    assert.equal(targetOrientationIsLandscape(true, 200, 100), false);
+    assert.equal(targetOrientationIsLandscape(true, 100, 200), true);
+    assert.equal(targetOrientationIsLandscape(true, 100, 100), false, 'flipping a square switches it to portrait');
+});
+
+test('orderedAspectRatioPresetIds lists \'original\' first, then ascending by each preset\'s own landscape ratio', () => {
+    assert.deepEqual(orderedAspectRatioPresetIds(), ['original', 'square', '5x4', '8x6', '7x5', '6x4', '16x9']);
 });
 
 test('maxRectAtAnchor fills all the way to the image\'s edge along whichever axis is tightest', () => {
