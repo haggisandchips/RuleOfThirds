@@ -395,7 +395,7 @@ function syncOverlayStyleVisibility() {
 }
 
 // Phi Grid's own content (the Ratio row, its help text and "Restore
-// Default Ratio" button) needs more room than Grid's plain Rows/Columns
+// Golden Ratio" button) needs more room than Grid's plain Rows/Columns
 // fields, so the shared Grid/Circles row's column split widens for it -
 // Grid's own split is untouched. One more entry here, not a new branch,
 // if a future weighted-grid style needs its own split too.

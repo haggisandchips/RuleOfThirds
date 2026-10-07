@@ -605,7 +605,7 @@ input:disabled {
 }
 
 /* A smaller, less dominant sibling to .btn-large - for a scoped action (eg
-   "Restore Default Ratio") that shouldn't visually compete with the page's
+   "Restore Golden Ratio") that shouldn't visually compete with the page's
    one main Restore Defaults button. */
 .btn-small {
     display: inline-block;
