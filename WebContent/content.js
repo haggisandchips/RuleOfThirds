@@ -491,6 +491,20 @@ var RESIZE_HANDLE_COLOUR = '#26a69a';
 var ORIENTATION_FLIP_SHORT_SIDE = 40;
 var ORIENTATION_FLIP_LONG_SIDE = 60;
 
+// Deliberately modest, unlike an earlier approach (see git history - reparented the whole
+// container to <body> at the maximum possible z-index) that broke sites which rely on their
+// own page-level stacking (eg a site's sticky header ending up underneath the overlay while
+// scrolling). This container stays nested exactly where it always was; a z-index this small
+// only ever competes against its own immediate siblings, never anything elsewhere on the
+// page, since stacking contexts don't let a deeply-nested element "reach up" past its own
+// parent's - but z-index:auto (the default, ie no z-index at all) would still lose to any
+// sibling a site adds *after* this one with a z-index of its own, including its own default
+// z-index:auto content that merely happens to come later in the DOM (confirmed on Flickr: its
+// zoomed photo view progressively adds higher-resolution <img> siblings after this container
+// already exists, each one then painting over it - no competing z-index needed on their side,
+// DOM order alone was enough once this had none of its own).
+var OVERLAY_Z_INDEX = 1;
+
 // --- Overlay context menu ---
 //
 // A small, generic, keyboard-accessible replacement for the page's own
@@ -1696,6 +1710,9 @@ if (typeof rotInit === 'undefined') {
             // full-image rectangle's own edges, and hiding that overflow
             // would clip every handle in half.
             container.style.padding = computedStyle.padding;
+            // See OVERLAY_Z_INDEX's own comment - applies to both branches below, nested or
+            // fixed, equally.
+            container.style.zIndex = OVERLAY_Z_INDEX;
             container.setAttribute('data-extension', 'rule-of-thirds');
             // Not in the page's own tab order (a plain image wasn't
             // before, and this shouldn't change that) - but still a valid
