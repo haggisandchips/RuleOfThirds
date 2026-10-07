@@ -975,6 +975,23 @@ if (typeof rotInit === 'undefined') {
             }, true);
         }
 
+        // controlElement.imageOverrides (see its own comment above) is meant to survive
+        // across rotInit() calls by living on the persistent #rule-of-thirds element rather
+        // than a variable in this closure - but some pages (eg Flickr's own client-side
+        // router, on some route transitions) rebuild parts of the page in ways that can
+        // leave that element's own DOM state (its id, its active attribute) intact while
+        // dropping a plain JS property like this one, since that was never part of the
+        // page's own markup to begin with. Losing it unexpectedly is already an anticipated,
+        // harmless event - same as an ordinary toggle-off - so this just makes sure that's
+        // what happens here too, instead of every access crashing on a missing Map.
+        function imageOverrides() {
+
+            if (!(controlElement.imageOverrides instanceof Map)) {
+                controlElement.imageOverrides = new Map();
+            }
+            return controlElement.imageOverrides;
+        }
+
         promise.then(() => {
             toggleOverlays();
             reportState();
@@ -1029,7 +1046,7 @@ if (typeof rotInit === 'undefined') {
                 // that's guaranteed to happen between any two "sessions"
                 // of using it, so it's the natural place to drop every
                 // per-image adjustment and start clean next time.
-                controlElement.imageOverrides.clear();
+                imageOverrides().clear();
                 closeOverlayContextMenu();
                 removeOverlays();
             }
@@ -1093,7 +1110,7 @@ if (typeof rotInit === 'undefined') {
             let flipControl = null;
 
             function currentOverride() {
-                return controlElement.imageOverrides.get(image) || {
+                return imageOverrides().get(image) || {
                     resizeEnabled: false, rect: null, maintainAspectRatio: false,
                     aspectRatioPreset: 'original', aspectOrientationFlipped: false
                 };
@@ -1102,7 +1119,7 @@ if (typeof rotInit === 'undefined') {
             function setRect(rect) {
                 const override = currentOverride();
                 override.rect = rect;
-                controlElement.imageOverrides.set(image, override);
+                imageOverrides().set(image, override);
             }
 
             // Redraws the overlay into whichever rectangle currentOverride()
@@ -1275,7 +1292,7 @@ if (typeof rotInit === 'undefined') {
 
                 const override = currentOverride();
                 override.resizeEnabled = enabled;
-                controlElement.imageOverrides.set(image, override);
+                imageOverrides().set(image, override);
 
                 if (enabled && !handleElements) {
                     handleElements = createResizeHandles(container, w, h, currentOverride, setRect, redraw);
@@ -1296,7 +1313,7 @@ if (typeof rotInit === 'undefined') {
 
                 const override = currentOverride();
                 override.maintainAspectRatio = enabled;
-                controlElement.imageOverrides.set(image, override);
+                imageOverrides().set(image, override);
                 syncFlipControl();
                 applyForcedAspectRatio();
                 // Needed even when applyForcedAspectRatio doesn't itself
@@ -1325,7 +1342,7 @@ if (typeof rotInit === 'undefined') {
                 if (presetId === 'original') {
                     override.rect = null;
                 }
-                controlElement.imageOverrides.set(image, override);
+                imageOverrides().set(image, override);
                 syncFlipControl();
                 applyForcedAspectRatio();
                 redraw();
@@ -1340,7 +1357,7 @@ if (typeof rotInit === 'undefined') {
 
                 const override = currentOverride();
                 override.aspectOrientationFlipped = !override.aspectOrientationFlipped;
-                controlElement.imageOverrides.set(image, override);
+                imageOverrides().set(image, override);
 
                 if (override.aspectRatioPreset === 'original') {
                     // applyForcedAspectRatio has no forced ratio to
@@ -1375,7 +1392,7 @@ if (typeof rotInit === 'undefined') {
                         handleElements = null;
                     }
                 }
-                controlElement.imageOverrides.set(image, override);
+                imageOverrides().set(image, override);
                 syncFlipControl();
                 redraw();
             }

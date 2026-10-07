@@ -100,6 +100,12 @@
             a plain (non-CSS-positioned) table cell, such as Wikimedia Commons' Main Page - the
             overlay was measuring its position against the wrong element on the page.
           </p>
+          <p class="flow-text">[TODO]
+            Fixed toggling the overlay off sometimes crashing with nothing visibly happening, on
+            pages whose own script rebuilds parts of the page in a way that resets the overlay's
+            internal state (eg navigating between photos on a Flickr group pool page without a
+            full page reload).
+          </p>
         </div>
       </div>
 
