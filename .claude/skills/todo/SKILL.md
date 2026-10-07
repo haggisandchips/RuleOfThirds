@@ -31,3 +31,13 @@ device - see CLAUDE.md).
 
 Keep the whole thing scannable - this is a status check, not a full re-read of every TODO
 entry's reasoning.
+
+## Items with a `<details>` block
+
+An item can carry a nested `<details><summary>...</summary>...</details>` block - background,
+investigation notes, a diff to reapply later, that sort of thing, too long for a brief status
+check. For the summary in step 3, use only the item's own line(s) *outside* the `<details>`
+block as that item's bullet; never unfold or paste the block's contents into the brief report,
+even condensed. If the user then asks for more on that specific item (or says something like
+"tell me more about #8"), read the block and give them the full background at that point - the
+omission is only for the default brief pass.
