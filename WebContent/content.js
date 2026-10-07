@@ -884,6 +884,19 @@ function showOverlayContextMenu(x, y, items, returnFocusTo) {
     document.addEventListener('scroll', closeOverlayContextMenu, true);
 }
 
+// The three persistent listeners rotInit sets up below (chrome.storage.onChanged, and
+// window's own resize/click) are never removed - they live for as long as the page does, not
+// just for as long as this particular injection's extension context stays valid. Reloading
+// the extension (or it auto-updating) while a tab with one of these still attached stays open
+// invalidates that context without the listener itself going anywhere: chrome.runtime.id
+// becomes undefined once that happens (the one part of the API surface that's reliably still
+// there to check), so each of them checks it first and quietly does nothing rather than
+// reaching for a chrome.* API that's no longer actually there to call.
+function extensionContextIsValid() {
+
+    return !!chrome.runtime?.id;
+}
+
 // This check is always true: `rotInit` is declared with `const` *inside*
 // this block, so it's block-scoped and never persists between separate
 // injections of this file into the same tab (each toolbar click re-runs
@@ -919,6 +932,9 @@ if (typeof rotInit === 'undefined') {
             document.body.appendChild(controlElement);
 
             chrome.storage.onChanged.addListener((changes, area) => {
+                if (!extensionContextIsValid()) {
+                    return;
+                }
                 if (area === 'sync'/* && changes.options?.newValue*/) {
                     if (controlElement.getAttribute('active') === 'true') {
                         readOptions().then(() => {
@@ -941,6 +957,9 @@ if (typeof rotInit === 'undefined') {
             // is still relevant once it settles.
             let resizeReapplyTimer = null;
             window.addEventListener('resize', () => {
+                if (!extensionContextIsValid()) {
+                    return;
+                }
                 if (controlElement.getAttribute('active') === 'true') {
                     clearTimeout(resizeReapplyTimer);
                     resizeReapplyTimer = setTimeout(() => {
@@ -965,6 +984,9 @@ if (typeof rotInit === 'undefined') {
             // trade-off, as the resize listener above.
             let clickReapplyTimer = null;
             window.addEventListener('click', () => {
+                if (!extensionContextIsValid()) {
+                    return;
+                }
                 if (controlElement.getAttribute('active') === 'true') {
                     clearTimeout(clickReapplyTimer);
                     clickReapplyTimer = setTimeout(() => {
