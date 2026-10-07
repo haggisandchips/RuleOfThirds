@@ -95,6 +95,11 @@
             translucent band either side of it, instead of a small chevron at the canvas edge -
             the line's own shown/hidden colour stays visible through it.
           </p>
+          <p class="flow-text">
+            Fixed the overlay rendering well away from its image on pages that lay it out inside
+            a plain (non-CSS-positioned) table cell, such as Wikimedia Commons' Main Page - the
+            overlay was measuring its position against the wrong element on the page.
+          </p>
         </div>
       </div>
 

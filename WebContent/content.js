@@ -1611,6 +1611,35 @@ if (typeof rotInit === 'undefined') {
             controlElement.setAttribute('active', 'false');
         }
 
+        // The top-left corner that `position: absolute` will actually resolve `left`/`top`
+        // against once appended inside `appendTarget` - the nearest ancestor from there
+        // (inclusive) with a `position` other than `static`, in viewport coordinates. Not
+        // necessarily appendTarget itself: a <td>/<th>/<table> can be an element's
+        // offsetParent (per the DOM's own, table-aware definition of that property) without
+        // being `position`-ed at all, in which case it's NOT a valid CSS containing block,
+        // and absolute positioning actually resolves against the next positioned ancestor
+        // further up instead - possibly nowhere near the table itself (eg a wiki page's
+        // table-based layout, where the real containing block can be a `position: relative`
+        // wrapper several levels above the table). If no ancestor is positioned at all, the
+        // containing block is the page's own initial containing block, which scrolls with
+        // the document - hence the scrollX/scrollY fallback (not needed once there IS a
+        // positioned ancestor, since that ancestor's own rect already reflects the current
+        // scroll position).
+        function containingBlockOrigin(appendTarget) {
+
+            let ancestor = appendTarget;
+            while (ancestor && getComputedStyle(ancestor).position === 'static') {
+                ancestor = ancestor.parentElement;
+            }
+
+            if (!ancestor) {
+                return {left: -window.scrollX, top: -window.scrollY};
+            }
+
+            const rect = ancestor.getBoundingClientRect();
+            return {left: rect.left, top: rect.top};
+        }
+
         // Positions and sizes a wrapper over the image - everything for
         // that image (the drawing canvas, and the resize handles when
         // enabled) is appended inside this one element, so removeOverlays()
@@ -1644,21 +1673,27 @@ if (typeof rotInit === 'undefined') {
             if (image.offsetParent) {
                 container.style.position = 'absolute';
                 if (image.style['margin'] === 'auto') {
-                    // offsetLeft/offsetTop (below) already measure from the
-                    // margin edge, so they fully account for any margin the
-                    // image has - copying it onto the container too, on top
-                    // of explicit left/top, would double it up (an
-                    // absolutely-positioned element's margin still shifts it
-                    // further from its own left/top). margin:auto is the one
-                    // case with nothing to measure instead: there's no fixed
-                    // offset to read off the image, only the same auto-margin
-                    // centering the browser already does for it - copying
-                    // the (auto-resolved) margin here, and leaving left/top
-                    // unset, makes the container centre itself the same way.
+                    // The image's own rendered position (below) already fully accounts for
+                    // any margin it has - copying it onto the container too, on top of
+                    // explicit left/top, would double it up (an absolutely-positioned
+                    // element's margin still shifts it further from its own left/top).
+                    // margin:auto is the one case with nothing to measure instead: there's
+                    // no fixed offset to read off the image, only the same auto-margin
+                    // centering the browser already does for it - copying the (auto-
+                    // resolved) margin here, and leaving left/top unset, makes the
+                    // container centre itself the same way.
                     container.style.margin = computedStyle.margin;
                 } else {
-                    container.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
-                    container.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
+                    // Deliberately not image.offsetLeft/offsetTop (which are relative to
+                    // image.offsetParent) - see containingBlockOrigin above for why that
+                    // can point at the wrong place entirely. Measuring both the image and
+                    // the real containing block in the same (viewport) coordinates and
+                    // taking their difference sidesteps the mismatch regardless of where
+                    // offsetParent happens to be.
+                    const origin = containingBlockOrigin(image.offsetParent);
+                    const imageRect = image.getBoundingClientRect();
+                    container.style.left = (imageRect.left - origin.left + parseInt(computedStyle.borderLeftWidth)) + 'px';
+                    container.style.top = (imageRect.top - origin.top + parseInt(computedStyle.borderTopWidth)) + 'px';
                 }
             } else {
                 // offsetParent is null exactly when the image's own position
