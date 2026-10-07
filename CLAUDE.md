@@ -51,6 +51,16 @@ release:
   feature entries across the two columns so both end up roughly the same height, with the most
   important features nearest the top of each column.
 
+## TODO.md
+
+`TODO.md` (gitignored via `.git/info/exclude`, not part of the repo) tracks outstanding work
+for the user. Any time something comes up that's worth doing but isn't the task at hand - an
+improvement worth considering, or a side issue noticed while tackling something else - mention
+it in conversation as usual, *and* add it to `TODO.md` so it isn't lost once the conversation
+ends. Keep the list ordered the way the work should actually be tackled (dependencies and
+priority), re-ordering existing items when a new one changes that picture rather than just
+appending to the bottom.
+
 ## Releasing
 
 When told to release the extension, work through these steps in order:
