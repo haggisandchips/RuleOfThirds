@@ -76,10 +76,19 @@
             Embedded Frames, Minimum Image Size) now says "overlay" instead, since it applies
             equally to Phi Grid and Fibonacci Spiral.
           </p>
-          <p class="flow-text">[TODO]
-            Fixed an overlay sometimes ending up unreachable to right-click, or even the whole
-            overlay drifting out of alignment with its image after resizing the browser window -
-            both down to how the overlay was positioned on the page.
+          <p class="flow-text">
+            Fixed the whole overlay drifting out of alignment with its image after resizing the
+            browser window.
+          </p>
+          <p class="flow-text">
+            Fixed the overlay staying frozen in its old position/size after a page changed which
+            image it was showing - eg clicking to zoom into a photo on Flickr - without a window
+            resize or options change to otherwise notice.
+          </p>
+          <p class="flow-text">
+            Fixed the overlay landing offset from its image by exactly the image's own CSS
+            margin, for any image with one set (eg Flickr's full-resolution zoomed photo view) -
+            the overlay was accounting for that margin twice over.
           </p>
         </div>
       </div>

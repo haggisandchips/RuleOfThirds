@@ -949,6 +949,30 @@ if (typeof rotInit === 'undefined') {
                     }, 200);
                 }
             });
+
+            // Clicking anywhere can change which image is actually showing
+            // without a window resize or options change - eg Flickr's
+            // built-in click-to-zoom, which swaps in a differently sized/
+            // positioned <img> with nothing else to notice. Not scoped to
+            // clicks that land on an <img> or this extension's own markup
+            // (tried that first, and it missed Flickr's actual click
+            // target: an invisible hit-testing layer of its own -
+            // <span class="facade-of-protection-zoom"> - sitting on top of
+            // both the image and our overlay, which is neither) - sites can
+            // and do interpose their own click-catching layers over an
+            // image, so there's no reliable element-type check to scope by.
+            // Same recovery, and the same unconditional-while-active
+            // trade-off, as the resize listener above.
+            let clickReapplyTimer = null;
+            window.addEventListener('click', () => {
+                if (controlElement.getAttribute('active') === 'true') {
+                    clearTimeout(clickReapplyTimer);
+                    clickReapplyTimer = setTimeout(() => {
+                        removeOverlays();
+                        applyOverlays();
+                    }, 200);
+                }
+            }, true);
         }
 
         promise.then(() => {
@@ -1604,7 +1628,6 @@ if (typeof rotInit === 'undefined') {
             // full-image rectangle's own edges, and hiding that overflow
             // would clip every handle in half.
             container.style.padding = computedStyle.padding;
-            container.style.margin = computedStyle.margin;
             container.setAttribute('data-extension', 'rule-of-thirds');
             // Not in the page's own tab order (a plain image wasn't
             // before, and this shouldn't change that) - but still a valid
@@ -1620,7 +1643,20 @@ if (typeof rotInit === 'undefined') {
 
             if (image.offsetParent) {
                 container.style.position = 'absolute';
-                if (image.style['margin'] !== 'auto') {
+                if (image.style['margin'] === 'auto') {
+                    // offsetLeft/offsetTop (below) already measure from the
+                    // margin edge, so they fully account for any margin the
+                    // image has - copying it onto the container too, on top
+                    // of explicit left/top, would double it up (an
+                    // absolutely-positioned element's margin still shifts it
+                    // further from its own left/top). margin:auto is the one
+                    // case with nothing to measure instead: there's no fixed
+                    // offset to read off the image, only the same auto-margin
+                    // centering the browser already does for it - copying
+                    // the (auto-resolved) margin here, and leaving left/top
+                    // unset, makes the container centre itself the same way.
+                    container.style.margin = computedStyle.margin;
+                } else {
                     container.style.left = image.offsetLeft + parseInt(computedStyle.borderLeftWidth) + 'px';
                     container.style.top = image.offsetTop + parseInt(computedStyle.borderTopWidth) + 'px';
                 }
