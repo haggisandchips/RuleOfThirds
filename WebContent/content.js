@@ -1664,20 +1664,46 @@ if (typeof rotInit === 'undefined') {
             controlElement.setAttribute('active', 'false');
         }
 
+        // The X/Y scale an element's own CSS transform applies to its children, if any -
+        // needed because left/top set on a position:absolute child are resolved in the
+        // PARENT's own local (pre-transform) coordinate space, then the whole parent+children
+        // subtree is scaled as a single unit when painted. A visual-pixel offset (eg from
+        // getBoundingClientRect() differences, as containingBlockOrigin below computes) has to
+        // be divided by this scale before being set as left/top, or it gets scaled down (or
+        // up) a second time once rendered, landing short of (or past) its intended visual
+        // position - confirmed on Flickr's pannable zoom view, whose photo container is scaled
+        // via transform to fit each zoom level, consistently shifting the overlay toward its
+        // container's own top-left corner. Reads matrix(a, b, c, d, e, f)'s a/d terms, which
+        // are the X/Y scale factors for an axis-aligned scale (b and c are 0) - covers every
+        // real case seen so far (a CSS zoom/lightbox effect scaling an element to fit); a
+        // rotated or skewed containing block isn't handled, but hasn't come up.
+        function elementScale(el) {
+
+            const transform = getComputedStyle(el).transform;
+            if (!transform || transform === 'none') {
+                return {x: 1, y: 1};
+            }
+
+            const matrix = transform.match(/matrix\(([^,]+),([^,]+),([^,]+),([^,]+),/);
+            return matrix ? {x: parseFloat(matrix[1]), y: parseFloat(matrix[4])} : {x: 1, y: 1};
+        }
+
         // The top-left corner that `position: absolute` will actually resolve `left`/`top`
         // against once appended inside `appendTarget` - the nearest ancestor from there
-        // (inclusive) with a `position` other than `static`, in viewport coordinates. Not
-        // necessarily appendTarget itself: a <td>/<th>/<table> can be an element's
-        // offsetParent (per the DOM's own, table-aware definition of that property) without
-        // being `position`-ed at all, in which case it's NOT a valid CSS containing block,
-        // and absolute positioning actually resolves against the next positioned ancestor
-        // further up instead - possibly nowhere near the table itself (eg a wiki page's
-        // table-based layout, where the real containing block can be a `position: relative`
-        // wrapper several levels above the table). If no ancestor is positioned at all, the
-        // containing block is the page's own initial containing block, which scrolls with
-        // the document - hence the scrollX/scrollY fallback (not needed once there IS a
-        // positioned ancestor, since that ancestor's own rect already reflects the current
-        // scroll position).
+        // (inclusive) with a `position` other than `static`, in viewport coordinates, plus its
+        // own elementScale() (see above - needed to convert a visual-pixel offset from this
+        // origin into the local left/top CSS actually expects). Not necessarily appendTarget
+        // itself: a <td>/<th>/<table> can be an element's offsetParent (per the DOM's own,
+        // table-aware definition of that property) without being `position`-ed at all, in
+        // which case it's NOT a valid CSS containing block, and absolute positioning actually
+        // resolves against the next positioned ancestor further up instead - possibly nowhere
+        // near the table itself (eg a wiki page's table-based layout, where the real
+        // containing block can be a `position: relative` wrapper several levels above the
+        // table). If no ancestor is positioned at all, the containing block is the page's own
+        // initial containing block, which scrolls with the document - hence the
+        // scrollX/scrollY fallback (not needed once there IS a positioned ancestor, since that
+        // ancestor's own rect already reflects the current scroll position; its scale is
+        // always 1 too, since nothing is scaling the whole document).
         function containingBlockOrigin(appendTarget) {
 
             let ancestor = appendTarget;
@@ -1686,11 +1712,11 @@ if (typeof rotInit === 'undefined') {
             }
 
             if (!ancestor) {
-                return {left: -window.scrollX, top: -window.scrollY};
+                return {left: -window.scrollX, top: -window.scrollY, scale: {x: 1, y: 1}};
             }
 
             const rect = ancestor.getBoundingClientRect();
-            return {left: rect.left, top: rect.top};
+            return {left: rect.left, top: rect.top, scale: elementScale(ancestor)};
         }
 
         // Positions and sizes a wrapper over the image - everything for
@@ -1745,11 +1771,14 @@ if (typeof rotInit === 'undefined') {
                     // can point at the wrong place entirely. Measuring both the image and
                     // the real containing block in the same (viewport) coordinates and
                     // taking their difference sidesteps the mismatch regardless of where
-                    // offsetParent happens to be.
+                    // offsetParent happens to be - then dividing by the containing block's
+                    // own scale (see elementScale) converts that visual-pixel difference back
+                    // into the local units left/top actually needs, undoing the scaling it
+                    // would otherwise get a second time once rendered.
                     const origin = containingBlockOrigin(image.offsetParent);
                     const imageRect = image.getBoundingClientRect();
-                    container.style.left = (imageRect.left - origin.left + parseInt(computedStyle.borderLeftWidth)) + 'px';
-                    container.style.top = (imageRect.top - origin.top + parseInt(computedStyle.borderTopWidth)) + 'px';
+                    container.style.left = ((imageRect.left - origin.left) / origin.scale.x + parseInt(computedStyle.borderLeftWidth)) + 'px';
+                    container.style.top = ((imageRect.top - origin.top) / origin.scale.y + parseInt(computedStyle.borderTopWidth)) + 'px';
                 }
             } else {
                 // offsetParent is null exactly when the image's own position

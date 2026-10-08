@@ -117,6 +117,12 @@
             which can add further, higher-resolution versions of the same photo after the
             overlay already exists, ending up layered above it with nothing to say otherwise.
           </p>
+          <p class="flow-text">[TODO]
+            Fixed the overlay landing offset toward the top-left of its image on pages that
+            scale an image's container with a CSS transform to fit it to the available space -
+            confirmed on Flickr's pannable zoomed photo view - instead of accounting for that
+            scaling when positioning the overlay within it.
+          </p>
         </div>
       </div>
 
