@@ -27,24 +27,30 @@ chrome.runtime.onInstalled.addListener((details) => {
 // menu (Enable Resize, Resize Options, Reset), native instead of a custom
 // DOM menu built and positioned by content.js.
 //
-// Deliberately every page-level context, explicitly listed, rather than
-// the 'all' shorthand - 'all' also includes 'action' (the toolbar icon's
-// own right-click menu), where these items would be actively misleading:
-// there's no "target image" up there for them to act on at all, unlike the
-// already-existing "How to Use" item below, which doesn't need one. 'image'
-// is included here regardless even though the overlay's own container
-// usually sits on top of the image itself (catching drag/resize pointer
-// events, which would normally make Chrome's own hit-testing resolve a
-// right-click there to our container, not the <img>, so 'image' alone
-// wouldn't reliably match) - harmless to also match the cases where it
-// does. Relevance is instead decided entirely by content.js, same as the custom
-// menu it replaces: every item starts hidden, and content.js's own
-// contextmenu listener shows/hides and syncs them (see
-// rule-of-thirds-menu-sync below) before the native menu renders - a real
-// race (message passing is asynchronous, nothing here can block the menu
-// from opening), accepted as this experiment's main open question rather
-// than solved outright.
-const OVERLAY_MENU_CONTEXTS = ['page', 'frame', 'selection', 'link', 'editable', 'image', 'video', 'audio'];
+// contexts: ['all'] - confirmed live (via a throwaway diagnostic menu item,
+// not just theorised) that this is actually necessary: a right-click on the
+// overlay's own <canvas> matches neither 'page' nor 'image' (nor, tried as
+// one explicit list, every other specific context there is) - only 'all'
+// catches it, suggesting 'all' isn't simply the union of the named contexts
+// but a true wildcard, and a <canvas> element doesn't positively match any
+// of the named ones. 'all' also includes 'action' (the toolbar icon's own
+// right-click menu), where these items would be actively misleading (no
+// "target image" up there to act on) - tried excluding just 'action' via an
+// explicit list instead, which is what broke the canvas case above. Left
+// relying on the same default-hidden-until-synced behaviour as everywhere
+// else instead: content.js can never sync a "show" for the toolbar icon's
+// own context (it's outside any page's DOM), so these only appear there if
+// stale visible:true state carried over from an earlier *page* sync - the
+// same staleness class as this experiment's main open question below, not
+// a new problem contexts filtering could have solved on its own.
+//
+// Relevance is decided entirely by content.js, same as the custom menu it
+// replaces: every item starts hidden, and content.js's own contextmenu/
+// mouseover listeners show/hide and sync them (see rule-of-thirds-menu-sync
+// below) before the native menu renders - a real race (message passing is
+// asynchronous, nothing here can block the menu from opening), accepted as
+// this experiment's main open question rather than solved outright.
+const OVERLAY_MENU_CONTEXTS = ['all'];
 
 // Preset ids/labels/order duplicated from content.js's ASPECT_RATIO_PRESETS
 // / orderedAspectRatioPresetIds() - no good way to share code between the

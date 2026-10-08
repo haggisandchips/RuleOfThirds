@@ -491,19 +491,21 @@ var RESIZE_HANDLE_COLOUR = '#26a69a';
 var ORIENTATION_FLIP_SHORT_SIDE = 40;
 var ORIENTATION_FLIP_LONG_SIDE = 60;
 
-// Deliberately modest, unlike an earlier approach (see git history - reparented the whole
-// container to <body> at the maximum possible z-index) that broke sites which rely on their
-// own page-level stacking (eg a site's sticky header ending up underneath the overlay while
-// scrolling). This container stays nested exactly where it always was; a z-index this small
-// only ever competes against its own immediate siblings, never anything elsewhere on the
-// page, since stacking contexts don't let a deeply-nested element "reach up" past its own
-// parent's - but z-index:auto (the default, ie no z-index at all) would still lose to any
-// sibling a site adds *after* this one with a z-index of its own, including its own default
-// z-index:auto content that merely happens to come later in the DOM (confirmed on Flickr: its
-// zoomed photo view progressively adds higher-resolution <img> siblings after this container
-// already exists, each one then painting over it - no competing z-index needed on their side,
-// DOM order alone was enough once this had none of its own).
-var OVERLAY_Z_INDEX = 1;
+// Maximum, unlike an earlier approach (see git history - reparented the whole container to
+// <body> at this same max z-index) that broke sites which rely on their own page-level
+// stacking (eg a site's sticky header ending up underneath the overlay while scrolling). What
+// actually caused that was the reparenting, not the magnitude: this container stays nested
+// exactly where it always was, and stacking contexts don't let a deeply-nested element "reach
+// up" past its own parent's, so however high this is set, it only ever competes against its
+// own immediate siblings, never anything elsewhere on the page. It does need to be the max,
+// though, not just "higher than z-index:auto" - confirmed on Flickr, which deliberately gives
+// its own right-click/drag-protection overlay a z-index of 100 (siblings with the image, same
+// as this container), specifically to sit above the photo and intercept interactions with it;
+// a small positive value (eg 1, which was enough to beat the zoom-view's own unindexed <img>
+// siblings below) still loses to that outright. (A page could in principle still use
+// z-index:2147483647 itself for something in this same stacking context and tie - DOM order
+// would then decide, same as any ordinary z-index collision.)
+var OVERLAY_Z_INDEX = 2147483647;
 
 // The three persistent listeners rotInit sets up below (chrome.storage.onChanged, and
 // window's own resize/click) are never removed - they live for as long as the page does, not
@@ -648,7 +650,7 @@ if (typeof rotInit === 'undefined') {
                     return;
                 }
 
-                const menuContainer = target.closest && target.closest('[data-extension="rule-of-thirds"]');
+                const menuContainer = target && target.closest && target.closest('[data-extension="rule-of-thirds"]');
                 if (menuContainer === lastSyncedMenuContainer) {
                     return;
                 }
@@ -689,6 +691,19 @@ if (typeof rotInit === 'undefined') {
 
             window.addEventListener('mouseover', event => syncOverlayMenuFor(event.target), true);
             window.addEventListener('contextmenu', event => syncOverlayMenuFor(event.target), true);
+
+            // Leaving the page entirely (eg heading for the toolbar icon) fires no further
+            // mouseover for syncOverlayMenuFor to clear a last-synced "relevant" state against -
+            // the mouse simply never crosses another page element on the way there, so without
+            // this the toolbar icon's own menu would otherwise go on showing whichever image's
+            // items were synced last. `mouseout` with a null relatedTarget is the standard
+            // cross-browser signal for "the pointer left the document", since `mouseleave`
+            // itself doesn't bubble up to a single document-wide listener.
+            window.addEventListener('mouseout', event => {
+                if (event.relatedTarget === null) {
+                    syncOverlayMenuFor(null);
+                }
+            }, true);
 
             // The other half of the native menu: service_worker.js forwards whichever item
             // was clicked here, and this applies it to whatever image the contextmenu listener
@@ -1311,6 +1326,15 @@ if (typeof rotInit === 'undefined') {
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
             controlElement.setAttribute('active', 'false');
+
+            // Clears whatever this tab last synced into the native context menu (see
+            // syncOverlayMenuFor) - without this, turning the extension off left those items
+            // visible on every right-click until the next real sync, since syncOverlayMenuFor
+            // itself just stops listening once active is false, rather than ever clearing what
+            // it last sent.
+            if (extensionContextIsValid()) {
+                chrome.runtime.sendMessage({type: 'rule-of-thirds-menu-sync', relevant: false});
+            }
         }
 
         // The X/Y scale an element's own CSS transform applies to its children, if any -
