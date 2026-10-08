@@ -491,412 +491,21 @@ var RESIZE_HANDLE_COLOUR = '#26a69a';
 var ORIENTATION_FLIP_SHORT_SIDE = 40;
 var ORIENTATION_FLIP_LONG_SIDE = 60;
 
-// Deliberately modest, unlike an earlier approach (see git history - reparented the whole
-// container to <body> at the maximum possible z-index) that broke sites which rely on their
-// own page-level stacking (eg a site's sticky header ending up underneath the overlay while
-// scrolling). This container stays nested exactly where it always was; a z-index this small
-// only ever competes against its own immediate siblings, never anything elsewhere on the
-// page, since stacking contexts don't let a deeply-nested element "reach up" past its own
-// parent's - but z-index:auto (the default, ie no z-index at all) would still lose to any
-// sibling a site adds *after* this one with a z-index of its own, including its own default
-// z-index:auto content that merely happens to come later in the DOM (confirmed on Flickr: its
-// zoomed photo view progressively adds higher-resolution <img> siblings after this container
-// already exists, each one then painting over it - no competing z-index needed on their side,
-// DOM order alone was enough once this had none of its own).
-var OVERLAY_Z_INDEX = 1;
-
-// --- Overlay context menu ---
-//
-// A small, generic, keyboard-accessible replacement for the page's own
-// right-click menu when it's opened on the overlay - deliberately built
-// around a declarative list of items (see showOverlayContextMenu's `items`
-// parameter) rather than bespoke DOM for each menu entry, since the menu
-// keeps growing (per-image overrides, now the "Resize Options" submenu).
-// Follows the WAI-ARIA menu pattern (role="menu" containing role=
-// "menuitem"/"menuitemcheckbox"/"menuitemradio", arrow keys to move
-// between them, Enter/Space to activate, Escape or a click outside to
-// close and return focus to whatever opened it) plus its submenu
-// extension (role="menuitem" with aria-haspopup/aria-expanded, ArrowRight/
-// click/hover to open, ArrowLeft/Escape to close just that level).
-//
-// Only one menu (root + at most one open submenu) is ever showing at a
-// time - opening a new root menu closes whichever was already showing,
-// same as a native context menu.
-//
-// KNOWN GAP: "keyboard-accessible" above is about the menu's own internals
-// once it's open, not how to open it - the overlay's container has
-// tabIndex=-1 (a valid focus() target so returning focus here on close
-// works) but is deliberately not in the page's own Tab order, so there's
-// currently no keyboard path to trigger the browser's own Shift+F10/Menu-
-// key "contextmenu" event on it at all. The resize handles (see
-// createResizeHandles below), the orientation flip control (see
-// createOrientationFlipControl), and dragging the rectangle itself to
-// move it (see the canvas's own pointerdown listener in renderImageOverlay)
-// are pointer-only too - role="presentation"/aria-hidden="true" for the
-// first two, no keyboard equivalent for nudging a handle, moving the
-// rectangle, or flipping orientation (the latter does at least have a
-// menu fallback - "Switch to Portrait"/"Switch to Landscape" on the
-// Resize Options submenu - the other two have no keyboard equivalent at
-// all). Flagged
-// rather than fixed here since a real fix (Tab reaching the overlay,
-// Tab/arrow keys between handles, arrow keys to nudge, Shift+arrow for
-// bigger steps) is a proper feature in its own right, not a quick patch.
-var openOverlayMenu = null;
-var openOverlaySubmenu = null;
-
-// `returnFocus` - whether to move focus back to the item that opened this
-// submenu. false when the whole menu (root included) is about to close
-// anyway, since there would be nothing left to return focus to.
-function closeOverlaySubmenu(returnFocus) {
-
-    if (!openOverlaySubmenu) {
-        return;
-    }
-
-    const {element, parentItem} = openOverlaySubmenu;
-    element.remove();
-    if (parentItem) {
-        parentItem.setAttribute('aria-expanded', 'false');
-    }
-    openOverlaySubmenu = null;
-
-    if (returnFocus && parentItem && typeof parentItem.focus === 'function') {
-        parentItem.focus();
-    }
-}
-
-function closeOverlayContextMenu() {
-
-    if (!openOverlayMenu) {
-        return;
-    }
-
-    closeOverlaySubmenu(false);
-
-    const {element, returnFocusTo} = openOverlayMenu;
-    element.remove();
-    document.removeEventListener('pointerdown', onOverlayMenuPointerDown, true);
-    document.removeEventListener('scroll', closeOverlayContextMenu, true);
-    openOverlayMenu = null;
-
-    // The trigger (the overlay's own container) rather than the page's
-    // default focus target, so keyboard users land back exactly where
-    // they opened the menu from.
-    if (returnFocusTo && typeof returnFocusTo.focus === 'function') {
-        returnFocusTo.focus();
-    }
-}
-
-function onOverlayMenuPointerDown(event) {
-
-    if (!openOverlayMenu) {
-        return;
-    }
-
-    const inRoot = openOverlayMenu.element.contains(event.target);
-    const inSubmenu = openOverlaySubmenu && openOverlaySubmenu.element.contains(event.target);
-    if (!inRoot && !inSubmenu) {
-        closeOverlayContextMenu();
-    }
-}
-
-// Positions an already-appended (so its own size can be measured) menu
-// element at (x, y), nudged back on-screen if it would otherwise spill
-// past the right/bottom edge of the viewport.
-function positionMenuElement(element, x, y) {
-
-    element.style.left = x + 'px';
-    element.style.top = y + 'px';
-
-    const bounds = element.getBoundingClientRect();
-    if (bounds.right > window.innerWidth) {
-        element.style.left = Math.max(0, window.innerWidth - bounds.width) + 'px';
-    }
-    if (bounds.bottom > window.innerHeight) {
-        element.style.top = Math.max(0, window.innerHeight - bounds.height) + 'px';
-    }
-}
-
-// Builds a styled role="menu" element from `items` - shared between the
-// root menu and any submenu, so both look and behave identically. Doesn't
-// position or append it itself - the caller does that once the element's
-// own size can be measured. `onEscape`/`onArrowLeft` let the root menu and
-// a submenu react to those keys differently (close everything vs close
-// just this one level and return to its parent item).
-//
-// `items` is an array of:
-//   {type: 'checkbox', label, checked, onToggle(newChecked)}
-//   {type: 'radio', label, checked, onToggle(newChecked)}
-//   {type: 'action', label, onActivate()}
-//   {type: 'submenu', label, items: [...]}
-//   {type: 'separator'}
-function buildMenuElement(items, onEscape, onArrowLeft, closesSubmenuOnHover) {
-
-    const menu = document.createElement('div');
-    menu.setAttribute('role', 'menu');
-    menu.setAttribute('data-extension', 'rule-of-thirds');
-    menu.style.position = 'fixed';
-    // Higher than anything a host page would plausibly use, so the menu
-    // never ends up hidden behind the page's own fixed-position content.
-    menu.style.zIndex = '2147483647';
-    menu.style.background = '#fff';
-    menu.style.color = '#212121';
-    menu.style.border = '1px solid #d0d0d0';
-    menu.style.borderRadius = '4px';
-    menu.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.25)';
-    menu.style.padding = '4px 0';
-    menu.style.minWidth = '180px';
-    menu.style.font = '14px "Helvetica Neue", Helvetica, Arial, sans-serif';
-
-    const focusableItems = [];
-    // Every radio-type item's own {item, menuItem, dot} - not just the
-    // DOM, the underlying `item` object too, so selecting one can reset
-    // every *other* radio in the same group back to unchecked (both its
-    // DOM and its own `checked` flag) - without this, re-clicking a radio
-    // that was checked earlier but has since been superseded by a
-    // different one wouldn't realise it needs to do anything.
-    const radioEntries = [];
-
-    items.forEach(item => {
-
-        if (item.type === 'separator') {
-            const separator = document.createElement('div');
-            separator.setAttribute('role', 'separator');
-            separator.style.margin = '4px 0';
-            separator.style.borderTop = '1px solid #d0d0d0';
-            menu.append(separator);
-            return;
-        }
-
-        const menuItem = document.createElement('div');
-        menuItem.tabIndex = -1;
-        menuItem.style.display = 'flex';
-        menuItem.style.alignItems = 'center';
-        menuItem.style.gap = '0.5rem';
-        menuItem.style.padding = '6px 14px';
-        menuItem.style.cursor = 'pointer';
-        menuItem.style.outline = 'none';
-        menuItem.style.userSelect = 'none';
-
-        // A real bordered box/circle (checked: a tick or dot inside it)
-        // rather than a character-plus-blank-space hack, so it reads as
-        // an actual checkbox/radio rather than unexplained indentation -
-        // only added for a checkbox/radio item below, so a plain action
-        // or submenu item (eg "Reset") stays flush left rather than
-        // indented to match. `currentColor` (not a fixed colour) so this
-        // stays visible against both this item's normal background and
-        // the teal background the focus/blur handlers below switch its
-        // text colour against.
-        const indicator = document.createElement('span');
-        indicator.setAttribute('aria-hidden', 'true');
-        indicator.style.display = 'inline-flex';
-        indicator.style.alignItems = 'center';
-        indicator.style.justifyContent = 'center';
-        indicator.style.width = '14px';
-        indicator.style.height = '14px';
-        indicator.style.flexShrink = '0';
-        indicator.style.boxSizing = 'border-box';
-        indicator.style.fontSize = '11px';
-        indicator.style.lineHeight = '1';
-
-        const label = document.createElement('span');
-        label.textContent = item.label;
-        label.style.flex = '1 1 auto';
-
-        if (item.type === 'checkbox') {
-            menuItem.setAttribute('role', 'menuitemcheckbox');
-            menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
-            indicator.style.border = '1.5px solid currentColor';
-            indicator.style.borderRadius = '3px';
-            indicator.textContent = item.checked ? '✓' : '';
-            menuItem.append(indicator);
-        } else if (item.type === 'radio') {
-            menuItem.setAttribute('role', 'menuitemradio');
-            menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
-            indicator.style.border = '1.5px solid currentColor';
-            indicator.style.borderRadius = '50%';
-            // Always created (not conditionally, only when checked) so
-            // selecting a different radio in the same group can toggle
-            // this dot's visibility in place - see activate() below,
-            // which keeps the menu open rather than closing and rebuilding
-            // it from scratch every time.
-            const dot = document.createElement('span');
-            dot.setAttribute('data-radio-dot', '');
-            dot.style.width = '6px';
-            dot.style.height = '6px';
-            dot.style.borderRadius = '50%';
-            dot.style.background = 'currentColor';
-            dot.style.visibility = item.checked ? 'visible' : 'hidden';
-            indicator.append(dot);
-            menuItem.append(indicator);
-            radioEntries.push({item, menuItem, dot});
-        } else if (item.type === 'submenu') {
-            menuItem.setAttribute('role', 'menuitem');
-            menuItem.setAttribute('aria-haspopup', 'true');
-            menuItem.setAttribute('aria-expanded', 'false');
-        } else {
-            menuItem.setAttribute('role', 'menuitem');
-        }
-
-        menuItem.append(label);
-
-        if (item.type === 'submenu') {
-            const arrow = document.createElement('span');
-            arrow.setAttribute('aria-hidden', 'true');
-            arrow.textContent = '▶';
-            arrow.style.fontSize = '10px';
-            arrow.style.flexShrink = '0';
-            menuItem.append(arrow);
-        }
-
-        // Checkbox/radio items update themselves in place and leave the
-        // menu open - unlike an action (eg "Reset"), a setting is
-        // something you typically want to keep adjusting (tick Maintain
-        // Aspect Ratio, then pick a ratio, maybe flip orientation, all in
-        // one sitting) rather than having the menu vanish and need
-        // reopening after each individual change.
-        function activate() {
-
-            if (item.type === 'submenu') {
-                openOverlaySubmenuFor(menuItem, item.items);
-                return;
-            }
-
-            if (item.type === 'checkbox') {
-                item.checked = !item.checked;
-                menuItem.setAttribute('aria-checked', item.checked ? 'true' : 'false');
-                indicator.textContent = item.checked ? '✓' : '';
-                item.onToggle(item.checked);
-                return;
-            }
-
-            if (item.type === 'radio') {
-                if (!item.checked) {
-                    // Resets every *other* radio in this same group - both
-                    // its DOM and its own `checked` flag (see radioEntries
-                    // above) - before checking this one.
-                    radioEntries.forEach(entry => {
-                        const checked = entry.item === item;
-                        entry.item.checked = checked;
-                        entry.menuItem.setAttribute('aria-checked', checked ? 'true' : 'false');
-                        entry.dot.style.visibility = checked ? 'visible' : 'hidden';
-                    });
-                    item.onToggle(true);
-                }
-                return;
-            }
-
-            item.onActivate();
-            closeOverlayContextMenu();
-        }
-
-        // outline:none above removes the browser's default focus ring (it
-        // sits awkwardly against this menu's own box-shadow styling) - this
-        // is what replaces it, a themed highlight instead of no visible
-        // indicator at all.
-        menuItem.addEventListener('focus', () => { menuItem.style.background = RESIZE_HANDLE_COLOUR; menuItem.style.color = '#fff'; });
-        menuItem.addEventListener('blur', () => { menuItem.style.background = ''; menuItem.style.color = ''; });
-        menuItem.addEventListener('mouseenter', () => {
-            menuItem.focus();
-            if (item.type === 'submenu') {
-                openOverlaySubmenuFor(menuItem, item.items);
-            } else if (closesSubmenuOnHover && openOverlaySubmenu) {
-                // Only at the root level - hovering one of the submenu's
-                // *own* items (this same branch, when buildMenuElement is
-                // building that submenu) must never close the very menu
-                // it's a part of.
-                closeOverlaySubmenu(false);
-            }
-        });
-        menuItem.addEventListener('click', activate);
-        menuItem.addEventListener('keydown', event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                activate();
-            } else if (event.key === 'ArrowRight' && item.type === 'submenu') {
-                event.preventDefault();
-                openOverlaySubmenuFor(menuItem, item.items);
-            }
-        });
-
-        menu.append(menuItem);
-        focusableItems.push(menuItem);
-    });
-
-    menu.addEventListener('keydown', event => {
-
-        const currentIndex = focusableItems.indexOf(document.activeElement);
-
-        if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            focusableItems[(currentIndex + 1) % focusableItems.length].focus();
-        } else if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            focusableItems[(currentIndex - 1 + focusableItems.length) % focusableItems.length].focus();
-        } else if (event.key === 'Escape') {
-            event.preventDefault();
-            onEscape();
-        } else if (event.key === 'ArrowLeft' && onArrowLeft) {
-            event.preventDefault();
-            onArrowLeft();
-        }
-    });
-
-    return {element: menu, focusableItems};
-}
-
-// Opens (or, hovering across several submenu items in a row, replaces)
-// the one submenu a menu can have open at a time, positioned immediately
-// to the right of whichever item it belongs to (positionMenuElement pulls
-// it back on-screen if that would spill off the right/bottom edge).
-function openOverlaySubmenuFor(parentItem, items) {
-
-    if (openOverlaySubmenu && openOverlaySubmenu.parentItem === parentItem) {
-        return;
-    }
-    closeOverlaySubmenu(false);
-
-    const {element: submenu, focusableItems} = buildMenuElement(
-        items,
-        () => closeOverlaySubmenu(true),
-        () => closeOverlaySubmenu(true)
-    );
-
-    document.body.append(submenu);
-    const parentBounds = parentItem.getBoundingClientRect();
-    positionMenuElement(submenu, parentBounds.right, parentBounds.top);
-
-    parentItem.setAttribute('aria-expanded', 'true');
-    openOverlaySubmenu = {element: submenu, parentItem};
-
-    if (focusableItems.length) {
-        focusableItems[0].focus();
-    }
-}
-
-// `returnFocusTo` gets focus back once the whole menu closes (Escape, a
-// click outside, or an item being activated all close it) - see
-// buildMenuElement's own doc comment for the shape of `items`.
-function showOverlayContextMenu(x, y, items, returnFocusTo) {
-
-    closeOverlayContextMenu();
-
-    const {element: menu, focusableItems} = buildMenuElement(items, closeOverlayContextMenu, null, true);
-
-    document.body.append(menu);
-    positionMenuElement(menu, x, y);
-
-    openOverlayMenu = {element: menu, returnFocusTo};
-
-    if (focusableItems.length) {
-        focusableItems[0].focus();
-    }
-
-    // Deferred so the same right-click that opened the menu (which is a
-    // pointerdown too) doesn't immediately bubble up and close it again.
-    setTimeout(() => document.addEventListener('pointerdown', onOverlayMenuPointerDown, true), 0);
-    document.addEventListener('scroll', closeOverlayContextMenu, true);
-}
+// Maximum, unlike an earlier approach (see git history - reparented the whole container to
+// <body> at this same max z-index) that broke sites which rely on their own page-level
+// stacking (eg a site's sticky header ending up underneath the overlay while scrolling). What
+// actually caused that was the reparenting, not the magnitude: this container stays nested
+// exactly where it always was, and stacking contexts don't let a deeply-nested element "reach
+// up" past its own parent's, so however high this is set, it only ever competes against its
+// own immediate siblings, never anything elsewhere on the page. It does need to be the max,
+// though, not just "higher than z-index:auto" - confirmed on Flickr, which deliberately gives
+// its own right-click/drag-protection overlay a z-index of 100 (siblings with the image, same
+// as this container), specifically to sit above the photo and intercept interactions with it;
+// a small positive value (eg 1, which was enough to beat the zoom-view's own unindexed <img>
+// siblings below) still loses to that outright. (A page could in principle still use
+// z-index:2147483647 itself for something in this same stacking context and tie - DOM order
+// would then decide, same as any ordinary z-index collision.)
+var OVERLAY_Z_INDEX = 2147483647;
 
 // The three persistent listeners rotInit sets up below (chrome.storage.onChanged, and
 // window's own resize/click) are never removed - they live for as long as the page does, not
@@ -1009,6 +618,115 @@ if (typeof rotInit === 'undefined') {
                     }, 200);
                 }
             }, true);
+
+            // The overlay's own right-click menu is native (chrome.contextMenus) now - see
+            // service_worker.js's own comment for the full picture. This fires on every
+            // right-click anywhere on the page (not just over one of our overlays, same
+            // unconditional-while-active trade-off as the listeners above) because relevance
+            // is decided entirely here, not by Chrome's own 'image' context matching - the
+            // overlay's container sits on top of the image to catch drag/resize pointer
+            // events, which would make a right-click resolve to the container, not the <img>
+            // underneath, so `contexts: ['image']` wouldn't reliably match. A real race:
+            // sendMessage is asynchronous, so nothing here can guarantee this update reaches
+            // the menu before Chrome actually renders it - accepted as this experiment's main
+            // open question rather than solved outright.
+            // Confirmed live (not just theorised): the contextmenu event alone is too late
+            // to reliably sync by - chrome.runtime.sendMessage()'s promise resolving doesn't
+            // mean the service worker's chrome.contextMenus.update() calls have actually
+            // finished (its onMessage listener returns before they do, since it doesn't keep
+            // the message channel open), so there's no guarantee any of it lands before Chrome
+            // builds the native menu for that click - lost basically every time in testing,
+            // not just occasionally. Pre-syncing on mouseover instead, deduplicated by
+            // container so moving within the same one doesn't resend, gives the same
+            // async round-trip a much wider window: the time spent hovering toward an image,
+            // not the instant between right-clicking and the menu rendering. contextmenu
+            // still syncs too, as a fallback for however it got opened without a prior
+            // mouseover (eg a keyboard-triggered one).
+            let activeContextMenuTarget = null;
+            let lastSyncedMenuContainer;
+            function syncOverlayMenuFor(target) {
+
+                if (!extensionContextIsValid() || controlElement.getAttribute('active') !== 'true') {
+                    return;
+                }
+
+                const menuContainer = target && target.closest && target.closest('[data-extension="rule-of-thirds"]');
+                if (menuContainer === lastSyncedMenuContainer) {
+                    return;
+                }
+                lastSyncedMenuContainer = menuContainer || null;
+
+                const menuContext = menuContainer && menuContainer.__rotMenuContext;
+                if (!menuContext) {
+                    activeContextMenuTarget = null;
+                    chrome.runtime.sendMessage({type: 'rule-of-thirds-menu-sync', relevant: false});
+                    return;
+                }
+
+                const {w, h, currentOverride, setResizeEnabled, setMaintainAspectRatio, setAspectRatioPreset, toggleOrientationFlipped, resetOverride} = menuContext;
+                activeContextMenuTarget = {setResizeEnabled, setMaintainAspectRatio, setAspectRatioPreset, toggleOrientationFlipped, resetOverride};
+
+                const override = currentOverride();
+                // Same condition as the on-canvas flip control (syncFlipControl) - meaningless
+                // only for "Square", where there's no orientation to flip either way.
+                const showFlip = override.maintainAspectRatio && override.aspectRatioPreset !== 'square';
+                let flipLabel;
+                if (showFlip) {
+                    const rect = activeResizeRect(override, w, h);
+                    flipLabel = (rect.w / rect.h) >= 1 ? 'Switch to Portrait' : 'Switch to Landscape';
+                }
+
+                chrome.runtime.sendMessage({
+                    type: 'rule-of-thirds-menu-sync',
+                    relevant: true,
+                    state: {
+                        resizeEnabled: override.resizeEnabled,
+                        maintainAspectRatio: override.maintainAspectRatio,
+                        aspectRatioPreset: override.aspectRatioPreset,
+                        showFlip,
+                        flipLabel
+                    }
+                });
+            }
+
+            window.addEventListener('mouseover', event => syncOverlayMenuFor(event.target), true);
+            window.addEventListener('contextmenu', event => syncOverlayMenuFor(event.target), true);
+
+            // Leaving the page entirely (eg heading for the toolbar icon) fires no further
+            // mouseover for syncOverlayMenuFor to clear a last-synced "relevant" state against -
+            // the mouse simply never crosses another page element on the way there, so without
+            // this the toolbar icon's own menu would otherwise go on showing whichever image's
+            // items were synced last. `mouseout` with a null relatedTarget is the standard
+            // cross-browser signal for "the pointer left the document", since `mouseleave`
+            // itself doesn't bubble up to a single document-wide listener.
+            window.addEventListener('mouseout', event => {
+                if (event.relatedTarget === null) {
+                    syncOverlayMenuFor(null);
+                }
+            }, true);
+
+            // The other half of the native menu: service_worker.js forwards whichever item
+            // was clicked here, and this applies it to whatever image the contextmenu listener
+            // above last synced the menu to (activeContextMenuTarget) - the native menu gives
+            // no way to ask it afterward which image it was even opened over.
+            chrome.runtime.onMessage.addListener((message) => {
+                if (!message || message.type !== 'rule-of-thirds-menu-action' || !activeContextMenuTarget) {
+                    return;
+                }
+
+                const target = activeContextMenuTarget;
+                if (message.id === 'rot-enable-resize') {
+                    target.setResizeEnabled(message.checked);
+                } else if (message.id === 'rot-maintain-aspect') {
+                    target.setMaintainAspectRatio(message.checked);
+                } else if (message.id === 'rot-flip-orientation') {
+                    target.toggleOrientationFlipped();
+                } else if (message.id === 'rot-reset') {
+                    target.resetOverride();
+                } else if (message.id && message.id.startsWith('rot-preset-')) {
+                    target.setAspectRatioPreset(message.id.slice('rot-preset-'.length));
+                }
+            });
         }
 
         // controlElement.imageOverrides (see its own comment above) is meant to survive
@@ -1083,7 +801,6 @@ if (typeof rotInit === 'undefined') {
                 // of using it, so it's the natural place to drop every
                 // per-image adjustment and start clean next time.
                 imageOverrides().clear();
-                closeOverlayContextMenu();
                 removeOverlays();
             }
         }
@@ -1567,72 +1284,19 @@ if (typeof rotInit === 'undefined') {
             return flip;
         }
 
-        // The overlay's own right-click menu (see showOverlayContextMenu) -
-        // "Enable Resize" toggles the 8 handles above on or off without
-        // touching whatever rectangle is already set (so turning resize
-        // off leaves the grid exactly as last positioned, for a clean,
-        // uncluttered view of it), and "Reset" discards this image's
-        // override entirely, back to covering the whole image. "Resize
-        // Options" (see below) covers Maintain Aspect Ratio and its own
-        // forced-preset controls.
+        // The overlay's own right-click menu - EXPERIMENTAL
+        // (feature/native-context-menu): native (chrome.contextMenus) now,
+        // not a custom DOM one - see the window 'contextmenu' listener
+        // near the other persistent listeners for why, and for how
+        // relevance/state actually gets synced to it before it opens. This
+        // just records what that listener needs for THIS image, directly
+        // on its own container so it's cleaned up for free whenever the
+        // container is (removeOverlays(), or a reapply tearing it down to
+        // rebuild) - no separate map to keep in sync with the overlay's
+        // own lifecycle.
         function registerOverlayContextMenu(container, w, h, currentOverride, setResizeEnabled, setMaintainAspectRatio, setAspectRatioPreset, toggleOrientationFlipped, resetOverride) {
 
-            container.addEventListener('contextmenu', (event) => {
-
-                event.preventDefault();
-
-                const override = currentOverride();
-
-                const resizeOptionsItems = [
-                    {
-                        type: 'checkbox',
-                        label: 'Maintain Aspect Ratio',
-                        checked: override.maintainAspectRatio,
-                        onToggle: setMaintainAspectRatio
-                    },
-                    {type: 'separator'},
-                    ...orderedAspectRatioPresetIds().map(presetId => ({
-                        type: 'radio',
-                        label: ASPECT_RATIO_PRESETS[presetId].label,
-                        checked: override.aspectRatioPreset === presetId,
-                        onToggle: () => setAspectRatioPreset(presetId)
-                    }))
-                ];
-
-                // Same condition as the on-canvas control (syncFlipControl)
-                // - meaningless only for "Square", where there's no
-                // orientation to flip either way.
-                if (override.maintainAspectRatio && override.aspectRatioPreset !== 'square') {
-                    const rect = activeResizeRect(override, w, h);
-                    const ratio = rect.w / rect.h;
-                    resizeOptionsItems.push({type: 'separator'});
-                    resizeOptionsItems.push({
-                        type: 'action',
-                        label: ratio >= 1 ? 'Switch to Portrait' : 'Switch to Landscape',
-                        onActivate: toggleOrientationFlipped
-                    });
-                }
-
-                showOverlayContextMenu(event.clientX, event.clientY, [
-                    {
-                        type: 'checkbox',
-                        label: 'Enable Resize',
-                        checked: override.resizeEnabled,
-                        onToggle: setResizeEnabled
-                    },
-                    {
-                        type: 'submenu',
-                        label: 'Resize Options',
-                        items: resizeOptionsItems
-                    },
-                    {type: 'separator'},
-                    {
-                        type: 'action',
-                        label: 'Reset',
-                        onActivate: resetOverride
-                    }
-                ], container);
-            });
+            container.__rotMenuContext = {w, h, currentOverride, setResizeEnabled, setMaintainAspectRatio, setAspectRatioPreset, toggleOrientationFlipped, resetOverride};
         }
 
         // Every overlay style's draw function shares this one signature -
@@ -1662,6 +1326,15 @@ if (typeof rotInit === 'undefined') {
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
             controlElement.setAttribute('active', 'false');
+
+            // Clears whatever this tab last synced into the native context menu (see
+            // syncOverlayMenuFor) - without this, turning the extension off left those items
+            // visible on every right-click until the next real sync, since syncOverlayMenuFor
+            // itself just stops listening once active is false, rather than ever clearing what
+            // it last sent.
+            if (extensionContextIsValid()) {
+                chrome.runtime.sendMessage({type: 'rule-of-thirds-menu-sync', relevant: false});
+            }
         }
 
         // The X/Y scale an element's own CSS transform applies to its children, if any -
@@ -1740,17 +1413,6 @@ if (typeof rotInit === 'undefined') {
             // fixed, equally.
             container.style.zIndex = OVERLAY_Z_INDEX;
             container.setAttribute('data-extension', 'rule-of-thirds');
-            // Not in the page's own tab order (a plain image wasn't
-            // before, and this shouldn't change that) - but still a valid
-            // focus() target, which showOverlayContextMenu relies on to
-            // return focus here (rather than falling back to <body>) once
-            // its context menu closes. outline:none since this is an
-            // invisible interaction layer, not a control anyone tabs to
-            // themselves - the browser's default focus ring would
-            // otherwise flash around the whole image right after closing
-            // the menu.
-            container.tabIndex = -1;
-            container.style.outline = 'none';
 
             if (image.offsetParent) {
                 container.style.position = 'absolute';
