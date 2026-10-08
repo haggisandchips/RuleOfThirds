@@ -628,13 +628,32 @@ if (typeof rotInit === 'undefined') {
             // sendMessage is asynchronous, so nothing here can guarantee this update reaches
             // the menu before Chrome actually renders it - accepted as this experiment's main
             // open question rather than solved outright.
+            // Confirmed live (not just theorised): the contextmenu event alone is too late
+            // to reliably sync by - chrome.runtime.sendMessage()'s promise resolving doesn't
+            // mean the service worker's chrome.contextMenus.update() calls have actually
+            // finished (its onMessage listener returns before they do, since it doesn't keep
+            // the message channel open), so there's no guarantee any of it lands before Chrome
+            // builds the native menu for that click - lost basically every time in testing,
+            // not just occasionally. Pre-syncing on mouseover instead, deduplicated by
+            // container so moving within the same one doesn't resend, gives the same
+            // async round-trip a much wider window: the time spent hovering toward an image,
+            // not the instant between right-clicking and the menu rendering. contextmenu
+            // still syncs too, as a fallback for however it got opened without a prior
+            // mouseover (eg a keyboard-triggered one).
             let activeContextMenuTarget = null;
-            window.addEventListener('contextmenu', (event) => {
+            let lastSyncedMenuContainer;
+            function syncOverlayMenuFor(target) {
+
                 if (!extensionContextIsValid() || controlElement.getAttribute('active') !== 'true') {
                     return;
                 }
 
-                const menuContainer = event.target.closest('[data-extension="rule-of-thirds"]');
+                const menuContainer = target.closest && target.closest('[data-extension="rule-of-thirds"]');
+                if (menuContainer === lastSyncedMenuContainer) {
+                    return;
+                }
+                lastSyncedMenuContainer = menuContainer || null;
+
                 const menuContext = menuContainer && menuContainer.__rotMenuContext;
                 if (!menuContext) {
                     activeContextMenuTarget = null;
@@ -666,7 +685,10 @@ if (typeof rotInit === 'undefined') {
                         flipLabel
                     }
                 });
-            }, true);
+            }
+
+            window.addEventListener('mouseover', event => syncOverlayMenuFor(event.target), true);
+            window.addEventListener('contextmenu', event => syncOverlayMenuFor(event.target), true);
 
             // The other half of the native menu: service_worker.js forwards whichever item
             // was clicked here, and this applies it to whatever image the contextmenu listener
