@@ -25,18 +25,27 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // EXPERIMENTAL (feature/native-context-menu): the overlay's own right-click
 // menu (Enable Resize, Resize Options, Reset), native instead of a custom
-// DOM menu built and positioned by content.js. `contexts: ['all']` rather
-// than `['image']` deliberately - the overlay's own container sits on top
-// of the image to catch drag/resize pointer events, which would make
-// Chrome's own hit-testing resolve a right-click there to our container,
-// not the <img> itself, so `'image'` wouldn't reliably match. Relevance is
-// instead decided entirely by content.js, same as the custom menu it
-// replaces: every item starts hidden, and content.js's own contextmenu
-// listener shows/hides and syncs them (see rule-of-thirds-menu-sync below)
-// before the native menu renders - a real race (message passing is
-// asynchronous, nothing here can block the menu from opening), accepted as
-// this experiment's main open question rather than solved outright.
+// DOM menu built and positioned by content.js.
 //
+// Deliberately every page-level context, explicitly listed, rather than
+// the 'all' shorthand - 'all' also includes 'action' (the toolbar icon's
+// own right-click menu), where these items would be actively misleading:
+// there's no "target image" up there for them to act on at all, unlike the
+// already-existing "How to Use" item below, which doesn't need one. 'image'
+// is included here regardless even though the overlay's own container
+// usually sits on top of the image itself (catching drag/resize pointer
+// events, which would normally make Chrome's own hit-testing resolve a
+// right-click there to our container, not the <img>, so 'image' alone
+// wouldn't reliably match) - harmless to also match the cases where it
+// does. Relevance is instead decided entirely by content.js, same as the custom
+// menu it replaces: every item starts hidden, and content.js's own
+// contextmenu listener shows/hides and syncs them (see
+// rule-of-thirds-menu-sync below) before the native menu renders - a real
+// race (message passing is asynchronous, nothing here can block the menu
+// from opening), accepted as this experiment's main open question rather
+// than solved outright.
+const OVERLAY_MENU_CONTEXTS = ['page', 'frame', 'selection', 'link', 'editable', 'image', 'video', 'audio'];
+
 // Preset ids/labels/order duplicated from content.js's ASPECT_RATIO_PRESETS
 // / orderedAspectRatioPresetIds() - no good way to share code between the
 // service worker and an on-demand-injected content script in this
@@ -58,13 +67,13 @@ function createOverlayMenuItems() {
         id: 'rot-enable-resize',
         title: 'Enable Resize',
         type: 'checkbox',
-        contexts: ['all'],
+        contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
     chrome.contextMenus.create({
         id: 'rot-resize-options',
         title: 'Resize Options',
-        contexts: ['all'],
+        contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
     chrome.contextMenus.create({
@@ -72,13 +81,13 @@ function createOverlayMenuItems() {
         parentId: 'rot-resize-options',
         title: 'Maintain Aspect Ratio',
         type: 'checkbox',
-        contexts: ['all']
+        contexts: OVERLAY_MENU_CONTEXTS
     });
     chrome.contextMenus.create({
         id: 'rot-presets-sep',
         parentId: 'rot-resize-options',
         type: 'separator',
-        contexts: ['all']
+        contexts: OVERLAY_MENU_CONTEXTS
     });
     OVERLAY_ASPECT_RATIO_PRESETS.forEach(preset => {
         chrome.contextMenus.create({
@@ -86,33 +95,33 @@ function createOverlayMenuItems() {
             parentId: 'rot-resize-options',
             title: preset.label,
             type: 'radio',
-            contexts: ['all']
+            contexts: OVERLAY_MENU_CONTEXTS
         });
     });
     chrome.contextMenus.create({
         id: 'rot-flip-sep',
         parentId: 'rot-resize-options',
         type: 'separator',
-        contexts: ['all'],
+        contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
     chrome.contextMenus.create({
         id: 'rot-flip-orientation',
         parentId: 'rot-resize-options',
         title: 'Switch to Portrait',
-        contexts: ['all'],
+        contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
     chrome.contextMenus.create({
         id: 'rot-sep2',
         type: 'separator',
-        contexts: ['all'],
+        contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
     chrome.contextMenus.create({
         id: 'rot-reset',
         title: 'Reset',
-        contexts: ['all'],
+        contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
 }
