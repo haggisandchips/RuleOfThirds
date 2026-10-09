@@ -326,7 +326,7 @@ function dragMoveRect(startRect, dx, dy, imageWidth, imageHeight) {
     return {x, y, w: startRect.w, h: startRect.h};
 }
 
-// --- Forced aspect-ratio presets ("Resize Options" submenu) ---
+// --- Forced aspect-ratio presets ("Aspect Ratios" submenu) ---
 //
 // Each ratio is expressed in its landscape form (>= 1) - effectiveAspectRatio
 // below flips it for a portrait image/orientation. `label` is what shows in
@@ -374,7 +374,7 @@ function effectiveAspectRatio(presetId, orientationFlipped, imageWidth, imageHei
     return targetIsLandscape ? preset.ratio : 1 / preset.ratio;
 }
 
-// Preset ids in the order the "Resize Options" submenu should list them -
+// Preset ids in the order the "Aspect Ratios" submenu should list them -
 // 'original' always first, the rest ascending by each preset's own
 // (landscape) ratio - fixed regardless of the image's shape or the
 // orientation flip, so flipping between portrait and landscape never
@@ -1016,7 +1016,7 @@ if (typeof rotInit === 'undefined') {
                 }
             }
 
-            // "Resize Options" > a preset other than "Original", combined
+            // "Aspect Ratios" > a preset other than "Original", combined
             // with Maintain Aspect Ratio, forces the rectangle to exactly
             // that ratio rather than just following whatever shape a drag
             // leaves it in - this is what does the forcing: snaps to the
@@ -1169,8 +1169,8 @@ if (typeof rotInit === 'undefined') {
             }
 
             // Snaps the grid back to covering the whole image, and turns
-            // "Enable Resize"/"Maintain Aspect Ratio" (and its own Resize
-            // Options) back off too if any were set - having Reset leave
+            // "Enable Resize"/"Maintain Aspect Ratio" (and its own Aspect
+            // Ratios) back off too if any were set - having Reset leave
             // resize mode active would just leave 8 handles sitting at the
             // full image's own edges, ready to immediately drag it out of
             // shape again, when the point of Reset is a clean slate.

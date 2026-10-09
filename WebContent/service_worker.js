@@ -24,8 +24,8 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // EXPERIMENTAL (feature/native-context-menu): the overlay's own right-click
-// menu (Enable Resize, Resize Options, Reset), native instead of a custom
-// DOM menu built and positioned by content.js.
+// menu (Enable Resize, Maintain Aspect Ratio, Aspect Ratios, Reset), native
+// instead of a custom DOM menu built and positioned by content.js.
 //
 // contexts: ['all'] - confirmed live (via a throwaway diagnostic menu item,
 // not just theorised) that this is actually necessary: a right-click on the
@@ -77,23 +77,17 @@ function createOverlayMenuItems() {
         visible: false
     });
     chrome.contextMenus.create({
-        id: 'rot-resize-options',
-        title: 'Resize Options',
+        id: 'rot-maintain-aspect',
+        title: 'Maintain Aspect Ratio',
+        type: 'checkbox',
         contexts: OVERLAY_MENU_CONTEXTS,
         visible: false
     });
     chrome.contextMenus.create({
-        id: 'rot-maintain-aspect',
-        parentId: 'rot-resize-options',
-        title: 'Maintain Aspect Ratio',
-        type: 'checkbox',
-        contexts: OVERLAY_MENU_CONTEXTS
-    });
-    chrome.contextMenus.create({
-        id: 'rot-presets-sep',
-        parentId: 'rot-resize-options',
-        type: 'separator',
-        contexts: OVERLAY_MENU_CONTEXTS
+        id: 'rot-resize-options',
+        title: 'Aspect Ratios',
+        contexts: OVERLAY_MENU_CONTEXTS,
+        visible: false
     });
     OVERLAY_ASPECT_RATIO_PRESETS.forEach(preset => {
         chrome.contextMenus.create({
@@ -154,7 +148,7 @@ chrome.runtime.onMessage.addListener((message) => {
     }
 
     if (!message.relevant) {
-        ['rot-enable-resize', 'rot-resize-options', 'rot-sep2', 'rot-reset'].forEach(id => {
+        ['rot-enable-resize', 'rot-maintain-aspect', 'rot-resize-options', 'rot-sep2', 'rot-reset'].forEach(id => {
             chrome.contextMenus.update(id, {visible: false});
         });
         return;
@@ -162,8 +156,11 @@ chrome.runtime.onMessage.addListener((message) => {
 
     const state = message.state;
     chrome.contextMenus.update('rot-enable-resize', {visible: true, checked: state.resizeEnabled});
-    chrome.contextMenus.update('rot-resize-options', {visible: true});
-    chrome.contextMenus.update('rot-maintain-aspect', {checked: state.maintainAspectRatio});
+    // Maintain Aspect Ratio only means anything once Resize itself is on; Aspect Ratios (the
+    // preset/flip submenu) one level further still - only worth showing once there's a ratio
+    // actually being maintained to apply a preset or flip to.
+    chrome.contextMenus.update('rot-maintain-aspect', {visible: state.resizeEnabled, checked: state.maintainAspectRatio});
+    chrome.contextMenus.update('rot-resize-options', {visible: state.resizeEnabled && state.maintainAspectRatio});
     OVERLAY_ASPECT_RATIO_PRESETS.forEach(preset => {
         chrome.contextMenus.update('rot-preset-' + preset.id, {checked: state.aspectRatioPreset === preset.id});
     });
