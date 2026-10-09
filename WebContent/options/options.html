@@ -18,7 +18,7 @@
           <h5>Line Colour</h5>
           <div class="divider"></div>
         </div>
-        <div class="col s12 m5 col-align-bottom">
+        <div class="col s12">
           <p>
             <label for="line-colour">Colour</label>
             <span class="colour-row">
@@ -40,19 +40,6 @@
             <span class="opacity-row">
               <input type="range" id="line-opacity" min="0" max="100"/>
               <span class="opacity-value" id="line-opacity-value"></span>
-            </span>
-          </p>
-        </div>
-        <div class="col s12 m6 col-align-bottom">
-          <p class="help-text">
-            When an overlay's right-click "Enable Resize" confines it to part of an image, this
-            dims the rest of the image outside it. 0 leaves that area undimmed.
-          </p>
-          <p>
-            <label for="resize-mask-opacity">Cropped Area Opacity</label>
-            <span class="opacity-row">
-              <input type="range" id="resize-mask-opacity" min="0" max="100"/>
-              <span class="opacity-value" id="resize-mask-opacity-value"></span>
             </span>
           </p>
         </div>
@@ -293,6 +280,40 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col s12">
+          <h5>Resize Options</h5>
+          <div class="divider"></div>
+        </div>
+        <div class="col s12 m6 col-align-bottom">
+          <p class="help-text">
+            When an overlay's right-click "Enable Resize" confines it to part of an image, this
+            dims the rest of the image outside it. 0 leaves that area undimmed.
+          </p>
+          <p>
+            <label for="resize-mask-opacity">Cropped Area Opacity</label>
+            <span class="opacity-row">
+              <input type="range" id="resize-mask-opacity" min="0" max="100"/>
+              <span class="opacity-value" id="resize-mask-opacity-value"></span>
+            </span>
+          </p>
+        </div>
+        <div class="col s12 m6 col-align-bottom">
+          <p class="help-text">
+            The small rectangle at the centre of a resized overlay that switches it between
+            portrait and landscape. Turning this off only removes that on-image shortcut - the
+            same switch is always still available as "Switch to Portrait"/"Switch to Landscape"
+            on the overlay's right-click menu.
+          </p>
+          <p>
+            <label>
+              <input type="checkbox" id="show-flip-control"/>
+              <span>Show orientation flip control on a resized overlay</span>
+            </label>
+          </p>
         </div>
       </div>
 

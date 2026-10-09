@@ -8,6 +8,7 @@ const DEFAULT_OPTIONS = {
     lineColour: '#ffffff',
     lineOpacity: 100,
     resizeMaskOpacity: 50,
+    showFlipControl: true,
     renderCircle: true,
     circleColour: '#ff0000',
     circleOpacity: 100,
@@ -115,6 +116,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
     const lineColour = document.getElementById('line-colour').value;
     const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
     const resizeMaskOpacity = parseValidInt('resize-mask-opacity', MIN_OPACITY, DEFAULT_OPTIONS.resizeMaskOpacity);
+    const showFlipControl = document.getElementById('show-flip-control').checked;
     const renderCircle = document.getElementById('render-circle').checked;
     const circleColour = document.getElementById('circle-colour').value;
     const circleOpacity = parseValidInt('circle-opacity', MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity);
@@ -141,6 +143,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
             lineColour,
             lineOpacity,
             resizeMaskOpacity,
+            showFlipControl,
             renderCircle,
             circleColour,
             circleOpacity,
@@ -218,6 +221,7 @@ function setOptions(options) {
     updateOpacityLabel('line-opacity');
     document.getElementById('resize-mask-opacity').value = options.resizeMaskOpacity;
     updateOpacityLabel('resize-mask-opacity');
+    document.getElementById('show-flip-control').checked = options.showFlipControl;
     document.getElementById('render-circle').checked = options.renderCircle;
     document.getElementById('circle-colour').value = options.circleColour;
     syncQuickPickSelection('circle-colour');

@@ -817,6 +817,7 @@ if (typeof rotInit === 'undefined') {
                         circleColour: '#ff0000',
                         circleOpacity: 100,
                         resizeMaskOpacity: 50,
+                        showFlipControl: true,
                         circleRadius: 5,
                         circleStyle: 'outline',
                         circleLines: [[true, true], [true, true]],
@@ -1009,11 +1010,15 @@ if (typeof rotInit === 'undefined') {
             // meaningless, since it's the same shape either way),
             // including "Original" - maintaining the rectangle's own
             // current shape is still a shape to flip, even with no
-            // preset forcing it.
+            // preset forcing it. Also gated on the Options page's own Show
+            // Flip Control toggle - purely cosmetic (the same flip is
+            // always still reachable via the right-click menu's "Switch to
+            // Portrait"/"Switch to Landscape" regardless), for anyone who
+            // finds the on-canvas rectangle more clutter than it's worth.
             function syncFlipControl() {
 
                 const override = currentOverride();
-                const shouldShow = override.resizeEnabled && override.maintainAspectRatio && override.aspectRatioPreset !== 'square';
+                const shouldShow = options.showFlipControl && override.resizeEnabled && override.maintainAspectRatio && override.aspectRatioPreset !== 'square';
 
                 if (shouldShow && !flipControl) {
                     flipControl = createOrientationFlipControl(container, toggleOrientationFlipped);
