@@ -145,6 +145,14 @@
             clicked - removes a class of edge cases where a page rebuilding part of itself (eg a
             single-page site's own router) could leave that tracking out of step with reality.
           </p>
+          <p class="flow-text">[TODO]
+            Fixed the overlay's right-click menu sometimes being unreachable, landing on a plain
+            page menu instead - confirmed on Flickr's Batfan photo, where an empty, full-image
+            annotation layer sat above the overlay no matter how high its own stacking order
+            went, because that layer wasn't actually a sibling of the overlay to begin with. The
+            overlay now places itself high enough in the page to always compete fairly for
+            stacking order with whatever else is layered over its image.
+          </p>
         </div>
       </div>
 

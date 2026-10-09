@@ -906,7 +906,12 @@ if (typeof rotInit === 'undefined') {
                 return;
             }
 
-            const container = createOverlayContainer(w, h, image, computedStyle);
+            // Resolved once, up front, so createOverlayContainer's own positioning maths and
+            // the actual DOM placement at the end of this function always agree on where the
+            // container is really going (see stackingContextCeiling's own comment).
+            const appendTarget = image.offsetParent ? stackingContextCeiling(image.offsetParent) : document.body;
+
+            const container = createOverlayContainer(w, h, image, computedStyle, appendTarget);
             const canvas = createCanvas(w, h);
             container.append(canvas);
             const ctx = canvas.getContext('2d');
@@ -1214,7 +1219,7 @@ if (typeof rotInit === 'undefined') {
             syncFlipControl();
             redraw();
 
-            (image.offsetParent || document.body).append(container);
+            appendTarget.append(container);
         }
 
         // One draggable handle per entry in RESIZE_HANDLES - small circles
@@ -1416,6 +1421,38 @@ if (typeof rotInit === 'undefined') {
             return matrix ? {x: parseFloat(matrix[1]), y: parseFloat(matrix[4])} : {x: 1, y: 1};
         }
 
+        // Climbs from `ancestor` (normally image.offsetParent) past any element that
+        // establishes its own CSS stacking context (`position` other than `static` together
+        // with a numeric `z-index`), stopping at the first one that doesn't - that's where the
+        // overlay container actually needs to be appended, not necessarily `ancestor` itself.
+        // A z-index set on the container, however high (see OVERLAY_Z_INDEX), only ever wins
+        // comparisons *inside* the stacking context it's nested in - it has no way to "reach
+        // up" and outrank a *sibling* of one of its own ancestors. Confirmed live on Flickr's
+        // Batfan page: the image's offsetParent (its immediate, position:relative/z-index:102
+        // parent) establishes exactly such a context, and a sibling of *that* parent - an empty
+        // "photo notes" annotation layer, position:absolute/z-index:109, covering the full
+        // image - sits above it and everything inside it, including our max-z-index container,
+        // regardless of how high our own z-index goes; appending as a sibling of the trapping
+        // ancestor instead (one level up, the first ancestor along the way that doesn't itself
+        // trap things) fixes that. Deliberately checks only position+z-index, not every CSS
+        // property that can establish a stacking context (opacity, transform, filter,
+        // isolation, will-change, ...) - narrower, but matches both this confirmed case and our
+        // own technique, without climbing past incidental (eg GPU-acceleration) hints that
+        // aren't actually competing with us for anything. document.body is the ultimate
+        // ceiling, same fallback already used elsewhere for an image with no offsetParent at
+        // all.
+        function stackingContextCeiling(ancestor) {
+
+            while (ancestor && ancestor !== document.body) {
+                const style = getComputedStyle(ancestor);
+                if (style.position === 'static' || style.zIndex === 'auto') {
+                    return ancestor;
+                }
+                ancestor = ancestor.parentElement;
+            }
+            return ancestor || document.body;
+        }
+
         // The top-left corner that `position: absolute` will actually resolve `left`/`top`
         // against once appended inside `appendTarget` - the nearest ancestor from there
         // (inclusive) with a `position` other than `static`, in viewport coordinates, plus its
@@ -1452,7 +1489,7 @@ if (typeof rotInit === 'undefined') {
         // enabled) is appended inside this one element, so removeOverlays()
         // only has to find and remove this single data-extension node per
         // image, not track its children separately.
-        function createOverlayContainer(w, h, image, computedStyle) {
+        function createOverlayContainer(w, h, image, computedStyle, appendTarget) {
 
             const container = document.createElement('div');
 
@@ -1480,7 +1517,11 @@ if (typeof rotInit === 'undefined') {
                     // no fixed offset to read off the image, only the same auto-margin
                     // centering the browser already does for it - copying the (auto-
                     // resolved) margin here, and leaving left/top unset, makes the
-                    // container centre itself the same way.
+                    // container centre itself the same way. Assumes appendTarget is
+                    // image.offsetParent itself here (true unless stackingContextCeiling had
+                    // to climb further) - a known, so-far-unobserved gap for the rare
+                    // combination of this inline-style margin:auto centering *and* an
+                    // offsetParent that also needs climbing past.
                     container.style.margin = computedStyle.margin;
                 } else {
                     // Deliberately not image.offsetLeft/offsetTop (which are relative to
@@ -1491,8 +1532,10 @@ if (typeof rotInit === 'undefined') {
                     // offsetParent happens to be - then dividing by the containing block's
                     // own scale (see elementScale) converts that visual-pixel difference back
                     // into the local units left/top actually needs, undoing the scaling it
-                    // would otherwise get a second time once rendered.
-                    const origin = containingBlockOrigin(image.offsetParent);
+                    // would otherwise get a second time once rendered. Based on appendTarget,
+                    // not image.offsetParent directly - see stackingContextCeiling's own
+                    // comment for why those two can now differ.
+                    const origin = containingBlockOrigin(appendTarget);
                     const imageRect = image.getBoundingClientRect();
                     container.style.left = ((imageRect.left - origin.left) / origin.scale.x + parseInt(computedStyle.borderLeftWidth)) + 'px';
                     container.style.top = ((imageRect.top - origin.top) / origin.scale.y + parseInt(computedStyle.borderTopWidth)) + 'px';
