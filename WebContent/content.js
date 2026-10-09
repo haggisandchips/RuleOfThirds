@@ -561,23 +561,30 @@ if (typeof rotInit === 'undefined') {
 
         const promise = readOptions();
 
+        // The service worker decides on/off for this tab (chrome.storage.session, keyed by
+        // tabId) and tells this injection which one to apply - stashed here, in this isolated
+        // world's own global object, by a tiny chrome.scripting.executeScript({func}) call it
+        // makes immediately before this file's own ({files}) injection. Consumed once, right
+        // away, so a future injection that (for whatever reason) didn't get a fresh stash can't
+        // accidentally pick up a stale leftover value.
+        const desiredActive = globalThis.__rotPendingActive === true;
+        delete globalThis.__rotPendingActive;
+
         let controlElement = document.getElementById('rule-of-thirds');
         if (!controlElement) {
             // Add control element
             controlElement = document.createElement('div');
             controlElement.id = 'rule-of-thirds';
-            controlElement.setAttribute('active', 'false');
-            // Per-image resize state (the "Enable Resize" context-menu
-            // item) - attached directly to this persistent element rather
-            // than a variable inside this closure, since a *fresh*
-            // rotInit() closure runs on every toolbar click (see the
-            // file-header comment on the `if` this sits inside) but
-            // #rule-of-thirds itself survives across them. A plain
-            // variable here would silently reset on every click instead
-            // of only when the whole overlay is deliberately toggled off
-            // (see toggleOverlays). Deliberately never written to
-            // chrome.storage - this is transient by design, lost on
-            // toggle-off/on or a full page reload, whichever comes first.
+            controlElement.active = false;
+            // Per-image resize state (the "Enable Resize" context-menu item) and whether the
+            // overlay is currently on - both attached directly to this persistent element as
+            // plain JS properties, rather than a variable inside this closure or (for `active`)
+            // an HTML attribute, since a *fresh* rotInit() closure runs on every toolbar click
+            // (see the file-header comment on the `if` this sits inside) but #rule-of-thirds
+            // itself survives across them, and a plain JS property is invisible to the page's
+            // own CSS/markup-level code in a way an attribute never is. Deliberately never
+            // written to chrome.storage - this is transient by design, lost on toggle-off/on or
+            // a full page reload, whichever comes first.
             controlElement.imageOverrides = new Map();
             document.body.appendChild(controlElement);
 
@@ -586,7 +593,7 @@ if (typeof rotInit === 'undefined') {
                     return;
                 }
                 if (area === 'sync'/* && changes.options?.newValue*/) {
-                    if (controlElement.getAttribute('active') === 'true') {
+                    if (controlElement.active === true) {
                         readOptions().then(() => {
                             removeOverlays();
                             applyOverlays();
@@ -610,7 +617,7 @@ if (typeof rotInit === 'undefined') {
                 if (!extensionContextIsValid()) {
                     return;
                 }
-                if (controlElement.getAttribute('active') === 'true') {
+                if (controlElement.active === true) {
                     clearTimeout(resizeReapplyTimer);
                     resizeReapplyTimer = setTimeout(() => {
                         removeOverlays();
@@ -637,7 +644,7 @@ if (typeof rotInit === 'undefined') {
                 if (!extensionContextIsValid()) {
                     return;
                 }
-                if (controlElement.getAttribute('active') === 'true') {
+                if (controlElement.active === true) {
                     clearTimeout(clickReapplyTimer);
                     clickReapplyTimer = setTimeout(() => {
                         removeOverlays();
@@ -673,7 +680,7 @@ if (typeof rotInit === 'undefined') {
             let lastSyncedMenuContainer;
             function syncOverlayMenuFor(target) {
 
-                if (!extensionContextIsValid() || controlElement.getAttribute('active') !== 'true') {
+                if (!extensionContextIsValid() || controlElement.active !== true) {
                     return;
                 }
 
@@ -759,12 +766,15 @@ if (typeof rotInit === 'undefined') {
         // controlElement.imageOverrides (see its own comment above) is meant to survive
         // across rotInit() calls by living on the persistent #rule-of-thirds element rather
         // than a variable in this closure - but some pages (eg Flickr's own client-side
-        // router, on some route transitions) rebuild parts of the page in ways that can
-        // leave that element's own DOM state (its id, its active attribute) intact while
-        // dropping a plain JS property like this one, since that was never part of the
-        // page's own markup to begin with. Losing it unexpectedly is already an anticipated,
-        // harmless event - same as an ordinary toggle-off - so this just makes sure that's
-        // what happens here too, instead of every access crashing on a missing Map.
+        // router, on some route transitions) rebuild parts of the page in ways that can leave
+        // that element's own DOM state (its id) intact while dropping a plain JS property like
+        // this one, since that was never part of the page's own markup to begin with.
+        // controlElement.active (see rotInit) is a plain JS property for the exact same reason
+        // and is equally at risk here - but losing either one unexpectedly is already an
+        // anticipated, harmless event, same as an ordinary toggle-off: applyDesiredState's own
+        // unconditional clear/remove step means a missing/stale `active` just gets corrected on
+        // the next toggle, so this just makes sure imageOverrides itself doesn't crash in the
+        // meantime instead of every access finding a missing Map.
         function imageOverrides() {
 
             if (!(controlElement.imageOverrides instanceof Map)) {
@@ -774,7 +784,7 @@ if (typeof rotInit === 'undefined') {
         }
 
         promise.then(() => {
-            toggleOverlays();
+            applyDesiredState(desiredActive);
             reportState();
         });
 
@@ -817,29 +827,32 @@ if (typeof rotInit === 'undefined') {
             });
         }
 
-        function toggleOverlays() {
+        // What to do this injection is now an instruction from the service worker
+        // (desiredActive, read at the top of rotInit), not something inferred from this tab's
+        // own prior DOM state. The clear/remove step runs unconditionally, even when turning
+        // on - cheap/no-op in the normal case, but keeps this correct if the service worker's
+        // belief and the page's actual DOM have ever drifted apart, rather than only cleaning
+        // up on the "off" path. Resize is explicitly transient (see imageOverrides above) -
+        // every call here is a natural point to drop any per-image adjustment and start clean.
+        function applyDesiredState(desiredActive) {
 
-            if (controlElement.getAttribute('active') === 'false') {
+            imageOverrides().clear();
+            removeOverlays();
+            if (desiredActive) {
                 applyOverlays();
-            } else {
-                // Resize is explicitly transient (see imageOverrides
-                // above) - turning the overlay off is the one point
-                // that's guaranteed to happen between any two "sessions"
-                // of using it, so it's the natural place to drop every
-                // per-image adjustment and start clean next time.
-                imageOverrides().clear();
-                removeOverlays();
             }
         }
 
         // Lets the service worker reflect this tab's on/off state on the
         // toolbar icon - it has no other way to know, since applying and
         // removing the overlay only ever changes DOM state inside this page.
+        // Also what the service worker's own action queue waits on before
+        // letting the next click for this tab proceed (see service_worker.js).
         function reportState() {
 
             chrome.runtime.sendMessage({
                 type: 'rule-of-thirds-state',
-                active: controlElement.getAttribute('active') === 'true'
+                active: controlElement.active === true
             });
         }
 
@@ -866,7 +879,7 @@ if (typeof rotInit === 'undefined') {
                 }
             }
 
-            controlElement.setAttribute('active', 'true');
+            controlElement.active = true;
         }
 
         function renderImageOverlay(image, computedStyle, w, h) {
@@ -1360,7 +1373,7 @@ if (typeof rotInit === 'undefined') {
         function removeOverlays() {
 
             document.querySelectorAll('[data-extension="rule-of-thirds"]').forEach(element => element.remove());
-            controlElement.setAttribute('active', 'false');
+            controlElement.active = false;
 
             // Clears whatever this tab last synced into the native context menu (see
             // syncOverlayMenuFor) - without this, turning the extension off left those items

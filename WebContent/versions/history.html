@@ -135,6 +135,12 @@
             confirmed on Flickr's pannable zoomed photo view - instead of accounting for that
             scaling when positioning the overlay within it.
           </p>
+          <p class="flow-text">[TODO]
+            Whether the overlay is currently on for a tab is now tracked by the extension itself
+            rather than inferred from the page's own markup each time the toolbar icon is
+            clicked - removes a class of edge cases where a page rebuilding part of itself (eg a
+            single-page site's own router) could leave that tracking out of step with reality.
+          </p>
         </div>
       </div>
 
