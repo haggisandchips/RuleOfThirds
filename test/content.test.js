@@ -24,6 +24,7 @@ const {
     targetOrientationIsLandscape,
     orderedAspectRatioPresetIds,
     maxRectAtAnchor,
+    rotateRectInPlace,
     orientationFlipDisplay,
     dragMoveRect
 } = require('../WebContent/content.js');
@@ -535,6 +536,21 @@ test('maxRectAtAnchor fills all the way to the image\'s edge along whichever axi
 
 test('maxRectAtAnchor starts from a non-zero anchor, not the image\'s own origin', () => {
     assert.deepEqual(maxRectAtAnchor(50, 20, 1, 200, 150), {x: 50, y: 20, w: 130, h: 130});
+});
+
+test('rotateRectInPlace swaps width/height, keeping the same centre point', () => {
+    const rect = {x: 100, y: 50, w: 60, h: 40};
+    assert.deepEqual(rotateRectInPlace(rect, 1000, 1000), {x: 110, y: 40, w: 40, h: 60});
+});
+
+test('rotateRectInPlace repositions, without resizing, a rotation that would otherwise spill outside the image', () => {
+    const rect = {x: 0, y: 0, w: 60, h: 40};
+    assert.deepEqual(rotateRectInPlace(rect, 200, 100), {x: 10, y: 0, w: 40, h: 60});
+});
+
+test('rotateRectInPlace returns null when the rotated rectangle can\'t fit even repositioned', () => {
+    const rect = {x: 0, y: 0, w: 180, h: 90};
+    assert.equal(rotateRectInPlace(rect, 200, 100), null);
 });
 
 test('orientationFlipDisplay shows the target shape, not the current one', () => {

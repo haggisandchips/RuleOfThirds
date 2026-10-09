@@ -408,6 +408,33 @@ function maxRectAtAnchor(anchorX, anchorY, aspectRatio, imageWidth, imageHeight)
     return {x: anchorX, y: anchorY, w, h};
 }
 
+// Rotates `rect` 90° about its own centre - swapping its width and height
+// while keeping that centre point fixed - so a flip can preserve the
+// resized rectangle's own size instead of always jumping to the largest
+// rectangle at the new ratio (maxRectAtAnchor above). Only repositions
+// within the image if the centred rotation would otherwise spill outside
+// it (eg a rectangle resized up against one edge); returns null rather
+// than shrinking it if even that can't make it fit (eg a rectangle closer
+// to the image's own shape than a square, where swapping the longer side
+// onto the shorter axis always overflows) - callers fall back to their
+// usual "largest area" behaviour in that case.
+function rotateRectInPlace(rect, imageWidth, imageHeight) {
+
+    const w = rect.h;
+    const h = rect.w;
+    if (w > imageWidth || h > imageHeight) {
+        return null;
+    }
+
+    const centreX = rect.x + rect.w / 2;
+    const centreY = rect.y + rect.h / 2;
+
+    const x = Math.min(Math.max(centreX - w / 2, 0), imageWidth - w);
+    const y = Math.min(Math.max(centreY - h / 2, 0), imageHeight - h);
+
+    return {x, y, w, h};
+}
+
 // Whether the on-canvas orientation flip control's little rectangle icon
 // (see createOrientationFlipControl) should be drawn tall (offering
 // portrait) or wide (offering landscape), and its tooltip - always the
@@ -1112,12 +1139,20 @@ if (typeof rotInit === 'undefined') {
                 override.aspectOrientationFlipped = !override.aspectOrientationFlipped;
                 imageOverrides().set(image, override);
 
-                if (override.aspectRatioPreset === 'original') {
-                    // applyForcedAspectRatio has no forced ratio to
-                    // reapply here - the rectangle's own current shape
-                    // is the only ratio there is, so flipping transposes
-                    // that shape directly instead, anchored the same way.
-                    const anchor = activeResizeRect(override, w, h);
+                // Rotating the existing rectangle 90° about its own centre
+                // always lands on the new target ratio exactly, whether
+                // there's a forced preset or not - flipping always inverts
+                // that ratio (see effectiveAspectRatio/targetOrientationIsLandscape),
+                // the same transform a 90° rotation applies to whatever
+                // ratio the rectangle already had. Falls back to the old
+                // "largest area" behaviour only if that rotation wouldn't
+                // fit within the image.
+                const anchor = activeResizeRect(override, w, h);
+                const rotated = rotateRectInPlace(anchor, w, h);
+                if (rotated) {
+                    setRect(rotated);
+                    redraw();
+                } else if (override.aspectRatioPreset === 'original') {
                     setRect(maxRectAtAnchor(anchor.x, anchor.y, anchor.h / anchor.w, w, h));
                     redraw();
                 } else {
@@ -1495,6 +1530,6 @@ if (typeof module !== 'undefined' && module.exports) {
         isMinSize, shouldRender, sanitizeInt, sanitizeOptions, sanitizeLineStates, sanitizeCircleStates, sanitizeColour, sanitizeEnum,
         MIN_RESIZE_DIMENSION, RESIZE_HANDLES, activeResizeRect, resizeHandlePosition, dragResizeRect, dragResizeRectLocked, fitRectToImage,
         resizeMaskRects, resizeBorderRects, ASPECT_RATIO_PRESETS, effectiveAspectRatio, targetOrientationIsLandscape, orderedAspectRatioPresetIds,
-        maxRectAtAnchor, orientationFlipDisplay, dragMoveRect
+        maxRectAtAnchor, rotateRectInPlace, orientationFlipDisplay, dragMoveRect
     };
 }
