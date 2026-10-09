@@ -408,23 +408,28 @@ function maxRectAtAnchor(anchorX, anchorY, aspectRatio, imageWidth, imageHeight)
     return {x: anchorX, y: anchorY, w, h};
 }
 
-// Rotates `rect` 90° about its own centre - swapping its width and height
-// while keeping that centre point fixed - so a flip can preserve the
-// resized rectangle's own size instead of always jumping to the largest
-// rectangle at the new ratio (maxRectAtAnchor above). Only repositions
-// within the image if the centred rotation would otherwise spill outside
-// it (eg a rectangle resized up against one edge); returns null rather
-// than shrinking it if even that can't make it fit (eg a rectangle closer
-// to the image's own shape than a square, where swapping the longer side
-// onto the shorter axis always overflows) - callers fall back to their
-// usual "largest area" behaviour in that case.
+// Rotates `rect` 90° about its own centre - swapping its width and height -
+// so a flip can preserve the resized rectangle's own size instead of always
+// jumping to the largest rectangle at the new ratio (maxRectAtAnchor above).
+// Shrinks (preserving the swapped ratio throughout) only as much as actually
+// needed to fit, a no-op whenever the swap already fits as it is - NOT the
+// same as falling back to maxRectAtAnchor's own "largest at this ratio"
+// sizing, which grows from the *original* rectangle's own top-left corner
+// and so only ever sees the reduced space between that corner and the
+// image's bottom-right, not the full image (confirmed live: a mostly-full-
+// width landscape crop, flipped to portrait, landed noticeably smaller than
+// it needed to on exactly that account). Always ends up centred on the
+// original rectangle's own centre point, using whatever size (the untouched
+// swap, or the smallest shrink that still fits) that centring allows -
+// always succeeds, never needs a caller-side fallback.
 function rotateRectInPlace(rect, imageWidth, imageHeight) {
 
-    const w = rect.h;
-    const h = rect.w;
-    if (w > imageWidth || h > imageHeight) {
-        return null;
-    }
+    let w = rect.h;
+    let h = rect.w;
+    const aspectRatio = w / h;
+
+    if (w > imageWidth) { w = imageWidth; h = w / aspectRatio; }
+    if (h > imageHeight) { h = imageHeight; w = h * aspectRatio; }
 
     const centreX = rect.x + rect.w / 2;
     const centreY = rect.y + rect.h / 2;
@@ -1157,20 +1162,10 @@ if (typeof rotInit === 'undefined') {
                 // there's a forced preset or not - flipping always inverts
                 // that ratio (see effectiveAspectRatio/targetOrientationIsLandscape),
                 // the same transform a 90° rotation applies to whatever
-                // ratio the rectangle already had. Falls back to the old
-                // "largest area" behaviour only if that rotation wouldn't
-                // fit within the image.
+                // ratio the rectangle already had.
                 const anchor = activeResizeRect(override, w, h);
-                const rotated = rotateRectInPlace(anchor, w, h);
-                if (rotated) {
-                    setRect(rotated);
-                    redraw();
-                } else if (override.aspectRatioPreset === 'original') {
-                    setRect(maxRectAtAnchor(anchor.x, anchor.y, anchor.h / anchor.w, w, h));
-                    redraw();
-                } else {
-                    applyForcedAspectRatio();
-                }
+                setRect(rotateRectInPlace(anchor, w, h));
+                redraw();
             }
 
             // Snaps the grid back to covering the whole image, and turns

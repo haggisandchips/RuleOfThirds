@@ -548,9 +548,13 @@ test('rotateRectInPlace repositions, without resizing, a rotation that would oth
     assert.deepEqual(rotateRectInPlace(rect, 200, 100), {x: 10, y: 0, w: 40, h: 60});
 });
 
-test('rotateRectInPlace returns null when the rotated rectangle can\'t fit even repositioned', () => {
+test('rotateRectInPlace shrinks, preserving the swapped ratio, only as much as needed to fit - not anchored to the original rectangle\'s own corner', () => {
     const rect = {x: 0, y: 0, w: 180, h: 90};
-    assert.equal(rotateRectInPlace(rect, 200, 100), null);
+    // Swapped (w: 90, h: 180) overflows imageHeight - shrinks to the largest size at that same
+    // 1:2 ratio that fits, centred on the original rectangle's own centre (90, 45), not grown
+    // from its top-left corner (which would be far more cramped: only 200-0 x 100-0 available,
+    // but anchored at (0, 0) instead of free to use the space on every side of the centre).
+    assert.deepEqual(rotateRectInPlace(rect, 200, 100), {x: 65, y: 0, w: 50, h: 100});
 });
 
 test('orientationFlipDisplay shows the target shape, not the current one', () => {
