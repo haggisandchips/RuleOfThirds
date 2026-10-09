@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Rule of Thirds: Site Compatibility (working notes)</title>
+    <style>
+      body {
+        font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.4rem;
+      }
+      h2 {
+        margin-top: 2rem;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      h2 img.favicon {
+        width: 20px;
+        height: 20px;
+      }
+      ul {
+        padding-left: 0;
+        list-style: none;
+      }
+      li {
+        margin: 0.4rem 0;
+      }
+      .status {
+        display: inline-block;
+        width: 1.4em;
+        text-align: center;
+        font-weight: bold;
+      }
+      .yes .status { color: #2e7d32; }
+      .no .status { color: #c62828; }
+      .partial .status { color: #e8a400; }
+      .note {
+        display: block;
+        margin-left: 1.9em;
+        color: #555;
+        font-size: 0.9em;
+      }
+      .legend {
+        color: #555;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Rule of Thirds: Site Compatibility (working notes)</h1>
+    <p class="legend">
+      <span class="status" style="color:#2e7d32">&#10003;</span> works -
+      <span class="status" style="color:#c62828">&#10007;</span> doesn't work -
+      <span class="status" style="color:#e8a400">&#9888;</span> partially works (see note)
+    </p>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=flickr.com" alt="">flickr.com</h2>
+    <ul>
+      <li class="yes"><span class="status">&#10003;</span>Landing Page</li>
+      <li class="yes"><span class="status">&#10003;</span>Explore</li>
+      <li class="yes"><span class="status">&#10003;</span>Group Pool</li>
+      <li class="yes"><span class="status">&#10003;</span>Photostream</li>
+      <li class="yes"><span class="status">&#10003;</span>Album</li>
+      <li class="yes"><span class="status">&#10003;</span>Favourites</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=instagram.com" alt="">instagram.com</h2>
+    <ul>
+      <li class="yes"><span class="status">&#10003;</span>Landing Page</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=commons.wikimedia.org" alt="">commons.wikimedia.org</h2>
+    <ul>
+      <li class="yes"><span class="status">&#10003;</span>Landing Page</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=pixabay.com" alt="">pixabay.com</h2>
+    <ul>
+      <li class="partial">
+        <span class="status">&#9888;</span>Landing Page
+        <span class="note">Grid renders, but the right-click context menu isn't available.</span>
+      </li>
+      <li class="partial">
+        <span class="status">&#9888;</span>Photo
+        <span class="note">Grid renders, but the right-click context menu isn't available.</span>
+      </li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=shutterstock.com" alt="">shutterstock.com</h2>
+    <ul>
+      <li class="yes">
+        <span class="status">&#10003;</span>Landing Page
+        <span class="note"><span style="color:#e8a400">&#9888;</span> "Explore Now" images don't get a resized grid when the image resizes.</span>
+      </li>
+      <li class="partial">
+        <span class="status">&#9888;</span>Photo
+        <span class="note">Grid works, but the right-click context menu doesn't appear.</span>
+      </li>
+      <li class="yes"><span class="status">&#10003;</span>Photo (Popped Out)</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=unsplash.com" alt="">unsplash.com</h2>
+    <ul>
+      <li class="yes"><span class="status">&#10003;</span>Landing Page</li>
+      <li class="yes"><span class="status">&#10003;</span>Categories</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=pexels.com" alt="">pexels.com</h2>
+    <ul>
+      <li class="partial">
+        <span class="status">&#9888;</span>Landing Page
+        <span class="note">Grid renders, but the right-click context menu isn't available.</span>
+      </li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=istockphoto.com" alt="">istockphoto.com</h2>
+    <ul>
+      <li class="yes"><span class="status">&#10003;</span>Landing Page</li>
+      <li class="yes"><span class="status">&#10003;</span>Search</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo (Popped Out)</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=gettyimages.co.uk" alt="">gettyimages.co.uk</h2>
+    <ul>
+      <li class="no"><span class="status">&#10007;</span>Landing Page</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo (Popped Out)</li>
+    </ul>
+
+    <h2><img class="favicon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=gratisography.com" alt="">gratisography.com</h2>
+    <ul>
+      <li class="yes"><span class="status">&#10003;</span>Landing Page</li>
+      <li class="yes"><span class="status">&#10003;</span>Photo</li>
+    </ul>
+
+    <hr style="margin-top:2rem; border:none; border-top:1px solid #ccc;">
+
+    <p class="legend">
+      Found a general-audience photography or image site that doesn't work?<br>
+      Please raise it <a href="https://github.com/haggisandchips/RuleOfThirds/issues">here</a>,
+      including a link to the page if it's public.
+    </p>
+  </body>
+</html>
