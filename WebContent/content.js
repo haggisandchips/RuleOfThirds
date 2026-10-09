@@ -678,19 +678,26 @@ if (typeof rotInit === 'undefined') {
             // not just occasionally. Pre-syncing on mouseover instead, deduplicated by
             // container so moving within the same one doesn't resend, gives the same
             // async round-trip a much wider window: the time spent hovering toward an image,
-            // not the instant between right-clicking and the menu rendering. contextmenu
-            // still syncs too, as a fallback for however it got opened without a prior
-            // mouseover (eg a keyboard-triggered one).
+            // not the instant between right-clicking and the menu rendering.
+            //
+            // contextmenu always syncs too, bypassing that dedup (force below) rather than
+            // just acting as a fallback for however the menu got opened without a prior
+            // mouseover - confirmed live: picking a menu item (eg turning Maintain Aspect
+            // Ratio on) closes the native menu without moving the cursor at all, so
+            // right-clicking the same image again to reopen it has an unchanged
+            // menuContainer - deduplicating that contextmenu the same way as mouseover left
+            // the next menu showing whatever was true *before* that last click, since nothing
+            // else re-syncs a state change that didn't also change which image it's for.
             let activeContextMenuTarget = null;
             let lastSyncedMenuContainer;
-            function syncOverlayMenuFor(target) {
+            function syncOverlayMenuFor(target, force) {
 
                 if (!extensionContextIsValid() || controlElement.active !== true) {
                     return;
                 }
 
                 const menuContainer = target && target.closest && target.closest('[data-extension="rule-of-thirds"]');
-                if (menuContainer === lastSyncedMenuContainer) {
+                if (!force && menuContainer === lastSyncedMenuContainer) {
                     return;
                 }
                 lastSyncedMenuContainer = menuContainer || null;
@@ -729,7 +736,7 @@ if (typeof rotInit === 'undefined') {
             }
 
             window.addEventListener('mouseover', event => syncOverlayMenuFor(event.target), true);
-            window.addEventListener('contextmenu', event => syncOverlayMenuFor(event.target), true);
+            window.addEventListener('contextmenu', event => syncOverlayMenuFor(event.target, true), true);
 
             // Leaving the page entirely (eg heading for the toolbar icon) fires no further
             // mouseover for syncOverlayMenuFor to clear a last-synced "relevant" state against -
