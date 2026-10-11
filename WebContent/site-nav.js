@@ -24,8 +24,12 @@
         {id: 'about', title: 'About', path: 'guide/about.html'},
         {id: 'guide', title: 'Guide', path: 'guide/guide.html'},
         {id: 'compatibility', title: 'Site Compatibility', path: 'guide/compatibility.html'},
-        {id: 'options', title: 'Options', path: 'options/options.html'},
-        {id: 'history', title: 'Version History', path: 'versions/history.html'}
+        {id: 'history', title: 'Version History', path: 'versions/history.html'},
+        // The one functional (not informational) page here - set apart with a separator
+        // line, rather than just its position at the end, so it still reads as distinct
+        // even where position alone wouldn't (eg a top-bar layout that's wrapped onto
+        // several lines).
+        {id: 'options', title: 'Options', path: 'options/options.html', separatorBefore: true}
     ];
 
     const DONATE_URL = 'https://ko-fi.com/ivorpotter';
@@ -34,7 +38,8 @@
 
     const links = PAGES.map(page => {
         const current = page.id === currentPage;
-        return `<a href="${chrome.runtime.getURL(page.path)}"${current ? ' aria-current="page"' : ''}>${page.title}</a>`;
+        const separator = page.separatorBefore ? '<span class="site-nav-separator" aria-hidden="true"></span>' : '';
+        return `${separator}<a href="${chrome.runtime.getURL(page.path)}"${current ? ' aria-current="page"' : ''}>${page.title}</a>`;
     }).join('');
 
     document.currentScript.insertAdjacentHTML('afterend', `

@@ -129,6 +129,19 @@ h5 {
     font-weight: 600;
 }
 
+/* Marks off the one functional (not informational) page - Options - from the rest, so it
+   still reads as set apart even where its position at the end of the list wouldn't be
+   obvious on its own (eg a top bar wrapped onto several lines). A vertical rule between
+   items on the top bar; the sidebar media query turns it into a horizontal one spanning a
+   full-width row instead. */
+.site-nav-separator {
+    display: inline-block;
+    align-self: stretch;
+    width: 1px;
+    margin: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.3);
+}
+
 /* The Ko-fi call-to-action - a wrapper (not one of .site-nav-links, since it isn't one of
    the pages this nav switches between: no aria-current, always visible regardless of the
    current page) around an explanatory line and the link itself. On the top bar there's no
@@ -222,6 +235,13 @@ h5 {
     .site-nav-links {
         flex-direction: column;
         flex-wrap: nowrap;
+    }
+
+    .site-nav-separator {
+        align-self: auto;
+        width: auto;
+        height: 1px;
+        margin: 0.5rem 0;
     }
 
     /* Nearer the links than the sidebar's far edge, so it's seen without having to scroll
