@@ -1,7 +1,7 @@
-// Shared top navigation for the extension's own HTML pages (Guide, Site Compatibility,
-// Options, Version History) - a single source of truth for the page list, instead of
-// hand-copied <nav> markup pasted into every file that would drift as pages are added,
-// renamed or reordered.
+// Shared top navigation for the extension's own HTML pages (Guide, About, Site
+// Compatibility, Options, Version History) - a single source of truth for the page list,
+// instead of hand-copied <nav> markup pasted into every file that would drift as pages are
+// added, renamed or reordered.
 //
 // Each page includes this as the first element inside <body>, before its own content, via
 // <script src="../site-nav.js" data-page="..."></script> - document.currentScript still
@@ -17,6 +17,7 @@
 (function () {
 
     const PAGES = [
+        {id: 'about', title: 'About', path: 'guide/about.html'},
         {id: 'guide', title: 'Guide', path: 'guide/guide.html'},
         {id: 'compatibility', title: 'Site Compatibility', path: 'guide/compatibility.html'},
         {id: 'options', title: 'Options', path: 'options/options.html'},

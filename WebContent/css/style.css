@@ -645,6 +645,9 @@ input:disabled {
     padding: 1.25rem 1rem 0.5rem;
 }
 
+/* display:inline-block plus a reset text-decoration, rather than just the former alone, since
+   this is also used on an <a> (About page's Ko-fi link) as well as its original <button> -
+   anchors get a default underline a button never had to begin with. */
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;
@@ -655,6 +658,7 @@ input:disabled {
     font-size: 1rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    text-decoration: none;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
