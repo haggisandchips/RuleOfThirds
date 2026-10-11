@@ -1,7 +1,8 @@
 /* Minimal hand-rolled replacement for materialize.min.css / materialize.min.js.
-   Covers only what the options and version-history pages actually use:
-   a 12-column responsive grid, a divider rule, form styling, a large button
-   and a toast notification. */
+   Covers only what the options, guide, version-history and site-compatibility pages
+   actually use: a 12-column responsive grid, a divider rule, form styling, a large button,
+   a toast notification, and the shared top navigation site-nav.js injects onto each of
+   them. */
 
 :root {
     --color-primary: #26a69a;
@@ -58,6 +59,69 @@ h5 {
     background: var(--color-primary-light);
     margin: 1.5rem calc(var(--spacing) * -1) 0.75rem;
     padding: 0.5rem var(--spacing);
+}
+
+/* Injected by site-nav.js as the very first element in <body>, ahead of .container - a
+   full-width bar regardless of the container's own max-width, so it reads as the page's own
+   chrome rather than part of its content. The negative top margin cancels exactly body's own
+   top padding, so the bar sits flush against the top of the viewport instead of leaving a
+   gap above it; nothing is needed horizontally since body has no side padding to begin with. */
+.site-nav {
+    background: var(--color-primary);
+    margin: -1.5rem 0 1.5rem;
+}
+
+.site-nav-inner {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    padding: 0.85rem 0;
+}
+
+.site-nav-brand {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-right: auto;
+}
+
+.site-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.site-nav-links a {
+    display: inline-block;
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    color: var(--color-primary-light);
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.site-nav-links a:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.site-nav-links a:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* The current page's own link - set via aria-current="page" (site-nav.js) rather than a
+   plain class, so it also tells assistive tech which nav item matches where it already is. */
+.site-nav-links a[aria-current="page"] {
+    background: #fff;
+    color: var(--color-primary-dark);
+    font-weight: 600;
 }
 
 .container {
@@ -705,4 +769,61 @@ input:disabled {
 .toast-action:hover,
 .toast-action:focus-visible {
     text-decoration: underline;
+}
+
+/* Site Compatibility page (compatibility.html) - formerly its own standalone page with a
+   separate inline stylesheet; migrated here so it shares this site's one look instead of
+   being the odd one out. */
+.compat-legend {
+    font-size: 0.9rem;
+    color: var(--color-muted);
+}
+
+.compat-favicon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+}
+
+.compat-list {
+    padding-left: 0;
+    list-style: none;
+    margin: 0 0 1.5rem;
+}
+
+.compat-list li {
+    margin: 0.4rem 0;
+}
+
+.compat-status {
+    display: inline-block;
+    width: 1.4em;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Covers both a status glyph inside a coloured <li> (compat-list li.compat-yes
+   .compat-status) and one used standalone, eg in the legend (compat-status.compat-yes) -
+   same three outcomes, same colours, in either context. */
+.compat-list li.compat-yes .compat-status,
+.compat-status.compat-yes {
+    color: #2e7d32;
+}
+
+.compat-list li.compat-no .compat-status,
+.compat-status.compat-no {
+    color: #c62828;
+}
+
+.compat-list li.compat-partial .compat-status,
+.compat-status.compat-partial {
+    color: #e8a400;
+}
+
+.compat-note {
+    display: block;
+    margin-left: 1.9em;
+    color: var(--color-muted);
+    font-size: 0.9em;
 }
