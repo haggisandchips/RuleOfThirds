@@ -46,44 +46,34 @@
             Phi Grid shares its Circles and Customise sections with Grid, so intersection circles,
             colours and the Hide/Show map all work the same way as they do for Grid.
           </p>
-          <h5>Site Compatibility [TODO]</h5>
+          <h5>Fibonacci Spiral</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            A new overlay style drawing a fibonacci spiral instead of a grid, with a choice of direction
+            (clockwise or counter-clockwise) and starting corner - eight thumbnails provide an alternative means to
+            configure the overlay.
+          </p>
+        </div>
+        <div class="col s12 l6">
+          <h5>Context Menu</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Right-click a rendered overlay for a new "Rule of Thirds" sub-menu.
+          </p>
+          <h5>Resize Overlay</h5>
+          <div class="divider"></div>
+          <p class="flow-text">
+            Access the context menu for a new "Enable Resize" option, to crop it to part of
+            the image instead of covering all of it. Turning that on reveals "Maintain Aspect
+            Ratio", and turning that on in turn reveals its own "Aspect Ratios" submenu - a choice
+            of standard photo ratios. See the Guide for details.
+          </p>
+          <h5>Site Compatibility</h5>
           <div class="divider"></div>
           <p class="flow-text">
             A new <a href="../guide/compatibility.html">Site Compatibility</a> page, linked from
             the Guide, lists sites the extension is confirmed to work on - a running checklist,
             updated as more sites are tested.
-          </p>
-        </div>
-        <div class="col s12 l6">
-          <h5>Fibonacci Spiral</h5>
-          <div class="divider"></div>
-          <p class="flow-text">
-            A new overlay style drawing a spiral instead of a grid, with a choice of direction
-            (clockwise or counter-clockwise) and starting corner - eight thumbnails provide an alternative means to
-            configure the overlay.
-          </p>
-          <h5>Resize Overlay [TODO]</h5>
-          <div class="divider"></div>
-          <p class="flow-text">
-            Right-click a rendered overlay for a new "Enable Resize" option, to crop it to part of
-            the image instead of covering all of it. Turning that on reveals "Maintain Aspect
-            Ratio", and turning that on in turn reveals its own "Aspect Ratios" submenu - a choice
-            of standard photo ratios. See the Guide for details. Its orientation-flip control
-            rotates the resized area in place, keeping its size the same wherever that fits -
-            shrinking it as little as possible, still centred on the same spot, only where it
-            wouldn't otherwise fit - instead of always resizing it to the largest area at the new
-            orientation; a new "Resize Options" section in Options can turn that on-canvas control
-            off, for anyone who finds it more clutter than it's worth (the same flip stays
-            available from the right-click menu either way).
-          </p>
-          <h5>Native Right-Click Menu [TODO]</h5>
-          <div class="divider"></div>
-          <p class="flow-text">
-            The overlay's right-click menu is now Chrome's own native context menu, under a "Rule
-            of Thirds" submenu, instead of one drawn by the extension itself - looks and behaves
-            consistently with every other context menu in the browser, and is no longer at risk of
-            being visually covered or interrupted by a page's own content the way the old one
-            occasionally could be.
           </p>
         </div>
       </div>
@@ -94,11 +84,6 @@
           <div class="divider"></div>
         </div>
         <div class="col s12">
-          <p class="flow-text">
-            Wording that assumed the overlay was always a grid (eg the toolbar tooltip,
-            Embedded Frames, Minimum Image Size) now says "overlay" instead, since it applies
-            equally to Phi Grid and Fibonacci Spiral.
-          </p>
           <p class="flow-text">
             Fixed the whole overlay drifting out of alignment with its image after resizing the
             browser window.
@@ -123,42 +108,16 @@
             a plain (non-CSS-positioned) table cell, such as Wikimedia Commons' Main Page - the
             overlay was measuring its position against the wrong element on the page.
           </p>
-          <p class="flow-text">[TODO]
-            Fixed toggling the overlay off sometimes crashing with nothing visibly happening, on
-            pages whose own script rebuilds parts of the page in a way that resets the overlay's
-            internal state (eg navigating between photos on a Flickr group pool page without a
-            full page reload).
-          </p>
-          <p class="flow-text">[TODO]
+          <p class="flow-text">
             Fixed a related crash: reloading the extension itself (or it auto-updating) while a
             tab is left open from before that reload could later throw when that tab's own
             resize/click handling, or a later Options change, tried to use it.
           </p>
-          <p class="flow-text">[TODO]
-            Fixed the overlay sometimes rendering behind its image instead of on top of it,
-            after being reapplied - confirmed on Flickr's full-resolution zoomed photo view,
-            which can add further, higher-resolution versions of the same photo after the
-            overlay already exists, ending up layered above it with nothing to say otherwise.
-          </p>
-          <p class="flow-text">[TODO]
-            Fixed the overlay landing offset toward the top-left of its image on pages that
-            scale an image's container with a CSS transform to fit it to the available space -
-            confirmed on Flickr's pannable zoomed photo view - instead of accounting for that
-            scaling when positioning the overlay within it.
-          </p>
-          <p class="flow-text">[TODO]
+          <p class="flow-text">
             Whether the overlay is currently on for a tab is now tracked by the extension itself
             rather than inferred from the page's own markup each time the toolbar icon is
             clicked - removes a class of edge cases where a page rebuilding part of itself (eg a
-            single-page site's own router) could leave that tracking out of step with reality.
-          </p>
-          <p class="flow-text">[TODO]
-            Fixed the overlay's right-click menu sometimes being unreachable, landing on a plain
-            page menu instead - confirmed on Flickr's Batfan photo, where an empty, full-image
-            annotation layer sat above the overlay no matter how high its own stacking order
-            went, because that layer wasn't actually a sibling of the overlay to begin with. The
-            overlay now places itself high enough in the page to always compete fairly for
-            stacking order with whatever else is layered over its image.
+            single-page site's own router) could leave that tracking out of sync.
           </p>
         </div>
       </div>
