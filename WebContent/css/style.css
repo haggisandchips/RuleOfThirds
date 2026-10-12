@@ -160,7 +160,7 @@ h5 {
 
 .site-nav-donate-btn {
     display: inline-block;
-    padding: 0.45rem 0.9rem;
+    padding: 0.45rem;
     border-radius: 4px;
     background: #fff;
     color: var(--color-primary-dark);

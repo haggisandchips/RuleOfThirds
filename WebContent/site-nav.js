@@ -49,7 +49,7 @@
                 <div class="site-nav-links">${links}</div>
                 <div class="site-nav-donate">
                     <p class="site-nav-donate-text">Enjoying the extension?</p>
-                    <a class="site-nav-donate-btn" href="${DONATE_URL}" target="_blank" rel="noopener">&#9749; Support on Ko-fi</a>
+                    <a class="site-nav-donate-btn" href="${DONATE_URL}" target="_blank" rel="noopener">&#9749; Buy Me A Coffee</a>
                 </div>
             </div>
         </nav>
