@@ -1,7 +1,8 @@
 /* Minimal hand-rolled replacement for materialize.min.css / materialize.min.js.
-   Covers only what the options and version-history pages actually use:
-   a 12-column responsive grid, a divider rule, form styling, a large button
-   and a toast notification. */
+   Covers only what the options, guide, version-history and site-compatibility pages
+   actually use: a 12-column responsive grid, a divider rule, form styling, a large button,
+   a toast notification, and the shared top navigation site-nav.js injects onto each of
+   them. */
 
 :root {
     --color-primary: #26a69a;
@@ -11,6 +12,7 @@
     --color-muted: #666;
     --color-divider: #d0d0d0;
     --spacing: 0.75rem;
+    --site-nav-width: 220px;
 }
 
 * {
@@ -58,6 +60,228 @@ h5 {
     background: var(--color-primary-light);
     margin: 1.5rem calc(var(--spacing) * -1) 0.75rem;
     padding: 0.5rem var(--spacing);
+}
+
+/* Injected by site-nav.js as the very first element in <body>, ahead of .container. Below
+   the media query further down it's a full-width top bar, regardless of the container's own
+   max-width, so it reads as the page's own chrome rather than part of its content; the
+   negative top margin cancels exactly body's own top padding, so it sits flush against the
+   top of the viewport instead of leaving a gap above it - nothing is needed horizontally
+   since body has no side padding to begin with. At or above that breakpoint it instead
+   becomes a sidebar that sits immediately beside .container as one centred block (see the
+   media query - body itself becomes the flex row, so the two can never drift apart the way
+   independently-centred siblings would on a wide monitor). */
+.site-nav {
+    background: var(--color-primary);
+    margin: -1.5rem 0 1.5rem;
+}
+
+.site-nav-inner {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    padding: 0.85rem 0;
+}
+
+.site-nav-brand {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-right: auto;
+}
+
+.site-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.site-nav-links a {
+    display: inline-block;
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    color: var(--color-primary-light);
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.site-nav-links a:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.site-nav-links a:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* The current page's own link - set via aria-current="page" (site-nav.js) rather than a
+   plain class, so it also tells assistive tech which nav item matches where it already is. */
+.site-nav-links a[aria-current="page"] {
+    background: #fff;
+    color: var(--color-primary-dark);
+    font-weight: 600;
+}
+
+/* Marks off the one functional (not informational) page - Options - from the rest, so it
+   still reads as set apart even where its position at the end of the list wouldn't be
+   obvious on its own (eg a top bar wrapped onto several lines). A vertical rule between
+   items on the top bar; the sidebar media query turns it into a horizontal one spanning a
+   full-width row instead. */
+.site-nav-separator {
+    display: inline-block;
+    align-self: stretch;
+    width: 1px;
+    margin: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* The Ko-fi call-to-action - a wrapper (not one of .site-nav-links, since it isn't one of
+   the pages this nav switches between: no aria-current, always visible regardless of the
+   current page) around an explanatory line and the link itself. On the top bar there's no
+   room to spare, so only the button shows, inline alongside the page links; the sidebar
+   below reveals the line above it and grows the button to a full-width card - see the media
+   query. Solid white-on-teal like the active page link, rather than a subtler outline, so it
+   actually reads as prominent instead of just another nav item. */
+.site-nav-donate {
+    display: inline-flex;
+    align-items: center;
+}
+
+.site-nav-donate-text {
+    display: none;
+}
+
+.site-nav-donate-btn {
+    display: inline-block;
+    padding: 0.45rem;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--color-primary-dark);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.site-nav-donate-btn:hover {
+    background: var(--color-primary-light);
+}
+
+.site-nav-donate-btn:focus-visible {
+    outline: 2px solid var(--color-primary-dark);
+    outline-offset: 2px;
+}
+
+/* Below this width a fixed-width sidebar would leave too little room for the page/form
+   content beside it (and would fight with the .row/.col grid's own 600px breakpoint further
+   down) - the top-bar rules above apply instead. At or above it, body itself becomes a flex
+   row of [.site-nav, .container], capped at their combined width and centred as a unit, so
+   the sidebar sits right next to the content on any monitor instead of pinned to the literal
+   browser edge with the content centred independently of it (and potentially far away from
+   it on an ultrawide one). .site-nav-inner is a separate, sticky-positioned element nested
+   inside .site-nav rather than .site-nav itself being sticky, so .site-nav's own background
+   can still stretch (align-items:stretch, flex's default) to match the row's full height -
+   the single-colour column this site-nav-inner's content then sticks over as the page scrolls
+   - while the stuck content itself only needs to be as tall as its own links. body's own
+   min-height keeps that row (and so the nav panel) at a full viewport height even when the
+   page's own content is shorter than that, rather than only ever matching .container. */
+@media (min-width: 900px) {
+    body {
+        display: flex;
+        align-items: stretch;
+        gap: 1.5rem;
+        min-height: 100vh;
+        max-width: calc(var(--site-nav-width) + 1.5rem + 1200px);
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    .site-nav {
+        flex: 0 0 var(--site-nav-width);
+        width: var(--site-nav-width);
+        margin: 0;
+    }
+
+    .site-nav-inner {
+        position: sticky;
+        top: 1.5rem;
+        width: auto;
+        max-width: none;
+        margin: 0;
+        flex-direction: column;
+        /* The top-bar rule's flex-wrap:wrap is for wrapping a row of links onto a second
+           line - meaningless once this is a single column, but left active (never reset
+           here) it still made the browser reserve cross-axis space for a hypothetical
+           second column, narrowing every child below the full width align-items:stretch
+           should otherwise give them. That's what the uneven right-hand margin actually was. */
+        flex-wrap: nowrap;
+        align-items: stretch;
+        padding: 1.5rem 1rem;
+        border-radius: 8px;
+    }
+
+    .site-nav-brand {
+        margin: 0 0 1rem;
+    }
+
+    .site-nav-links {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .site-nav-separator {
+        align-self: auto;
+        width: auto;
+        height: 1px;
+        margin: 0.5rem 0;
+    }
+
+    /* Nearer the links than the sidebar's far edge, so it's seen without having to scroll
+       past everything else first - not pinned to the bottom, which on a short link list like
+       this one would leave it looking detached from the rest of the nav entirely. */
+    .site-nav-donate {
+        display: block;
+        margin: 1rem 0 0;
+        padding: 0.9rem;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .site-nav-donate-text {
+        display: block;
+        margin: 0 0 0.6rem;
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .site-nav-donate-btn {
+        display: block;
+        width: 100%;
+    }
+
+    /* Matches .site-nav-inner's own 1rem horizontal padding, so page content gets the same
+       breathing room before the block's right edge that the nav already has on its left (the
+       nav's teal panel makes its own edge obvious; plain text trailing off doesn't, so without
+       this it reads as more cramped even at an equal literal margin). */
+    .container {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding-right: 1rem;
+    }
 }
 
 .container {
@@ -581,6 +805,9 @@ input:disabled {
     padding: 1.25rem 1rem 0.5rem;
 }
 
+/* display:inline-block plus a reset text-decoration, rather than just the former alone, since
+   an <a> styled this way (not just its original <button> use) would otherwise still show the
+   browser's default underline, which a button never had to begin with. */
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;
@@ -591,6 +818,7 @@ input:disabled {
     font-size: 1rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    text-decoration: none;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
@@ -705,4 +933,61 @@ input:disabled {
 .toast-action:hover,
 .toast-action:focus-visible {
     text-decoration: underline;
+}
+
+/* Site Compatibility page (compatibility.html) - formerly its own standalone page with a
+   separate inline stylesheet; migrated here so it shares this site's one look instead of
+   being the odd one out. */
+.compat-legend {
+    font-size: 0.9rem;
+    color: var(--color-muted);
+}
+
+.compat-favicon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+}
+
+.compat-list {
+    padding-left: 0;
+    list-style: none;
+    margin: 0 0 1.5rem;
+}
+
+.compat-list li {
+    margin: 0.4rem 0;
+}
+
+.compat-status {
+    display: inline-block;
+    width: 1.4em;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Covers both a status glyph inside a coloured <li> (compat-list li.compat-yes
+   .compat-status) and one used standalone, eg in the legend (compat-status.compat-yes) -
+   same three outcomes, same colours, in either context. */
+.compat-list li.compat-yes .compat-status,
+.compat-status.compat-yes {
+    color: #2e7d32;
+}
+
+.compat-list li.compat-no .compat-status,
+.compat-status.compat-no {
+    color: #c62828;
+}
+
+.compat-list li.compat-partial .compat-status,
+.compat-status.compat-partial {
+    color: #e8a400;
+}
+
+.compat-note {
+    display: block;
+    margin-left: 1.9em;
+    color: var(--color-muted);
+    font-size: 0.9em;
 }
