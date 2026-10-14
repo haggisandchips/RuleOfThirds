@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e7a6d"/>
+      <stop offset="1" stop-color="#32b5a5"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect width="440" height="280" fill="url(#bg)"/>
+  <!-- mountains -->
+  <polygon points="0,280 0,175 70,120 165,215 250,170 330,205 440,150 440,280" fill="#1b6358" fill-opacity="0.35"/>
+  <polygon points="150,280 270,205 330,240 390,200 440,225 440,280" fill="#ffffff" fill-opacity="0.18"/>
+  <!-- sun, centred on the upper-right thirds intersection -->
+  <circle cx="293.33" cy="93.33" r="27" fill="url(#sun)"/>
+  <!-- thirds lines -->
+  <g stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.5">
+    <line x1="146.67" y1="0" x2="146.67" y2="280"/>
+    <line x1="293.33" y1="0" x2="293.33" y2="280"/>
+    <line x1="0" y1="93.33" x2="440" y2="93.33"/>
+    <line x1="0" y1="186.67" x2="440" y2="186.67"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="146.67" cy="93.33" r="3.5"/>
+    <circle cx="146.67" cy="186.67" r="3.5"/>
+    <circle cx="293.33" cy="186.67" r="3.5"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#ffffff" text-anchor="middle" filter="url(#shadow)">
+    <text x="220" y="158" font-size="40" font-weight="bold">RULE OF THIRDS</text>
+    <text x="220" y="222" font-size="15">Composition guides for any image, on any page</text>
+  </g>
+</svg>
