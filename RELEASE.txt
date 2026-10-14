@@ -26,7 +26,7 @@ SUPPORT
 History
 ------------------------------------------------------------------------------------------------------------------------
 
-UNRELEASED
+v1.9 - 14 October 2026
 * New Phi Grid overlay style, spaced by the golden ratio (or a ratio of your own)
 * New Fibonacci Spiral overlay style, with a choice of direction and starting corner
 * Switch between Grid, Phi Grid and Fibonacci Spiral from a tabbed strip on the Options page - each keeps its own settings
