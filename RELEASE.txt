@@ -1,9 +1,43 @@
-Pick a composition guide and see straight away how your image lines up against it, all one click away from the toolbar icon - a fully configurable grid, from the classic rule-of-thirds arrangement up to nine rows and columns; a Phi Grid spaced by the golden ratio; or a Fibonacci Spiral. Line and intersection-circle colours, opacity, and circle style are all yours to set from the Options page, with any individual line or circle free to show or hide. Tiny icons and spacers stay out of the way below a size you set, and the toolbar icon always shows at a glance whether the overlay is currently on.
+Pick a composition guide and see straight away how an image lines up against it, all one click away from the toolbar icon. Rule of Thirds draws a configurable overlay over the images on any page, to help you judge composition.
+
+AT A GLANCE
+* The toolbar icon shows whether the overlay is on for the current tab, with a warning badge if it can't be applied
+* Click the icon again to remove the overlay
+* Works with local image files as well as websites
+
+CHOOSE YOUR OVERLAY
+* Grid - the classic rule-of-thirds arrangement, or anything up to nine rows and columns
+* Phi Grid - a 3x3 grid spaced by the golden ratio (1 : 0.618 : 1), or a ratio of your own
+* Fibonacci Spiral - in any of 8 different orientations (starting point / direction)
+
+MAKE IT YOURS
+* Colour, opacity and width (1-9 pixels) for the lines
+* Circles on the intersections, outlined or filled, with their own colour, opacity and radius
+* Show or hide any individual line or circle from a click-to-toggle map, with a live preview of exactly what you'll get
+* Quick-pick swatches for common colours, plus a full colour spectrum
+* Set a minimum image size, so tiny icons and spacers stay out of the way
+
+CROP TO PART OF THE IMAGE
+Overlays can be resized within the boundaries of the image so you can play around with tighter compositions.
+
+SUPPORT
+* A Site Compatibility page lists the sites the extension is confirmed to work on - if it doesn't work somewhere, raise it on GitHub and it'll be looked at
 
 History
 ------------------------------------------------------------------------------------------------------------------------
 
 UNRELEASED
+* New Phi Grid overlay style, spaced by the golden ratio (or a ratio of your own)
+* New Fibonacci Spiral overlay style, with a choice of direction and starting corner
+* Switch between Grid, Phi Grid and Fibonacci Spiral from a tabbed strip on the Options page - each keeps its own settings
+* Line width is now configurable (1-9 pixels)
+* New right-click "Rule of Thirds" menu on the overlay
+* Resize the overlay to crop it to part of the image, optionally locked to a standard photo aspect ratio
+* New Site Compatibility page listing sites the extension is confirmed to work on
+* Supporting pages (Guide, Options, History) now form a mini-site with navigation
+* Overlay stays aligned with its image after a window resize, when the page swaps the image (e.g. zooming in on Flickr), and on images with a CSS margin
+* Overlay now positions correctly on pages that lay images out in plain tables (e.g. Wikimedia Commons)
+* Fixed errors in open tabs after the extension reloads or auto-updates
 
 v1.8 - 20 September 2026
 * Toolbar icon now shows at a glance whether the grid is on, plus a warning badge if it can't be applied
