@@ -16,10 +16,16 @@
 
       <div class="row">
         <div class="col s12">
-          <h5>Line Colour</h5>
+          <h5>Line Options</h5>
           <div class="divider"></div>
         </div>
-        <div class="col s12">
+        <div class="col s12 m2">
+          <p>
+            <label for="line-width">Width (px)</label>
+            <input type="number" id="line-width" min="1" max="9"/>
+          </p>
+        </div>
+        <div class="col s12 m9 offset-m1">
           <p>
             <label for="line-colour">Colour</label>
             <span class="colour-row">
@@ -42,6 +48,12 @@
               <input type="range" id="line-opacity" min="0" max="100"/>
               <span class="opacity-value" id="line-opacity-value"></span>
             </span>
+          </p>
+        </div>
+        <div class="col s12">
+          <p class="help-text">
+            Grid, Phi Grid and Fibonacci Spiral all share this - it has no effect on Circles,
+            which stay their own usual thickness.
           </p>
         </div>
       </div>
@@ -71,7 +83,7 @@
               <div class="col s12 m3" id="grid-phi-grid-columns-left">
                 <div class="row" data-overlay-styles="grid">
                   <div class="col s12">
-                    <h5>Lines</h5>
+                    <h5>Grid Options</h5>
                     <div class="divider"></div>
                   </div>
                   <div class="col s12">
@@ -93,7 +105,7 @@
                 </div>
                 <div class="row" data-overlay-styles="phi-grid">
                   <div class="col s12">
-                    <h5>Lines</h5>
+                    <h5>Grid Options</h5>
                     <div class="divider"></div>
                   </div>
                   <div class="col s12">
@@ -125,7 +137,7 @@
               <div class="col s12 m9" id="grid-phi-grid-columns-right">
                 <div class="row">
                   <div class="col s12">
-                    <h5>Circles</h5>
+                    <h5>Circle Options</h5>
                     <div class="divider"></div>
                   </div>
                   <div class="col s12">

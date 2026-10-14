@@ -11,18 +11,30 @@ test('hexToRgba converts a hex colour and opacity percentage to an rgba() string
 
 // A minimal fake canvas context that just records which drawing calls were
 // made, so drawGridOverlay's enabled/disabled rules can be asserted without
-// a real DOM/canvas.
+// a real DOM/canvas. lineWidth is a plain property on a real CanvasRenderingContext2D,
+// not a call - recorded as the sequence of values it's set to (lineWidthHistory), so a
+// test can tell what it was at the moment each stroke()/arc() actually ran, not just its
+// final value.
 function createRecordingContext() {
-    return {
+    const ctx = {
         calls: {moveTo: 0, lineTo: 0, arc: 0, stroke: 0, fill: 0},
         arcRadii: [],
+        lineWidthHistory: [],
+        strokeLineWidths: [],
+        arcLineWidths: [],
         beginPath() {},
         moveTo() { this.calls.moveTo++; },
         lineTo() { this.calls.lineTo++; },
-        arc(x, y, radius) { this.calls.arc++; this.arcRadii.push(radius); },
-        stroke() { this.calls.stroke++; },
+        arc(x, y, radius) { this.calls.arc++; this.arcRadii.push(radius); this.arcLineWidths.push(this.lineWidth); },
+        stroke() { this.calls.stroke++; this.strokeLineWidths.push(this.lineWidth); },
         fill() { this.calls.fill++; }
     };
+    let lineWidth;
+    Object.defineProperty(ctx, 'lineWidth', {
+        get() { return lineWidth; },
+        set(value) { lineWidth = value; ctx.lineWidthHistory.push(value); }
+    });
+    return ctx;
 }
 
 function baseOptions(overrides) {
@@ -34,6 +46,7 @@ function baseOptions(overrides) {
         gridColumnLines: [true, true],
         lineColour: '#ffffff',
         lineOpacity: 100,
+        lineWidth: 1,
         renderCircle: true,
         circleColour: '#ff0000',
         circleOpacity: 100,
@@ -107,6 +120,25 @@ test('drawGridOverlay draws no lines at all when the grid is disabled, independe
     assert.equal(ctx.calls.arc, 4, 'circle visibility does not depend on renderGrid');
 });
 
+test('drawGridOverlay strokes the grid lines at the configured lineWidth', () => {
+    const ctx = createRecordingContext();
+    // Circles off, so strokeLineWidths only has the grid lines' own single stroke() call -
+    // an outline circle also calls stroke() (see the next test), which would otherwise mix
+    // its own always-1 lineWidth into this array too.
+    drawGridOverlay(ctx, 90, 90, baseOptions({lineWidth: 7, renderCircle: false}));
+
+    assert.ok(ctx.strokeLineWidths.length > 0);
+    assert.ok(ctx.strokeLineWidths.every(w => w === 7));
+});
+
+test('drawGridOverlay always strokes circle outlines at lineWidth 1, regardless of the grid lineWidth', () => {
+    const ctx = createRecordingContext();
+    drawGridOverlay(ctx, 90, 90, baseOptions({lineWidth: 9, circleStyle: 'outline'}));
+
+    assert.equal(ctx.calls.arc, 4);
+    assert.ok(ctx.arcLineWidths.every(w => w === 1), `expected every circle outline at lineWidth 1, got ${ctx.arcLineWidths}`);
+});
+
 test('weightedLinePositions splits equal weights into even fractions', () => {
     assert.deepEqual(weightedLinePositions([1, 1, 1]), [1 / 3, 2 / 3]);
 });
@@ -132,6 +164,7 @@ function basePhiOptions(overrides) {
         phiColumnLines: [true, true],
         lineColour: '#ffffff',
         lineOpacity: 100,
+        lineWidth: 1,
         renderCircle: true,
         circleColour: '#ff0000',
         circleOpacity: 100,
@@ -173,4 +206,14 @@ test('drawPhiGridOverlay skips a circle whose own phiCircleLines entry is disabl
     drawPhiGridOverlay(ctx, 90, 90, basePhiOptions({phiCircleLines: [[false, true], [true, true]]}));
 
     assert.equal(ctx.calls.arc, 3);
+});
+
+test('drawPhiGridOverlay strokes lines at the configured lineWidth, but always strokes circles at 1', () => {
+    const ctx = createRecordingContext();
+    drawPhiGridOverlay(ctx, 90, 90, basePhiOptions({lineWidth: 4, circleStyle: 'outline'}));
+
+    // strokeLineWidths[0] is the lines' own single stroke() call; the rest are each
+    // outline circle's own stroke() call, covered separately via arcLineWidths below.
+    assert.equal(ctx.strokeLineWidths[0], 4);
+    assert.ok(ctx.arcLineWidths.every(w => w === 1), `expected every circle outline at lineWidth 1, got ${ctx.arcLineWidths}`);
 });

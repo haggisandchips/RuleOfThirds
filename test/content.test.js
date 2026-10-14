@@ -122,6 +122,7 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         gridColumns: '',
         lineColour: '#000000',
         lineOpacity: '150',
+        lineWidth: '12',
         renderCircle: true,
         circleColour: '#ff0000',
         circleOpacity: '-10',
@@ -137,6 +138,7 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         gridColumnLines: [true, true],
         lineColour: '#000000',
         lineOpacity: 100,
+        lineWidth: 9,
         renderCircle: true,
         circleColour: '#ff0000',
         circleOpacity: 0,
@@ -154,6 +156,13 @@ test('sanitizeOptions clamps the numeric fields and leaves everything else untou
         goldenRatioDirection: 'clockwise',
         goldenRatioStart: 'bottom-left'
     });
+});
+
+test('sanitizeOptions clamps lineWidth to 1-9 and falls back to 1 when missing/invalid', () => {
+    assert.equal(sanitizeOptions({lineWidth: '0'}).lineWidth, 1, 'clamped up to the minimum of 1');
+    assert.equal(sanitizeOptions({lineWidth: '20'}).lineWidth, 9, 'clamped down to the maximum of 9');
+    assert.equal(sanitizeOptions({lineWidth: 'abc'}).lineWidth, 1, 'falls back to 1 for a non-numeric value');
+    assert.equal(sanitizeOptions({}).lineWidth, 1, 'falls back to 1 when missing entirely');
 });
 
 test('sanitizeOptions clamps minImageWidth/minImageHeight and falls back to the defaults', () => {

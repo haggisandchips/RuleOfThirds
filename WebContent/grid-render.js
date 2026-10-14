@@ -57,7 +57,7 @@ function smallestWeightedBand(weights) {
 // following the same enabled/disabled rules everywhere this is used:
 //  - a line only draws while its axis is enabled overall (linesEnabled) AND
 //    that specific line is enabled (rowLines/columnLines);
-//  - a circle only draws while Circles is enabled overall (circlesEnabled)
+//  - a circle only draws while Circle Options is enabled overall (circlesEnabled)
 //    AND the row line and column line it sits on are both enabled AND
 //    that specific circle is enabled (circleLines) - independent of
 //    whether the dividing lines themselves are being rendered.
@@ -67,7 +67,16 @@ function drawWeightedGridOverlay(ctx, w, h, rowWeights, columnWeights, options) 
     var columnPositions = weightedLinePositions(columnWeights);
 
     if (options.linesEnabled) {
-        ctx.lineWidth = 1;
+        // A canvas stroke is always centred on the path it's painted along,
+        // for any lineWidth (odd or even) - ctx.moveTo/lineTo already sit
+        // exactly on each line's true position (frac * w/h), so setting
+        // lineWidth here is all that's needed for the line to stay centred
+        // on that position as it widens. An even width still can't land
+        // every physical pixel symmetrically either side of that centre
+        // (there's no pixel boundary exactly in the middle to split across),
+        // but that's the browser's own sub-pixel rasterisation, not
+        // something this can steer any closer.
+        ctx.lineWidth = options.lineWidth;
         ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
 
         ctx.beginPath();
@@ -91,6 +100,12 @@ function drawWeightedGridOverlay(ctx, w, h, rowWeights, columnWeights, options) 
             (smallestWeightedBand(rowWeights) * h) / 2,
             (smallestWeightedBand(columnWeights) * w) / 2,
             options.circleRadius);
+        // Always 1, independent of the line width above - circles have no
+        // width control of their own (yet), and leaving this unset would
+        // otherwise silently inherit whatever the lines block just set
+        // ctx.lineWidth to, growing an outline circle's own stroke along
+        // with line width even though nothing asked for that.
+        ctx.lineWidth = 1;
         ctx.strokeStyle = hexToRgba(options.circleColour, options.circleOpacity);
         ctx.fillStyle = hexToRgba(options.circleColour, options.circleOpacity);
 
@@ -126,6 +141,7 @@ function drawGridOverlay(ctx, w, h, options) {
         columnLines: options.gridColumnLines,
         lineColour: options.lineColour,
         lineOpacity: options.lineOpacity,
+        lineWidth: options.lineWidth,
         circlesEnabled: options.renderCircle,
         circleLines: options.circleLines,
         circleColour: options.circleColour,
@@ -138,7 +154,7 @@ function drawGridOverlay(ctx, w, h, options) {
 // Phi Grid: fixed at 3 bands per axis (see options.phiRatio), spaced by the
 // same ratio in both directions instead of equal thirds - eg the classic
 // "Phi Grid" composition guide's default 1 : 0.618 : 1. Circles reuse
-// exactly the same appearance settings as Grid's Circles section.
+// exactly the same appearance settings as Grid's Circle Options section.
 function drawPhiGridOverlay(ctx, w, h, options) {
 
     drawWeightedGridOverlay(ctx, w, h, options.phiRatio, options.phiRatio, {
@@ -147,6 +163,7 @@ function drawPhiGridOverlay(ctx, w, h, options) {
         columnLines: options.phiColumnLines,
         lineColour: options.lineColour,
         lineOpacity: options.lineOpacity,
+        lineWidth: options.lineWidth,
         circlesEnabled: options.renderCircle,
         circleLines: options.phiCircleLines,
         circleColour: options.circleColour,

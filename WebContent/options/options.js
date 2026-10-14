@@ -7,6 +7,7 @@ const DEFAULT_OPTIONS = {
     gridColumnLines: [true, true],
     lineColour: '#ffffff',
     lineOpacity: 100,
+    lineWidth: 1,
     resizeMaskOpacity: 50,
     showFlipControl: true,
     renderCircle: true,
@@ -35,6 +36,10 @@ const MIN_GRID_LINES = 1;
 // per-item quota via circleLines.
 const MAX_GRID_LINES = 9;
 const MIN_CIRCLE_RADIUS = 1;
+const MIN_LINE_WIDTH = 1;
+// Unrelated to MAX_GRID_LINES despite the same number - this caps how thick a line can be
+// drawn, that just happens to land on 9 too.
+const MAX_LINE_WIDTH = 9;
 const MIN_OPACITY = 0;
 const MIN_IMAGE_SIZE = 1;
 // Unlike Grid, Phi Grid's row/column count is fixed, not user-editable -
@@ -115,6 +120,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
 
     const lineColour = document.getElementById('line-colour').value;
     const lineOpacity = parseValidInt('line-opacity', MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity);
+    const lineWidth = parseValidInt('line-width', MIN_LINE_WIDTH, DEFAULT_OPTIONS.lineWidth, MAX_LINE_WIDTH);
     const resizeMaskOpacity = parseValidInt('resize-mask-opacity', MIN_OPACITY, DEFAULT_OPTIONS.resizeMaskOpacity);
     const showFlipControl = document.getElementById('show-flip-control').checked;
     const renderCircle = document.getElementById('render-circle').checked;
@@ -142,6 +148,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
             gridColumnLines: gridColumnLineStates,
             lineColour,
             lineOpacity,
+            lineWidth,
             resizeMaskOpacity,
             showFlipControl,
             renderCircle,
@@ -219,6 +226,7 @@ function setOptions(options) {
     syncQuickPickSelection('line-colour');
     document.getElementById('line-opacity').value = options.lineOpacity;
     updateOpacityLabel('line-opacity');
+    document.getElementById('line-width').value = options.lineWidth;
     document.getElementById('resize-mask-opacity').value = options.resizeMaskOpacity;
     updateOpacityLabel('resize-mask-opacity');
     document.getElementById('show-flip-control').checked = options.showFlipControl;
@@ -251,22 +259,22 @@ function setOptions(options) {
     layoutGridCustomiseCanvases();
 }
 
-// Line Colour/Opacity only ever affect anything while Grid itself is
-// enabled (drawGridOverlay only reads them inside its
-// `if (options.renderGrid)` branch); Circles' Radius/Style/Colour/Opacity
-// are the same story for Circles. Disabling (and dimming, via the
-// `input:disabled`/`.quick-swatch:disabled` rules in style.css) those
-// fields while their section is off makes that dependency visible instead
-// of leaving fully-interactive controls that silently do nothing.
-const GRID_ONLY_FIELD_IDS = ['line-colour', 'line-opacity'];
+// Line Options' Colour/Opacity/Width only ever affect anything while Grid
+// itself is enabled (drawGridOverlay only reads them inside its
+// `if (options.renderGrid)` branch); Circle Options' Radius/Style/Colour/
+// Opacity are the same story for Circle Options. Disabling (and dimming,
+// via the `input:disabled`/`.quick-swatch:disabled` rules in style.css)
+// those fields while their section is off makes that dependency visible
+// instead of leaving fully-interactive controls that silently do nothing.
+const GRID_ONLY_FIELD_IDS = ['line-colour', 'line-opacity', 'line-width'];
 const CIRCLE_ONLY_FIELD_IDS = ['circle-radius', 'circle-style-outline', 'circle-style-filled', 'circle-colour', 'circle-opacity'];
 
 // Rows/Columns are different: they position BOTH the grid lines (while
-// Grid is enabled) AND the circle intersections (while Circles is enabled,
-// independent of Grid - drawGridOverlay's circle loop reads gridRows/
-// gridColumns inside its own `if (options.renderCircle)` branch, not
-// gated on renderGrid at all). Only disable them once *neither* section
-// would use them.
+// Grid is enabled) AND the circle intersections (while Circle Options is
+// enabled, independent of Grid - drawGridOverlay's circle loop reads
+// gridRows/gridColumns inside its own `if (options.renderCircle)` branch,
+// not gated on renderGrid at all). Only disable them once *neither*
+// section would use them.
 const GRID_DIMENSION_FIELD_IDS = ['grid-rows', 'grid-columns'];
 
 function syncDependentFieldsEnabled() {
@@ -280,9 +288,10 @@ function syncDependentFieldsEnabled() {
     setSectionFieldsEnabled(CIRCLE_ONLY_FIELD_IDS, 'circle-colour-quick', circleEnabled);
     // Like GRID_DIMENSION_FIELD_IDS above, the ratio positions BOTH Phi
     // Grid's lines (while Phi Grid is enabled) AND the circle
-    // intersections (while Circles is enabled, independent of Phi Grid -
-    // drawWeightedGridOverlay's circle loop isn't gated on linesEnabled at
-    // all) - only disable it once *neither* section would use it.
+    // intersections (while Circle Options is enabled, independent of Phi
+    // Grid - drawWeightedGridOverlay's circle loop isn't gated on
+    // linesEnabled at all) - only disable it once *neither* section would
+    // use it.
     setFieldsEnabled(PHI_RATIO_INPUT_IDS, phiGridEnabled || circleEnabled);
 }
 
@@ -383,9 +392,9 @@ function onGoldenRatioThumbKeyDown(event) {
 // style's are shown, though all of them remain saved in storage so
 // switching back and forth doesn't lose any style's configuration. Each row
 // declares which style(s) it belongs to via data-overlay-styles (a
-// space-separated list, since eg Circles/Customise belong to both Grid and
-// Phi Grid) - adding another overlay style later just means adding that
-// value to whichever rows need it, not a new branch here.
+// space-separated list, since eg Circle Options/Customise belong to both
+// Grid and Phi Grid) - adding another overlay style later just means
+// adding that value to whichever rows need it, not a new branch here.
 function syncOverlayStyleVisibility() {
 
     const overlayStyle = getSelectedOption('overlay-style');
@@ -400,9 +409,9 @@ function syncOverlayStyleVisibility() {
 
 // Phi Grid's own content (the Ratio row, its help text and "Restore
 // Golden Ratio" button) needs more room than Grid's plain Rows/Columns
-// fields, so the shared Grid/Circles row's column split widens for it -
-// Grid's own split is untouched. One more entry here, not a new branch,
-// if a future weighted-grid style needs its own split too.
+// fields, so the shared Grid/Circle Options row's column split widens for
+// it - Grid's own split is untouched. One more entry here, not a new
+// branch, if a future weighted-grid style needs its own split too.
 const GRID_PHI_GRID_COLUMN_WIDTHS = {
     grid: {left: 'm3', right: 'm9'},
     'phi-grid': {left: 'm4', right: 'm8'}
@@ -684,6 +693,7 @@ function buildLiveGridCustomiseOptions(write = true) {
         phiCircleLines: phiCircleLineStates,
         lineColour: document.getElementById('line-colour').value,
         lineOpacity: clampInt(document.getElementById('line-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.lineOpacity),
+        lineWidth: clampInt(document.getElementById('line-width').value, MIN_LINE_WIDTH, DEFAULT_OPTIONS.lineWidth, MAX_LINE_WIDTH),
         renderCircle: document.getElementById('render-circle').checked,
         circleColour: document.getElementById('circle-colour').value,
         circleOpacity: clampInt(document.getElementById('circle-opacity').value, MIN_OPACITY, DEFAULT_OPTIONS.circleOpacity),

@@ -88,6 +88,10 @@ function sanitizeOptions(data) {
         gridColumnLines: sanitizeLineStates(data.gridColumnLines, gridColumns - 1),
         circleRadius: sanitizeInt(data.circleRadius, 1, 5),
         lineOpacity: sanitizeInt(data.lineOpacity, 0, 100, 100),
+        // Deliberately doesn't touch circleRadius/circle rendering at all - see
+        // drawWeightedGridOverlay's own circle block, which always strokes at a fixed
+        // lineWidth of 1 regardless of this.
+        lineWidth: sanitizeInt(data.lineWidth, 1, 1, 9),
         circleOpacity: sanitizeInt(data.circleOpacity, 0, 100, 100),
         resizeMaskOpacity: sanitizeInt(data.resizeMaskOpacity, 0, 50, 100),
         circleLines: sanitizeCircleStates(data.circleLines, gridRows - 1, gridColumns - 1),
@@ -478,10 +482,10 @@ function resizeMaskRects(rect, w, h) {
 }
 
 // The four 1px-wide strips forming a border exactly one pixel *outside*
-// `rect` - drawn in the main Line Colour (at the Cropped Area Opacity, not
-// the line's own opacity) so there's a visible edge marking exactly where
-// a resized overlay stops, without that line ever overlapping the overlay
-// style's own drawing inside `rect` itself.
+// `rect` - drawn in the colour from Line Options (at the Cropped Area
+// Opacity, not the line's own opacity) so there's a visible edge marking
+// exactly where a resized overlay stops, without that line ever overlapping
+// the overlay style's own drawing inside `rect` itself.
 //
 // Same non-overlapping-strip approach as resizeMaskRects (top/bottom span
 // the full outer width including corners; left/right only the height
@@ -813,6 +817,7 @@ if (typeof rotInit === 'undefined') {
                         gridColumnLines: [true, true],
                         lineColour: '#ffffff',
                         lineOpacity: 100,
+                        lineWidth: 1,
                         renderCircle: true,
                         circleColour: '#ff0000',
                         circleOpacity: 100,
@@ -961,8 +966,8 @@ if (typeof rotInit === 'undefined') {
                 resizeMaskRects(rect, w, h).forEach(maskRect => ctx.fillRect(maskRect.x, maskRect.y, maskRect.w, maskRect.h));
 
                 // Marks exactly where the resize rectangle ends, in the
-                // main Line Colour but at the Cropped Area Opacity (not
-                // the line's own opacity) - see resizeBorderRects.
+                // colour from Line Options but at the Cropped Area Opacity
+                // (not the line's own opacity) - see resizeBorderRects.
                 ctx.fillStyle = hexToRgba(options.lineColour, options.resizeMaskOpacity);
                 resizeBorderRects(rect).forEach(borderRect => ctx.fillRect(borderRect.x, borderRect.y, borderRect.w, borderRect.h));
 
@@ -1374,7 +1379,7 @@ if (typeof rotInit === 'undefined') {
         // only ever one at a time, never more than one at once.
         function drawGoldenSpiral(ctx, w, h, options) {
 
-            ctx.lineWidth = 1;
+            ctx.lineWidth = options.lineWidth;
             ctx.strokeStyle = hexToRgba(options.lineColour, options.lineOpacity);
 
             traceGoldenSpiralPath(ctx, w, h, options.goldenRatioDirection, options.goldenRatioStart);
