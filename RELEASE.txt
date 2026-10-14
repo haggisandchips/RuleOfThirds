@@ -21,7 +21,7 @@ CROP TO PART OF THE IMAGE
 Overlays can be resized within the boundaries of the image so you can play around with tighter compositions.
 
 SUPPORT
-* A Site Compatibility page lists the sites the extension is confirmed to work on - if it doesn't work somewhere, raise it on GitHub and it'll be looked at
+* A Site Compatibility page lists the sites the extension is confirmed to work on - if it doesn't work somewhere, raise it on GitHub and I'll try to fix it
 
 History
 ------------------------------------------------------------------------------------------------------------------------
