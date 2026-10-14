@@ -156,16 +156,18 @@ chrome.runtime.onMessage.addListener((message) => {
 
     const state = message.state;
     chrome.contextMenus.update('rot-enable-resize', {visible: true, checked: state.resizeEnabled});
-    // Maintain Aspect Ratio only means anything once Resize itself is on; Aspect Ratios (the
-    // preset/flip submenu) one level further still - only worth showing once there's a ratio
-    // actually being maintained to apply a preset or flip to.
-    chrome.contextMenus.update('rot-maintain-aspect', {visible: state.resizeEnabled, checked: state.maintainAspectRatio});
-    chrome.contextMenus.update('rot-resize-options', {visible: state.resizeEnabled && state.maintainAspectRatio});
+    // Maintain Aspect Ratio, Aspect Ratios (the preset/flip submenu) and Switch to Portrait/
+    // Landscape each depend on something further up this same chain (Resize, then Maintain
+    // Aspect Ratio, then a non-Square preset) - stay visible regardless, just disabled until
+    // their own precondition is met, so the option is discoverable rather than seeming to not
+    // exist at all until its precondition happens to already be true.
+    chrome.contextMenus.update('rot-maintain-aspect', {visible: true, enabled: state.resizeEnabled, checked: state.maintainAspectRatio});
+    chrome.contextMenus.update('rot-resize-options', {visible: true, enabled: state.resizeEnabled && state.maintainAspectRatio});
     OVERLAY_ASPECT_RATIO_PRESETS.forEach(preset => {
         chrome.contextMenus.update('rot-preset-' + preset.id, {checked: state.aspectRatioPreset === preset.id});
     });
-    chrome.contextMenus.update('rot-flip-sep', {visible: state.showFlip});
-    chrome.contextMenus.update('rot-flip-orientation', {visible: state.showFlip, title: state.flipLabel || 'Switch to Portrait'});
+    chrome.contextMenus.update('rot-flip-sep', {visible: true});
+    chrome.contextMenus.update('rot-flip-orientation', {visible: true, enabled: state.showFlip, title: state.flipLabel || 'Switch to Portrait'});
     chrome.contextMenus.update('rot-sep2', {visible: true});
     chrome.contextMenus.update('rot-reset', {visible: true});
 });
