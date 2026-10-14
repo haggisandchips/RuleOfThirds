@@ -260,13 +260,18 @@ function setOptions(options) {
 }
 
 // Line Options' Colour/Opacity/Width only ever affect anything while Grid
-// itself is enabled (drawGridOverlay only reads them inside its
-// `if (options.renderGrid)` branch); Circle Options' Radius/Style/Colour/
-// Opacity are the same story for Circle Options. Disabling (and dimming,
-// via the `input:disabled`/`.quick-swatch:disabled` rules in style.css)
-// those fields while their section is off makes that dependency visible
-// instead of leaving fully-interactive controls that silently do nothing.
-const GRID_ONLY_FIELD_IDS = ['line-colour', 'line-opacity', 'line-width'];
+// or Phi Grid is enabled - both draw with them (drawGridOverlay/
+// drawPhiGridOverlay only read them inside their own `if (linesEnabled)`
+// branch), so disabling them requires *neither* to be on, the same
+// "either section would use it" rule as GRID_DIMENSION_FIELD_IDS and
+// PHI_RATIO_INPUT_IDS below. Circle Options' Radius/Style/Colour/Opacity
+// are a simpler, single-section story. Disabling (and dimming, via the
+// `input:disabled`/`.quick-swatch:disabled` rules in style.css) a field
+// while nothing it affects is on makes that dependency visible instead of
+// leaving a fully-interactive control that silently does nothing - and,
+// since a disabled field is also skipped in the tab order, keeps keyboard
+// navigation from stopping on controls that currently do nothing.
+const LINE_OPTIONS_FIELD_IDS = ['line-colour', 'line-opacity', 'line-width'];
 const CIRCLE_ONLY_FIELD_IDS = ['circle-radius', 'circle-style-outline', 'circle-style-filled', 'circle-colour', 'circle-opacity'];
 
 // Rows/Columns are different: they position BOTH the grid lines (while
@@ -284,7 +289,7 @@ function syncDependentFieldsEnabled() {
     const phiGridEnabled = document.getElementById('render-phi-grid').checked;
 
     setFieldsEnabled(GRID_DIMENSION_FIELD_IDS, gridEnabled || circleEnabled);
-    setSectionFieldsEnabled(GRID_ONLY_FIELD_IDS, 'line-colour-quick', gridEnabled);
+    setSectionFieldsEnabled(LINE_OPTIONS_FIELD_IDS, 'line-colour-quick', gridEnabled || phiGridEnabled);
     setSectionFieldsEnabled(CIRCLE_ONLY_FIELD_IDS, 'circle-colour-quick', circleEnabled);
     // Like GRID_DIMENSION_FIELD_IDS above, the ratio positions BOTH Phi
     // Grid's lines (while Phi Grid is enabled) AND the circle

@@ -132,6 +132,12 @@
             clicked - removes a class of edge cases where a page rebuilding part of itself (eg a
             single-page site's own router) could leave that tracking out of sync.
           </p>
+          <p class="flow-text">
+            Fixed Line Options' Colour/Opacity/Width greying out (and so becoming unreachable by
+            keyboard Tab) while on the Phi Grid tab, if Grid's own "Enabled" checkbox had never
+            been turned on - even though those fields were actively shaping the rendered Phi Grid
+            overlay at the time. They were only ever checking Grid's own checkbox, not Phi Grid's.
+          </p>
         </div>
       </div>
 
