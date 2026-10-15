@@ -776,6 +776,15 @@ if (typeof rotInit === 'undefined') {
                 } else if (message.id && message.id.startsWith('rot-preset-')) {
                     target.setAspectRatioPreset(message.id.slice('rot-preset-'.length));
                 }
+
+                // Re-sync straight away, now that the state has changed, rather than leaving
+                // it to the next right-click's contextmenu sync - that one races the native
+                // menu rendering (see above) and can lose, leaving eg Aspect Ratios still
+                // disabled right after turning Maintain Aspect Ratio on. Done here, the
+                // update has the whole time until the next right-click to land.
+                if (lastSyncedMenuContainer) {
+                    syncOverlayMenuFor(lastSyncedMenuContainer, true);
+                }
             });
         }
 
