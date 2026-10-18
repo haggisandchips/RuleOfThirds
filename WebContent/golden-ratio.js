@@ -1,19 +1,10 @@
-// Pure golden-ratio spiral geometry, hoisted out to its own file so it can
-// be shared between the content script (the full-size overlay) and the
-// options page (the direction/starting-point thumbnail previews) without
-// duplicating the algorithm, and unit tested without a DOM (see /test).
-//
-// `var` and `function` (unlike `const`/`class`) are safe to redeclare if
-// this file is injected into the same page more than once - the content
-// script re-injects it on every toolbar-icon click without a page reload,
-// and a `const`/`class` redeclaration throws instead of just re-running.
+
 
 var PHI = 1.618;
 var QUARTER_TURN = Math.PI / 2;
 var GOLDEN_RATIO_DEPTH = 13;
 
 function Rectangle(x, y, width, height, rotation, counterClockwise) {
-
     this.x = x;
     this.y = y;
     this.width = width;
@@ -23,7 +14,6 @@ function Rectangle(x, y, width, height, rotation, counterClockwise) {
 }
 
 function Control(initialRotation, counterClockwise, width, height, x, y) {
-
     this.initialRotation = initialRotation;
     this.counterClockwise = counterClockwise;
     this.width = width;
@@ -33,7 +23,6 @@ function Control(initialRotation, counterClockwise, width, height, x, y) {
 }
 
 function configureControl(direction, start, w, h) {
-
     const style = start + '-' + direction;
 
     switch (style) {
@@ -54,19 +43,12 @@ function configureControl(direction, start, w, h) {
         case 'top-left-counter-clockwise':
             return new Control(1, true, w, h * PHI, w, 0);
         default:
-            // direction/start are validated as an enum by content.js's
-            // sanitizeOptions before they ever reach here in the real
-            // overlay, but this file is also called directly by the
-            // options page's thumbnails (fixed, always-valid data
-            // attributes) - falls back to the same default as a
-            // freshly-installed extension (bottom-left-clockwise) rather
-            // than returning undefined for calculateSections to crash on.
+
             return new Control(2, false, w, h * PHI, w, h);
     }
 }
 
 function calculateSections(direction, start, w, h) {
-
     const control = configureControl(direction, start, w, h);
 
     let rotation = control.initialRotation,
@@ -77,7 +59,6 @@ function calculateSections(direction, start, w, h) {
 
     const sections = [];
     for (let ii = 0; ii < GOLDEN_RATIO_DEPTH; ii++) {
-
         const sectionWidth = width / PHI;
         const sectionHeight = height / PHI;
 
@@ -122,11 +103,7 @@ function calculateSections(direction, start, w, h) {
     return sections;
 }
 
-// Traces the spiral into `ctx` as a path - the caller sets strokeStyle/
-// lineWidth and calls ctx.stroke(), so this is reusable for both the
-// full-size overlay and the small options-page preview thumbnails.
 function traceGoldenSpiralPath(ctx, w, h, direction, start) {
-
     const sections = calculateSections(direction, start, w - 2, h - 2);
 
     ctx.beginPath();

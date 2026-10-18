@@ -1,9 +1,3 @@
-/* Minimal hand-rolled replacement for materialize.min.css / materialize.min.js.
-   Covers only what the options, guide, version-history and site-compatibility pages
-   actually use: a 12-column responsive grid, a divider rule, form styling, a large button,
-   a toast notification, and the shared top navigation site-nav.js injects onto each of
-   them. */
-
 :root {
     --color-primary: #26a69a;
     --color-primary-dark: #1f8a7d;
@@ -52,25 +46,12 @@ h5 {
     margin: 0.75rem 0;
 }
 
-/* Full-width (relative to the row, not the browser window) banner behind a
-   version heading. Bleeds to the row's edges using the same --spacing the
-   row/col gutter trick relies on, rather than styling h3 itself, so any
-   other h3 on the page is unaffected. */
 .version-heading {
     background: var(--color-primary-light);
     margin: 1.5rem calc(var(--spacing) * -1) 0.75rem;
     padding: 0.5rem var(--spacing);
 }
 
-/* Injected by site-nav.js as the very first element in <body>, ahead of .container. Below
-   the media query further down it's a full-width top bar, regardless of the container's own
-   max-width, so it reads as the page's own chrome rather than part of its content; the
-   negative top margin cancels exactly body's own top padding, so it sits flush against the
-   top of the viewport instead of leaving a gap above it - nothing is needed horizontally
-   since body has no side padding to begin with. At or above that breakpoint it instead
-   becomes a sidebar that sits immediately beside .container as one centred block (see the
-   media query - body itself becomes the flex row, so the two can never drift apart the way
-   independently-centred siblings would on a wide monitor). */
 .site-nav {
     background: var(--color-primary);
     margin: -1.5rem 0 1.5rem;
@@ -121,19 +102,12 @@ h5 {
     outline-offset: 2px;
 }
 
-/* The current page's own link - set via aria-current="page" (site-nav.js) rather than a
-   plain class, so it also tells assistive tech which nav item matches where it already is. */
 .site-nav-links a[aria-current="page"] {
     background: #fff;
     color: var(--color-primary-dark);
     font-weight: 600;
 }
 
-/* Marks off the one functional (not informational) page - Options - from the rest, so it
-   still reads as set apart even where its position at the end of the list wouldn't be
-   obvious on its own (eg a top bar wrapped onto several lines). A vertical rule between
-   items on the top bar; the sidebar media query turns it into a horizontal one spanning a
-   full-width row instead. */
 .site-nav-separator {
     display: inline-block;
     align-self: stretch;
@@ -142,13 +116,6 @@ h5 {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* The Ko-fi call-to-action - a wrapper (not one of .site-nav-links, since it isn't one of
-   the pages this nav switches between: no aria-current, always visible regardless of the
-   current page) around an explanatory line and the link itself. On the top bar there's no
-   room to spare, so only the button shows, inline alongside the page links; the sidebar
-   below reveals the line above it and grows the button to a full-width card - see the media
-   query. Solid white-on-teal like the active page link, rather than a subtler outline, so it
-   actually reads as prominent instead of just another nav item. */
 .site-nav-donate {
     display: inline-flex;
     align-items: center;
@@ -180,19 +147,6 @@ h5 {
     outline-offset: 2px;
 }
 
-/* Below this width a fixed-width sidebar would leave too little room for the page/form
-   content beside it (and would fight with the .row/.col grid's own 600px breakpoint further
-   down) - the top-bar rules above apply instead. At or above it, body itself becomes a flex
-   row of [.site-nav, .container], capped at their combined width and centred as a unit, so
-   the sidebar sits right next to the content on any monitor instead of pinned to the literal
-   browser edge with the content centred independently of it (and potentially far away from
-   it on an ultrawide one). .site-nav-inner is a separate, sticky-positioned element nested
-   inside .site-nav rather than .site-nav itself being sticky, so .site-nav's own background
-   can still stretch (align-items:stretch, flex's default) to match the row's full height -
-   the single-colour column this site-nav-inner's content then sticks over as the page scrolls
-   - while the stuck content itself only needs to be as tall as its own links. body's own
-   min-height keeps that row (and so the nav panel) at a full viewport height even when the
-   page's own content is shorter than that, rather than only ever matching .container. */
 @media (min-width: 900px) {
     body {
         display: flex;
@@ -217,11 +171,7 @@ h5 {
         max-width: none;
         margin: 0;
         flex-direction: column;
-        /* The top-bar rule's flex-wrap:wrap is for wrapping a row of links onto a second
-           line - meaningless once this is a single column, but left active (never reset
-           here) it still made the browser reserve cross-axis space for a hypothetical
-           second column, narrowing every child below the full width align-items:stretch
-           should otherwise give them. That's what the uneven right-hand margin actually was. */
+
         flex-wrap: nowrap;
         align-items: stretch;
         padding: 1.5rem 1rem;
@@ -244,9 +194,6 @@ h5 {
         margin: 0.5rem 0;
     }
 
-    /* Nearer the links than the sidebar's far edge, so it's seen without having to scroll
-       past everything else first - not pinned to the bottom, which on a short link list like
-       this one would leave it looking detached from the rest of the nav entirely. */
     .site-nav-donate {
         display: block;
         margin: 1rem 0 0;
@@ -270,10 +217,6 @@ h5 {
         width: 100%;
     }
 
-    /* Matches .site-nav-inner's own 1rem horizontal padding, so page content gets the same
-       breathing room before the block's right edge that the nav already has on its left (the
-       nav's teal panel makes its own edge obvious; plain text trailing off doesn't, so without
-       this it reads as more cramped even at an equal literal margin). */
     .container {
         flex: 1 1 auto;
         min-width: 0;
@@ -303,8 +246,6 @@ h5 {
 }
 
 @media (min-width: 600px) {
-    /* matches the specificity of ".row > [class*=\"col\"]" above, so these
-       actually override its flex-basis instead of losing on specificity */
     .row > .m2 { flex-basis: 16.6667%; max-width: 16.6667%; }
     .row > .m3 { flex-basis: 25%; max-width: 25%; }
     .row > .m4 { flex-basis: 33.3333%; max-width: 33.3333%; }
@@ -315,11 +256,6 @@ h5 {
     .row > .m9 { flex-basis: 75%; max-width: 75%; }
     .row > .offset-m1 { margin-left: 8.3333%; }
 
-    /* The direction/starting-point radio columns are much narrower than
-       their fixed m3/m4 widths, which left a large dead gap before the
-       thumbnails. Sizing just those columns to their content instead
-       closes that gap (the heading/divider column above them keeps the
-       full-width s12 base rule so the divider still spans the row). */
     .golden-ratio-mode-row > .m3,
     .golden-ratio-mode-row > .m4,
     .golden-ratio-mode-row > .m5 {
@@ -344,20 +280,12 @@ h5 {
     color: #424242;
 }
 
-/* A short explanatory line under a section heading - smaller and quieter
-   than .flow-text, which is sized for the changelog/guide pages rather
-   than a compact options form. */
 .help-text {
     font-size: 0.85rem;
     color: var(--color-muted);
     margin: 0 0 0.75rem;
 }
 
-/* Visually hides text while keeping it readable to screen readers - used
-   for the Customise Control canvas's live status announcements (see
-   #grid-customise-status in options.html / announceGridCustomiseFocus in
-   options.js), since that feedback has no useful on-screen presentation
-   of its own (the canvas's focus ring already shows it visually). */
 .sr-only {
     position: absolute;
     width: 1px;
@@ -370,8 +298,6 @@ h5 {
     border: 0;
 }
 
-/* Field captions (labels with a `for`, placed before their input, or a
-   plain span above a widget that has no single bound input). */
 label[for],
 .field-caption {
     display: block;
@@ -380,7 +306,6 @@ label[for],
     margin-bottom: 0.25rem;
 }
 
-/* Radio options and inline "span + input" pairs (labels with no `for`) */
 label:not([for]) {
     display: flex;
     align-items: center;
@@ -474,12 +399,6 @@ input[type="range"] {
     margin: 0.5rem 0;
 }
 
-/* Grid's Rows/Columns, Line Options' Colour/Opacity/Width and Circle
-   Options' Radius/Style/Colour are disabled via syncDependentFieldsEnabled()
-   in options.js while their section's own "Enabled" checkbox is off, since
-   none of them do anything in that state - dimmed and cursor:not-allowed
-   makes that visible rather than leaving fully-interactive controls that
-   silently have no effect. */
 input:disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -491,8 +410,6 @@ input:disabled {
     gap: 0.5rem;
 }
 
-/* Fixed width so the slider doesn't shift as the digit count changes
-   (eg "9%" vs "100%"). */
 .opacity-value {
     flex-shrink: 0;
     width: 2.5em;
@@ -501,12 +418,6 @@ input:disabled {
     text-align: right;
 }
 
-/* Turns this column into its own flex column, so its last child sits
-   flush with the bottom of the row via margin-top:auto below - the
-   column itself is already stretched to match its tallest row sibling
-   (.row's flex default), so this keeps two opacity sliders in adjacent
-   columns level with each other even when whatever precedes them (eg a
-   colour picker row vs a help paragraph) isn't the same height. */
 .col-align-bottom {
     display: flex;
     flex-direction: column;
@@ -516,10 +427,6 @@ input:disabled {
     margin-top: auto;
 }
 
-/* Puts the native colour picker and the quick-pick swatches on one line.
-   No visible label on the swatches - proximity, the hover scale-up and the
-   selection ring already read as "quick alternatives to the picker" (each
-   still carries an aria-label for screen readers). */
 .colour-row {
     display: flex;
     align-items: center;
@@ -558,11 +465,6 @@ input:disabled {
     transform: none;
 }
 
-/* The white swatch's own border is transparent like every other swatch's,
-   which makes it nearly invisible against the page's own off-white
-   background when unselected - give it a permanent light border instead.
-   Placed before .selected below, which has equal specificity, so .selected
-   still wins via source order when the white swatch is also selected. */
 .quick-swatch[data-value="#ffffff"] {
     border-color: #d0d0d0;
 }
@@ -571,36 +473,11 @@ input:disabled {
     border-color: var(--color-primary);
 }
 
-/* An outline rather than a border-colour change, so keyboard focus stays
-   visually distinct from .selected instead of looking the same. */
 .quick-swatch:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
 
-/* Two side-by-side canvases for the "Customise" grid, sized by
-   layoutGridCustomiseCanvases() in options.js rather than CSS: "Control" is
-   a fixed 200x200 square, and "Preview" claims whatever width is left in
-   the row, up to its native 1080px image width (so it's never upscaled
-   blurry). Both get their width/height *attributes* (not just CSS) set to
-   match, so the canvas's actual pixel backing store stays crisp as the
-   window resizes, not just CSS-stretched. align-items:flex-start, with
-   Control's own panel given a matching margin-top in JS, keeps Control's
-   canvas vertically centred against Preview's - plain CSS centring would
-   centre the whole *panels* instead, throwing that off by the photo
-   toggle's height under Preview's canvas alone.
-
-   "Control" is a fixed white-background, black/grey reference map
-   (renderGridCustomiseReference()) that always uses the same two colours
-   regardless of what the user has actually picked, so there's never any
-   ambiguity about what's enabled or where to click - it's the only one of
-   the two that's actually clickable, and its cursor switches to a pointer
-   only when hovering an actual line/circle (see onGridCustomiseHover in
-   options.js). "Preview" is a live, accurate-colour render
-   (drawGridOverlay(), same as the real overlay, optionally with the
-   tinted background photo behind it - see drawPreviewBackground) - a
-   hidden line/circle simply isn't drawn there, exactly like the real
-   thing - purely informational, not interactive. */
 .grid-customise-col {
     display: flex;
     flex-wrap: wrap;
@@ -610,10 +487,6 @@ input:disabled {
     margin-top: 0.5rem;
 }
 
-/* Applied by layoutGridCustomiseCanvases() in options.js once sharing the
-   row with Control's fixed 200px would squeeze Preview into a barely-
-   useful sliver - stacks Control above Preview and centres both instead
-   of squeezing them side by side. */
 .grid-customise-col-stacked {
     flex-direction: column;
     align-items: center;
@@ -632,26 +505,16 @@ input:disabled {
     border: 1px solid var(--color-divider);
 }
 
-/* align-self:flex-start overrides the panel's own centring just for this,
-   so it lines up with Preview's left edge instead of sitting centred
-   under it. */
 .grid-customise-photo-toggle {
     align-self: flex-start;
     margin: 0.5rem 0 0;
 }
 
-/* The canvas draws its own focus indicator around the selected line/circle
-   (see drawGridCustomiseFocus in options.js), but it still needs a native
-   focus outline around the canvas itself so keyboard users can tell it's
-   the active element at all, consistent with the rest of the page's
-   :focus styling. */
 .grid-customise-control:focus-visible {
     outline: 3px solid var(--color-primary);
     outline-offset: 2px;
 }
 
-/* Direction/starting-point radios have a visual twin in each thumbnail -
-   either method selects both underlying radios, so they're kept in sync. */
 .golden-ratio-thumbnails {
     display: grid;
     grid-template-columns: repeat(4, auto);
@@ -681,11 +544,6 @@ input:disabled {
     border-color: var(--color-primary);
 }
 
-/* Every other custom control on this page (quick-swatch, btn-large,
-   btn-small, grid-customise-control, overlay-style-option) gets a matching
-   themed focus-visible outline instead of the browser default - this was
-   the one left relying on the default, easy to miss since it's still
-   visible, just inconsistent. */
 .golden-ratio-thumb:focus-visible {
     outline: 3px solid var(--color-primary);
     outline-offset: 2px;
@@ -695,17 +553,6 @@ input:disabled {
     display: block;
 }
 
-/* Composition Overlay picks between three entirely different overlays (see
-   syncOverlayStyleVisibility in options.js, which shows/hides every other
-   section based on this) - styled as a tab strip sitting on top of the
-   panel of controls it switches between (.overlay-style-panel below), so
-   the "which mode am I in" choice reads as one connected control rather
-   than a heading plus a separate row of buttons. The whole label is the
-   click target; the native radio is kept (visually hidden below) rather
-   than removed, so this stays a real, keyboard-operable radio group - its
-   accessible name now comes from the <fieldset>/<legend class="sr-only">
-   wrapping it in options.html, since there's no visible heading left for
-   it to inherit context from. */
 .overlay-style-fieldset {
     border: 0;
     margin: 0;
@@ -718,10 +565,6 @@ input:disabled {
     margin: 0.5rem 0 0;
 }
 
-/* Same visually-hidden-but-focusable technique as .sr-only, just with
-   higher specificity than the generic input[type="radio"] rule (which
-   would otherwise win on source order and force this back to an 18px
-   visible circle). */
 .overlay-style-option input[type="radio"] {
     position: absolute;
     width: 1px;
@@ -734,22 +577,6 @@ input:disabled {
     border: 0;
 }
 
-/* Specificity note: the generic `label:not([for])` rule above (display,
-   gap, cursor, margin) outranks a bare `.overlay-style-option` class
-   selector, so this is qualified with its parent to win the cascade
-   instead of fighting it with !important.
-
-   Flush against .overlay-style-panel's top border (negative margin equal
-   to that border's width) and missing its own bottom border only when
-   checked, so the selected tab visually merges into the panel below it -
-   the classic "open folder tab" look - while the other two stay closed.
-   Top/left/right are teal, matching the panel this strip sits above, but
-   the bottom edge stays the neutral --color-divider grey when unselected
-   - it's what's hiding the panel's own teal top border along most of the
-   strip's width, so only the small gaps between tabs (nothing there to
-   hide it) show that teal through, as a deliberate accent rather than
-   the whole line. :has(input:checked) below still overrides this bottom
-   edge to white for whichever tab is selected, same as before. */
 .overlay-style-toggle .overlay-style-option {
     flex: 1 1 0;
     display: flex;
@@ -766,9 +593,6 @@ input:disabled {
     transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-/* Higher-specificity `.overlay-style-toggle .overlay-style-option span`
-   form used throughout below so these all outrank the generic
-   `input[type="radio"]:checked + span` colour rule further up the file. */
 .overlay-style-toggle .overlay-style-option span {
     font-size: 1.1rem;
     font-weight: 600;
@@ -795,10 +619,6 @@ input:disabled {
     color: var(--color-primary-dark);
 }
 
-/* The panel of controls belonging to whichever tab above is selected -
-   its top border lines up with, and is hidden behind, the selected tab's
-   missing bottom border (see the negative margin above), so the two read
-   as one continuous shape. */
 .overlay-style-panel {
     border: 2px solid var(--color-primary);
     border-radius: 0 6px 6px 6px;
@@ -806,9 +626,6 @@ input:disabled {
     padding: 1.25rem 1rem 0.5rem;
 }
 
-/* display:inline-block plus a reset text-decoration, rather than just the former alone, since
-   an <a> styled this way (not just its original <button> use) would otherwise still show the
-   browser's default underline, which a button never had to begin with. */
 .btn-large {
     display: inline-block;
     padding: 0.9rem 2rem;
@@ -833,9 +650,6 @@ input:disabled {
     outline-offset: 2px;
 }
 
-/* A smaller, less dominant sibling to .btn-large - for a scoped action (eg
-   "Restore Golden Ratio") that shouldn't visually compete with the page's
-   one main Restore Defaults button. */
 .btn-small {
     display: inline-block;
     padding: 0.4rem 0.9rem;
@@ -857,9 +671,6 @@ input:disabled {
     outline-offset: 2px;
 }
 
-/* The three Phi Grid ratio fields sit side by side with ":" separators
-   (eg "1 : 0.618 : 1"), rather than stacking like every other labelled
-   number field, since they're only meaningful read together as one ratio. */
 .phi-ratio-row {
     display: flex;
     align-items: center;
@@ -871,10 +682,6 @@ input:disabled {
     flex: 0 0 auto;
 }
 
-/* A ratio field reads worse with spin-button arrows cluttering it, and
-   step-clicking them one thousandth at a time isn't a useful way to edit
-   one anyway - still type="number" underneath (numeric-only input, decimal
-   keyboard on mobile), just without the spinner UI. */
 .no-spinner {
     -moz-appearance: textfield;
     appearance: textfield;
@@ -916,7 +723,6 @@ input:disabled {
     transform: translateY(0);
 }
 
-/* eg the "Undo" button on restoreDefaultOptions's toast (see options.js). */
 .toast-action {
     flex-shrink: 0;
     margin-left: auto;
@@ -936,9 +742,6 @@ input:disabled {
     text-decoration: underline;
 }
 
-/* Site Compatibility page (compatibility.html) - formerly its own standalone page with a
-   separate inline stylesheet; migrated here so it shares this site's one look instead of
-   being the odd one out. */
 .compat-legend {
     font-size: 0.9rem;
     color: var(--color-muted);
@@ -968,9 +771,6 @@ input:disabled {
     font-weight: bold;
 }
 
-/* Covers both a status glyph inside a coloured <li> (compat-list li.compat-yes
-   .compat-status) and one used standalone, eg in the legend (compat-status.compat-yes) -
-   same three outcomes, same colours, in either context. */
 .compat-list li.compat-yes .compat-status,
 .compat-status.compat-yes {
     color: #2e7d32;

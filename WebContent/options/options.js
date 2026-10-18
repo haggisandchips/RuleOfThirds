@@ -31,41 +31,24 @@ const DEFAULT_OPTIONS = {
 };
 
 const MIN_GRID_LINES = 1;
-// 9 rows/columns keeps a nice synergy with the Rule of Thirds itself (3x3)
-// while still ruling out a grid large enough to blow chrome.storage.sync's
-// per-item quota via circleLines.
+
 const MAX_GRID_LINES = 9;
 const MIN_CIRCLE_RADIUS = 1;
 const MIN_LINE_WIDTH = 1;
-// Unrelated to MAX_GRID_LINES despite the same number - this caps how thick a line can be
-// drawn, that just happens to land on 9 too.
+
 const MAX_LINE_WIDTH = 9;
 const MIN_OPACITY = 0;
 const MIN_IMAGE_SIZE = 1;
-// Unlike Grid, Phi Grid's row/column count is fixed, not user-editable -
-// only the ratio between its (always 3) bands can be changed.
+
 const PHI_GRID_BAND_COUNT = 3;
 const PHI_RATIO_INPUT_IDS = ['phi-ratio-1', 'phi-ratio-2', 'phi-ratio-3'];
 const MIN_PHI_RATIO = 0.01;
-// 100 is already far more skewed than any real composition guide needs -
-// just enough to rule out a ratio so lopsided the narrow band collapses
-// toward an unusable sliver, without capping the field somewhere a user
-// could plausibly want to experiment.
+
 const MAX_PHI_RATIO = 100;
 const PHI_RATIO_DECIMALS = 3;
-// How long to wait, after the last keystroke in a ratio field, before
-// re-rendering the Customise preview live - short enough to feel
-// immediate, long enough that a fast typist doesn't trigger a redraw per
-// character.
+
 const PHI_RATIO_PREVIEW_DEBOUNCE_MS = 150;
 
-// Per-line/per-circle enabled state for the "Customise" preview - kept as
-// plain module state (rather than re-read from the DOM) since there's no
-// input element backing each one, only the preview canvas itself. Grid and
-// Phi Grid each get their own independent set, even though both are
-// "weighted grid" styles sharing the same Customise UI (see
-// weightedGridStyles below) - they're still separate overlays, so hiding a
-// line in one shouldn't silently affect the other.
 let gridRowLineStates = DEFAULT_OPTIONS.gridRowLines.slice();
 let gridColumnLineStates = DEFAULT_OPTIONS.gridColumnLines.slice();
 let circleLineStates = DEFAULT_OPTIONS.circleLines.map(row => row.slice());
@@ -73,28 +56,18 @@ let phiRowLineStates = DEFAULT_OPTIONS.phiRowLines.slice();
 let phiColumnLineStates = DEFAULT_OPTIONS.phiColumnLines.slice();
 let phiCircleLineStates = DEFAULT_OPTIONS.phiCircleLines.map(row => row.slice());
 
-// Restores options from chrome.storage
 const loadOptions = () => {
-
     chrome.storage.sync.get(
         DEFAULT_OPTIONS,
         (options) => setOptions(options)
     );
 };
 
-// Saves options to chrome.storage. successMessage/successAction let a
-// caller other than a plain field edit (eg restoreDefaultOptions) show
-// something other than the default "Options saved." toast.
 const saveOptions = (event, successMessage = 'Options saved.', successAction) => {
-
     const overlayStyle = getSelectedOption('overlay-style');
     const renderGrid = document.getElementById('render-grid').checked;
     syncDependentFieldsEnabled();
 
-    // The field the user is actively editing has its minimum raised to 2
-    // whenever the *other* field is currently 1, so it's impossible to type
-    // your way into a 1x1 grid. The untouched field keeps the base minimum -
-    // it was already valid before this edit, so it can't newly need raising.
     const changedElementId = event && event.target && event.target.id;
     const currentGridRows = clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES);
     const currentGridColumns = clampInt(document.getElementById('grid-columns').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridColumns, MAX_GRID_LINES);
@@ -103,10 +76,6 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
     const gridRows = parseValidInt('grid-rows', gridRowsMin, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES);
     const gridColumns = parseValidInt('grid-columns', gridColumnsMin, DEFAULT_OPTIONS.gridColumns, MAX_GRID_LINES);
 
-    // Resizing the grid shifts every line's (and circle's) position, so one
-    // left disabled at its old position would silently apply to a different
-    // line/circle - resetting everything to enabled avoids that surprise.
-    // Otherwise just keep the arrays the correct size defensively.
     if (changedElementId === 'grid-rows' || changedElementId === 'grid-columns') {
         gridRowLineStates = resetLineStates(gridRows - 1);
         gridColumnLineStates = resetLineStates(gridColumns - 1);
@@ -178,12 +147,7 @@ const saveOptions = (event, successMessage = 'Options saved.', successAction) =>
     );
 };
 
-// Resets to defaults, but keeps a snapshot of whatever was configured a
-// moment ago so the save toast's "Undo" action can put it straight back -
-// cheaper than a confirmation prompt, and just as safe since nothing is
-// actually lost.
 const restoreDefaultOptions = () => {
-
     const previousOptions = buildLiveGridCustomiseOptions();
 
     setOptions(DEFAULT_OPTIONS);
@@ -196,11 +160,7 @@ const restoreDefaultOptions = () => {
     });
 };
 
-// Restores just the Phi Grid ratio to its default (1 : 0.618 : 1), leaving
-// every other option - including Phi Grid's own Enabled toggle - untouched,
-// unlike the page-wide Restore Defaults above.
 const restorePhiRatioDefaults = () => {
-
     const previousRatio = readPhiRatio();
 
     writePhiRatio(DEFAULT_OPTIONS.phiRatio);
@@ -214,7 +174,6 @@ const restorePhiRatioDefaults = () => {
 };
 
 function setOptions(options) {
-
     selectOption('overlay-style', options.overlayStyle);
     document.getElementById('render-grid').checked = options.renderGrid;
     document.getElementById('grid-rows').value = options.gridRows;
@@ -252,38 +211,16 @@ function setOptions(options) {
     selectOption('golden-ratio-start', options.goldenRatioStart);
     syncGoldenRatioThumbnailSelection();
     syncOverlayStyleVisibility();
-    // Depends on every field set above, since an accurate preview needs all
-    // of them (colours, opacity, style, both enabled toggles, and the photo
-    // toggle) - layoutGridCustomiseCanvases() sizes the canvases and then
-    // renders.
+
     layoutGridCustomiseCanvases();
 }
 
-// Line Options' Colour/Opacity/Width only ever affect anything while Grid
-// or Phi Grid is enabled - both draw with them (drawGridOverlay/
-// drawPhiGridOverlay only read them inside their own `if (linesEnabled)`
-// branch), so disabling them requires *neither* to be on, the same
-// "either section would use it" rule as GRID_DIMENSION_FIELD_IDS and
-// PHI_RATIO_INPUT_IDS below. Circle Options' Radius/Style/Colour/Opacity
-// are a simpler, single-section story. Disabling (and dimming, via the
-// `input:disabled`/`.quick-swatch:disabled` rules in style.css) a field
-// while nothing it affects is on makes that dependency visible instead of
-// leaving a fully-interactive control that silently does nothing - and,
-// since a disabled field is also skipped in the tab order, keeps keyboard
-// navigation from stopping on controls that currently do nothing.
 const LINE_OPTIONS_FIELD_IDS = ['line-colour', 'line-opacity', 'line-width'];
 const CIRCLE_ONLY_FIELD_IDS = ['circle-radius', 'circle-style-outline', 'circle-style-filled', 'circle-colour', 'circle-opacity'];
 
-// Rows/Columns are different: they position BOTH the grid lines (while
-// Grid is enabled) AND the circle intersections (while Circle Options is
-// enabled, independent of Grid - drawGridOverlay's circle loop reads
-// gridRows/gridColumns inside its own `if (options.renderCircle)` branch,
-// not gated on renderGrid at all). Only disable them once *neither*
-// section would use them.
 const GRID_DIMENSION_FIELD_IDS = ['grid-rows', 'grid-columns'];
 
 function syncDependentFieldsEnabled() {
-
     const gridEnabled = document.getElementById('render-grid').checked;
     const circleEnabled = document.getElementById('render-circle').checked;
     const phiGridEnabled = document.getElementById('render-phi-grid').checked;
@@ -291,31 +228,20 @@ function syncDependentFieldsEnabled() {
     setFieldsEnabled(GRID_DIMENSION_FIELD_IDS, gridEnabled || circleEnabled);
     setSectionFieldsEnabled(LINE_OPTIONS_FIELD_IDS, 'line-colour-quick', gridEnabled || phiGridEnabled);
     setSectionFieldsEnabled(CIRCLE_ONLY_FIELD_IDS, 'circle-colour-quick', circleEnabled);
-    // Like GRID_DIMENSION_FIELD_IDS above, the ratio positions BOTH Phi
-    // Grid's lines (while Phi Grid is enabled) AND the circle
-    // intersections (while Circle Options is enabled, independent of Phi
-    // Grid - drawWeightedGridOverlay's circle loop isn't gated on
-    // linesEnabled at all) - only disable it once *neither* section would
-    // use it.
+
     setFieldsEnabled(PHI_RATIO_INPUT_IDS, phiGridEnabled || circleEnabled);
 }
 
 function setFieldsEnabled(fieldIds, enabled) {
-
     fieldIds.forEach(id => { document.getElementById(id).disabled = !enabled; });
 }
 
 function setSectionFieldsEnabled(fieldIds, quickSwatchGroupId, enabled) {
-
     setFieldsEnabled(fieldIds, enabled);
     document.querySelectorAll('#' + quickSwatchGroupId + ' .quick-swatch').forEach(button => { button.disabled = !enabled; });
 }
 
-// Each thumbnail is a clickable preview of one direction/starting-point
-// combination - drawn once since they don't depend on saved options, only
-// on the fixed direction/start pair baked into their data attributes.
 function drawGoldenRatioThumbnails() {
-
     document.querySelectorAll('.golden-ratio-thumb').forEach(button => {
         const canvas = button.querySelector('canvas');
         const ctx = canvas.getContext('2d');
@@ -327,17 +253,7 @@ function drawGoldenRatioThumbnails() {
     });
 }
 
-// Highlights whichever thumbnail matches the current direction/starting-
-// point radios, whether they were just set by a thumbnail click, the
-// radios themselves, or arrow-key navigation (see
-// onGoldenRatioThumbKeyDown). The 8 thumbnails are a role="radiogroup" -
-// aria-checked carries the selected one to assistive tech (the
-// border-colour highlight alone is only visible), and only the selected
-// thumbnail keeps tabindex="0" (a "roving tabindex": Tab reaches the group
-// once, at whichever one is currently selected, same as a native radio
-// group - arrow keys move *within* it instead of Tab hopping to all 8).
 function syncGoldenRatioThumbnailSelection() {
-
     const direction = getSelectedOption('golden-ratio-direction');
     const start = getSelectedOption('golden-ratio-start');
 
@@ -351,14 +267,7 @@ function syncGoldenRatioThumbnailSelection() {
 
 const GOLDEN_RATIO_THUMB_NAVIGATION_KEYS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
 
-// Arrow-key navigation for the thumbnail radiogroup - "selection follows
-// focus", same as a native radio group: moving focus also selects and
-// saves immediately, with no separate Enter/Space needed (unlike the
-// Customise Control canvas's Enter/Space-to-toggle, which is a different
-// pattern since that's independent per-line/circle toggles, not a single
-// mutually-exclusive choice).
 function onGoldenRatioThumbKeyDown(event) {
-
     if (!GOLDEN_RATIO_THUMB_NAVIGATION_KEYS.includes(event.key)) {
         return;
     }
@@ -393,15 +302,7 @@ function onGoldenRatioThumbKeyDown(event) {
     saveOptions();
 }
 
-// Every overlay style's settings are mutually exclusive - only the active
-// style's are shown, though all of them remain saved in storage so
-// switching back and forth doesn't lose any style's configuration. Each row
-// declares which style(s) it belongs to via data-overlay-styles (a
-// space-separated list, since eg Circle Options/Customise belong to both
-// Grid and Phi Grid) - adding another overlay style later just means
-// adding that value to whichever rows need it, not a new branch here.
 function syncOverlayStyleVisibility() {
-
     const overlayStyle = getSelectedOption('overlay-style');
 
     document.querySelectorAll('[data-overlay-styles]').forEach(row => {
@@ -412,18 +313,12 @@ function syncOverlayStyleVisibility() {
     syncGridPhiGridColumnWidths(overlayStyle);
 }
 
-// Phi Grid's own content (the Ratio row, its help text and "Restore
-// Golden Ratio" button) needs more room than Grid's plain Rows/Columns
-// fields, so the shared Grid/Circle Options row's column split widens for
-// it - Grid's own split is untouched. One more entry here, not a new
-// branch, if a future weighted-grid style needs its own split too.
 const GRID_PHI_GRID_COLUMN_WIDTHS = {
     grid: {left: 'm3', right: 'm9'},
     'phi-grid': {left: 'm4', right: 'm8'}
 };
 
 function syncGridPhiGridColumnWidths(overlayStyle) {
-
     const widths = GRID_PHI_GRID_COLUMN_WIDTHS[overlayStyle];
     if (!widths) {
         return;
@@ -440,18 +335,11 @@ function syncGridPhiGridColumnWidths(overlayStyle) {
     right.classList.add(widths.right);
 }
 
-// Shows the slider's current value as text (eg "75%"), since the native
-// range input has no built-in way to display its own numeric value.
 function updateOpacityLabel(opacityInputId) {
-
     document.getElementById(opacityInputId + '-value').textContent = document.getElementById(opacityInputId).value + '%';
 }
 
-// Highlights whichever quick-pick swatch matches the colour input's current
-// value (and un-highlights the rest), whether that value was just set via
-// a quick-pick click or the native picker landed on the same colour.
 function syncQuickPickSelection(colourInputId) {
-
     const value = document.getElementById(colourInputId).value;
     const quickGroup = document.getElementById(colourInputId + '-quick');
 
@@ -461,14 +349,10 @@ function syncQuickPickSelection(colourInputId) {
 }
 
 const TOAST_DISPLAY_MS = 2000;
-// An actionable toast (eg "Undo") stays up longer, so there's a realistic
-// chance to click it before it's gone.
+
 const TOAST_ACTION_DISPLAY_MS = 6000;
 
-// `action`, if given, is {label, onClick} - eg restoreDefaultOptions's
-// Undo button.
 function showToast(message, action) {
-
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -476,9 +360,6 @@ function showToast(message, action) {
         document.body.appendChild(container);
     }
 
-    // Number spinners fire many rapid 'change' events, each triggering a
-    // save. Without this, every one of those saves would queue its own
-    // toast, flooding the page with "Options saved." notifications.
     container.replaceChildren();
 
     const toast = document.createElement('div');
@@ -515,11 +396,7 @@ function showToast(message, action) {
     dismissTimeoutId = setTimeout(dismiss, action ? TOAST_ACTION_DISPLAY_MS : TOAST_DISPLAY_MS);
 }
 
-// Reads a number input, clamping it to `min` and falling back to `fallback`
-// when the field is blank or not a number, then reflects the corrected
-// value back into the field so the UI never shows an unsaved bad value.
 function parseValidInt(elementId, min, fallback, max) {
-
     const element = document.getElementById(elementId);
     const value = clampInt(element.value, min, fallback, max);
 
@@ -527,25 +404,12 @@ function parseValidInt(elementId, min, fallback, max) {
     return value;
 }
 
-// Pure clamping logic, split out from parseValidInt so it can be unit
-// tested without a DOM (see /test).
 function clampInt(value, min, fallback, max = Infinity) {
-
     const parsed = parseInt(value, 10);
     return Number.isNaN(parsed) ? fallback : Math.min(Math.max(parsed, min), max);
 }
 
-// Same contract as parseValidInt/clampInt, but for the Phi Grid ratio
-// fields - a decimal (eg 0.618), not a whole number, so parseInt would
-// truncate it to 0. `decimals`, if given, rounds the result (see
-// roundTo) - the field is left showing that rounded value, not whatever
-// extra precision was typed, unless `write` is false: a live-typing
-// preview (see the ratio fields' 'input' listener) reads the in-progress
-// value without correcting the field out from under the user mid-edit -
-// eg clamping a momentary "0" up to the minimum while they're still
-// typing "0.05" would stomp on what they're about to type next.
 function parseValidFloat(elementId, min, fallback, decimals, max, write = true) {
-
     const element = document.getElementById(elementId);
     const value = clampFloat(element.value, min, fallback, decimals, max);
 
@@ -556,7 +420,6 @@ function parseValidFloat(elementId, min, fallback, decimals, max, write = true) 
 }
 
 function clampFloat(value, min, fallback, decimals, max = Infinity) {
-
     const parsed = parseFloat(value);
     if (Number.isNaN(parsed)) {
         return fallback;
@@ -565,35 +428,20 @@ function clampFloat(value, min, fallback, decimals, max = Infinity) {
     return decimals === undefined ? clamped : roundTo(clamped, decimals);
 }
 
-// Rounds to at most `decimals` places without padding trailing zeros - eg
-// roundTo(1, 3) is 1, not 1.000, since the result is a plain number and
-// JS's own number-to-string conversion (assigning it to an <input>'s
-// .value, or String(...)) never adds them back.
 function roundTo(value, decimals) {
-
     const factor = 10 ** decimals;
     return Math.round(value * factor) / factor;
 }
 
-// Reads/writes the three Phi Grid ratio fields as one array, in the same
-// order they're declared in options.html (outer, middle, outer). `write`
-// is passed straight through to parseValidFloat - see its comment.
 function readPhiRatio(write = true) {
-
     return PHI_RATIO_INPUT_IDS.map((id, index) => parseValidFloat(id, MIN_PHI_RATIO, DEFAULT_OPTIONS.phiRatio[index], PHI_RATIO_DECIMALS, MAX_PHI_RATIO, write));
 }
 
 function writePhiRatio(ratio) {
-
     PHI_RATIO_INPUT_IDS.forEach((id, index) => { document.getElementById(id).value = roundTo(ratio[index], PHI_RATIO_DECIMALS); });
 }
 
-// Defensively matches a line-state array to the current line count (eg
-// when loading a value saved before Rows/Columns last changed elsewhere) -
-// NOT used when the user edits Rows/Columns themselves, since that always
-// resets every line back to enabled instead (see resetLineStates).
 function resizeLineStates(states, count) {
-
     const result = (Array.isArray(states) ? states : []).slice(0, count);
     while (result.length < count) {
         result.push(true);
@@ -601,19 +449,11 @@ function resizeLineStates(states, count) {
     return result;
 }
 
-// Every line defaults back to enabled whenever Rows/Columns itself changes,
-// since resizing the grid shifts each line's position - keeping an old
-// disabled flag at the same index would silently apply it to a different
-// line instead.
 function resetLineStates(count) {
-
     return new Array(count).fill(true);
 }
 
-// 2D equivalents of resizeLineStates/resetLineStates, for the per-intersection
-// circle toggles - each row is just a line-state array in its own right.
 function resizeCircleStates(states, rowCount, columnCount) {
-
     const result = [];
     for (let ii = 0; ii < rowCount; ii++) {
         result.push(resizeLineStates(Array.isArray(states) ? states[ii] : undefined, columnCount));
@@ -622,7 +462,6 @@ function resizeCircleStates(states, rowCount, columnCount) {
 }
 
 function resetCircleStates(rowCount, columnCount) {
-
     const result = [];
     for (let ii = 0; ii < rowCount; ii++) {
         result.push(resetLineStates(columnCount));
@@ -630,21 +469,9 @@ function resetCircleStates(rowCount, columnCount) {
     return result;
 }
 
-// Blended most of the way back to white so the preview background stays a
-// light backdrop (rather than the harsh, sometimes near-black result of a
-// straight XOR/complement) whatever colours the user has actually picked -
-// eg white lines on a white background would otherwise be invisible.
 const GRID_CUSTOMISE_BACKGROUND_WHITE_BLEND = 0.75;
 
-// A background derived from the configured colours (average, then
-// inverted to get a contrasting complement) so the preview stays
-// visible without needing a colour picker of its own. Only colours that are
-// actually enabled feed into it - a disabled line/circle's colour never
-// renders anywhere, so it shouldn't be able to tint the background either.
-// With neither enabled there's nothing on the canvas to contrast with, so
-// it just falls back to plain white.
 function computePreviewBackground(lineColour, circleColour, renderGrid, renderCircle) {
-
     const activeColours = [];
     if (renderGrid) {
         activeColours.push(parseHexColour(lineColour));
@@ -668,7 +495,6 @@ function computePreviewBackground(lineColour, circleColour, renderGrid, renderCi
 }
 
 function parseHexColour(hex) {
-
     return {
         r: parseInt(hex.substring(1, 3), 16),
         g: parseInt(hex.substring(3, 5), 16),
@@ -676,15 +502,7 @@ function parseHexColour(hex) {
     };
 }
 
-// The full set of "live" (not-yet-saved) options, read straight from the
-// form plus the customise-only line/circle states - a superset covering
-// every overlay style's own fields (Grid's, Phi Grid's, and the ones they
-// share), so it can be handed to whichever style's draw function is
-// currently active without the caller needing to build a different shape
-// per style. `write`, passed straight through to readPhiRatio, is false
-// only for the ratio fields' live-typing preview (see renderGridCustomisePreview).
 function buildLiveGridCustomiseOptions(write = true) {
-
     return {
         renderGrid: document.getElementById('render-grid').checked,
         gridRows: clampInt(document.getElementById('grid-rows').value, MIN_GRID_LINES, DEFAULT_OPTIONS.gridRows, MAX_GRID_LINES),
@@ -709,15 +527,7 @@ function buildLiveGridCustomiseOptions(write = true) {
     };
 }
 
-// Grid and Phi Grid are both "weighted grid" overlay styles: same circles/
-// Customise machinery, just different row/column weights and their own
-// independent line/circle visibility (see the module state above). Every
-// Customise function goes through this instead of checking the overlay
-// style itself, so adding a third weighted-grid style later means adding
-// one more entry here, not a new branch scattered through rendering,
-// hit-testing and keyboard navigation.
 function weightedGridStyles(liveOptions) {
-
     return {
         grid: {
             rowWeights: new Array(liveOptions.gridRows).fill(1),
@@ -740,21 +550,11 @@ function weightedGridStyles(liveOptions) {
     };
 }
 
-// Only meaningful while a weighted-grid style (Grid or Phi Grid) is active -
-// the Customise Control canvas is hidden (and unfocusable/unclickable) for
-// any other style, so nothing calls this while eg Fibonacci Spiral is
-// selected.
 function currentWeightedGridStyle(liveOptions) {
-
     return weightedGridStyles(liveOptions)[getSelectedOption('overlay-style')];
 }
 
-// The generic "shape" every Customise function (renderGridCustomiseReference/
-// findGridCustomiseTarget/listGridCustomiseTargets/drawGridCustomiseFocus)
-// operates on, resolved for whichever weighted-grid style is currently
-// active.
 function currentCustomiseShape(liveOptions) {
-
     const style = currentWeightedGridStyle(liveOptions);
 
     return {
@@ -769,13 +569,7 @@ function currentCustomiseShape(liveOptions) {
     };
 }
 
-// Local duplicate of grid-render.js's weight math (see its own comments for
-// the rationale) - kept self-contained, like every other file in this
-// extension, so these stay directly unit-testable via a plain
-// `require('../WebContent/options/options.js')` without also needing
-// grid-render.js's browser-global side of things.
 function weightedLinePositions(weights) {
-
     const total = weights.reduce((sum, weight) => sum + weight, 0);
     const positions = [];
     let cumulative = 0;
@@ -787,29 +581,21 @@ function weightedLinePositions(weights) {
 }
 
 function smallestWeightedBand(weights) {
-
     const total = weights.reduce((sum, weight) => sum + weight, 0);
     return Math.min(...weights) / total;
 }
 
-// The greyscale photo used as an optional Preview background - loaded once
-// and reused on every redraw. Falls back to the plain computed background
-// colour until it's finished loading (or if it's switched off/fails).
 const PREVIEW_PHOTO_SRC = 'preview-background.webp';
 let previewPhotoImage = null;
 let previewPhotoLoaded = false;
 
 function loadPreviewPhoto() {
-
     const image = new Image();
     image.onload = () => {
         previewPhotoLoaded = true;
         renderGridCustomisePreview();
     };
-    // previewPhotoLoaded simply never becomes true on failure, so the
-    // preview already falls back to a plain colour fill (see
-    // drawPreviewBackground) - this is just so a failure is discoverable
-    // in devtools instead of silently leaving the toggle looking broken.
+
     image.onerror = () => {
         console.warn('Rule of Thirds: failed to load the Customise preview background photo (' + PREVIEW_PHOTO_SRC + ')');
     };
@@ -817,13 +603,7 @@ function loadPreviewPhoto() {
     previewPhotoImage = image;
 }
 
-// Fills the Preview canvas's background: either the plain computed colour,
-// or (when enabled and loaded) that same colour multiplied over the
-// greyscale photo, which tints it to match without needing a colour picker
-// of its own - white areas of the photo take the full computed colour,
-// black areas stay black, since multiply can only ever darken.
 function drawPreviewBackground(ctx, w, h, options, image) {
-
     const backgroundColour = computePreviewBackground(options.lineColour, options.circleColour, options.renderGrid, options.renderCircle);
 
     if (options.previewBackgroundImage && image) {
@@ -838,34 +618,13 @@ function drawPreviewBackground(ctx, w, h, options, image) {
     }
 }
 
-// Redraws both "Customise" canvases - called whenever anything they depend
-// on changes (on load, on a form change, or on a click in the control
-// canvas).
-//
-// "Preview" is a faithful, accurate-colour render: a hidden line or circle
-// is simply never drawn, exactly like the real overlay - it gives no clue
-// by itself that it could be turned back on, and isn't interactive.
-// "Control" exists purely to supply that clue (and the interactivity): a
-// fixed white/black/grey reference map, drawn the same way regardless of
-// the user's actual colours, so there's always an obvious, unambiguous spot
-// to click.
 function renderGridCustomisePreview(write = true) {
-
     const liveOptions = buildLiveGridCustomiseOptions(write);
     const style = currentWeightedGridStyle(liveOptions);
     if (!style) {
-        // Customise (the Preview/Hide-Show canvases) only applies to
-        // weighted-grid styles (Grid, Phi Grid) - its whole row is hidden
-        // for any other style (eg Fibonacci Spiral, which has no per-line
-        // state for currentWeightedGridStyle to resolve), so there's
-        // nothing to draw.
         return;
     }
 
-    // setTransform() (not scale()) since this function redraws the same
-    // two persistent canvases repeatedly over the page's lifetime -
-    // scale() would compound on every call instead of just re-applying
-    // the same devicePixelRatio each time.
     const dpr = window.devicePixelRatio || 1;
 
     const previewCanvas = document.getElementById('grid-customise-preview');
@@ -898,37 +657,19 @@ function renderGridCustomisePreview(write = true) {
     }
 }
 
-// "Control" is a fixed 200x200 square, kept side by side with "Preview" -
-// which then claims whatever width is left in the row, up to its native
-// photo resolution (1080 wide) so it's never upscaled blurry. Both canvases
-// get their width/height *attributes* (not just CSS) set to match, so the
-// actual pixel backing store stays crisp as the window resizes rather than
-// being CSS-stretched. Re-run on load and on every resize of the row
-// itself (see the ResizeObserver setup below).
 const CONTROL_SIZE = 200;
 const PREVIEW_MAX_WIDTH = 1080;
 const PREVIEW_ASPECT_RATIO = 240 / 360;
 
-// A small buffer subtracted from the row budget below, so the two widths
-// never sum to *exactly* the row's available width - which is fragile to
-// the sub-pixel rounding clientWidth/getComputedStyle can introduce, and
-// would wrap Control onto its own line despite technically fitting.
 const LAYOUT_SAFETY_MARGIN = 4;
 
-// Below this, sharing the row with Control's fixed 200px would squeeze
-// Preview into a barely-useful sliver well before anything looks visually
-// "broken" - stack Control above Preview instead once side-by-side would
-// leave Preview narrower than this.
 const MIN_SIDE_BY_SIDE_PREVIEW_WIDTH = 200;
 
 function layoutGridCustomiseCanvases() {
-
     const col = document.getElementById('grid-customise-col');
     const colStyle = getComputedStyle(col);
     const gap = parseFloat(colStyle.columnGap) || 0;
-    // clientWidth includes this element's own left/right padding (it's a
-    // ".col", which has some) - that padding isn't space available to lay
-    // the two canvases out in, so it has to come off too.
+
     const paddingX = parseFloat(colStyle.paddingLeft) + parseFloat(colStyle.paddingRight);
     const availableWidth = col.clientWidth - paddingX;
 
@@ -942,13 +683,6 @@ function layoutGridCustomiseCanvases() {
     setCanvasSize('grid-customise-preview', previewWidth, previewHeight);
     setCanvasSize('grid-customise-control', CONTROL_SIZE, CONTROL_SIZE);
 
-    // Both panels start at the same top edge (see .grid-customise-col's
-    // align-items:flex-start) - nudge Control's panel down by half the
-    // height difference so its canvas lands centred against Preview's,
-    // which CSS alone can't do now Preview's own panel is taller (it has
-    // the photo toggle under its canvas that Control's doesn't). Not
-    // needed when stacked - they're no longer side by side, so there's no
-    // vertical alignment between them to correct for.
     const controlPanel = document.getElementById('grid-customise-control').closest('.grid-customise-panel');
     controlPanel.style.marginTop = stacked ? '' : Math.max(0, (previewHeight - CONTROL_SIZE) / 2) + 'px';
 
@@ -956,31 +690,17 @@ function layoutGridCustomiseCanvases() {
 }
 
 function setCanvasSize(canvasId, width, height) {
-
     const canvas = document.getElementById(canvasId);
     const dpr = window.devicePixelRatio || 1;
 
-    // Backing store at devicePixelRatio for a crisp result on HiDPI/zoomed
-    // displays - width/height stay the logical size everywhere else (see
-    // getCanvasLogicalSize(), read back from style.width/height below,
-    // since canvas.width/height themselves are now the scaled-up backing
-    // store, not something render code should compute against directly).
     canvas.width = width * dpr;
     canvas.height = height * dpr;
-    // Without an explicit CSS size, a canvas's box is its bitmap resolution
-    // *plus* its border on top (border-box only reinterprets an explicit
-    // width/height, and there isn't one here otherwise) - enough to tip the
-    // row a few pixels over budget and wrap when the numbers are meant to
-    // add up exactly. Setting these too keeps the border inside the box.
+
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
 }
 
-// Recovers the logical (CSS-pixel) size set by setCanvasSize() - needed
-// since canvas.width/height are now the devicePixelRatio-scaled backing
-// store, not the size any drawing code should actually compute against.
 function getCanvasLogicalSize(canvas) {
-
     return {
         width: parseInt(canvas.style.width, 10),
         height: parseInt(canvas.style.height, 10)
@@ -988,20 +708,10 @@ function getCanvasLogicalSize(canvas) {
 }
 
 const GRID_CUSTOMISE_REFERENCE_ENABLED_COLOUR = '#000000';
-// #b0b0b0 on white was only ~2.2:1 contrast, under WCAG 1.4.11's 3:1
-// minimum for this UI component - #787878 gets ~4.4:1, comfortably clear
-// of it, while staying visibly lighter than the enabled colour.
+
 const GRID_CUSTOMISE_REFERENCE_DISABLED_COLOUR = '#787878';
 
-// Draws every line/circle position a weighted-grid `shape` (see
-// currentCustomiseShape) could have, in black when it's enabled and grey
-// when it's not - a permanently legible map of what's clickable,
-// independent of whatever colours the user has actually chosen. A
-// line/circle whose axis is disabled overall (linesEnabled/circlesEnabled)
-// is left off entirely, same as the real preview: there's nothing to
-// un-hide if the master toggle for it is off.
 function renderGridCustomiseReference(ctx, w, h, shape) {
-
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
     ctx.lineWidth = 1;
@@ -1056,15 +766,7 @@ function renderGridCustomiseReference(ctx, w, h, shape) {
 const GRID_CUSTOMISE_LINE_HIT_TOLERANCE = 8;
 const GRID_CUSTOMISE_CIRCLE_HIT_TOLERANCE = 10;
 
-// Pure hit-testing so it can be unit tested without a canvas/DOM: given a
-// click position (in the preview's own pixel coordinates), decides which
-// line or circle - if any - the click was meant for. Circles are checked
-// first since they sit on top of a line intersection; a circle is only ever
-// a target when both of its lines are enabled, since that's the only time
-// it's eligible to be drawn (or ghosted) at all - matching
-// renderGridCustomiseReference/drawWeightedGridOverlay's own rule.
 function findGridCustomiseTarget(x, y, w, h, shape) {
-
     const rowPositions = weightedLinePositions(shape.rowWeights);
     const columnPositions = weightedLinePositions(shape.columnWeights);
 
@@ -1104,13 +806,7 @@ function findGridCustomiseTarget(x, y, w, h, shape) {
     return null;
 }
 
-// Enumerates every line/circle the Control canvas can currently toggle, in
-// the same reading order (rows, then columns, then circles) and the same
-// eligibility rules as findGridCustomiseTarget (a circle only counts once
-// both of its crossing lines are enabled) - drives keyboard navigation,
-// since a canvas has no DOM children of its own to tab between.
 function listGridCustomiseTargets(shape) {
-
     const targets = [];
 
     if (shape.linesEnabled) {
@@ -1143,14 +839,7 @@ function listGridCustomiseTargets(shape) {
     return targets;
 }
 
-// Shared by the click handler and the keyboard Enter/Space handler - the
-// same toggle findGridCustomiseTarget's and listGridCustomiseTargets'
-// results both feed into. Mutates whichever style's state arrays are
-// currently active (see currentWeightedGridStyle) in place, rather than
-// hardcoding Grid's, so this keeps working unmodified as more weighted-grid
-// styles are added.
 function toggleGridCustomiseTarget(target, rowLineStates, columnLineStates, circleLineStates) {
-
     if (target.type === 'row') {
         rowLineStates[target.index] = !rowLineStates[target.index];
     } else if (target.type === 'column') {
@@ -1160,25 +849,13 @@ function toggleGridCustomiseTarget(target, rowLineStates, columnLineStates, circ
     }
 }
 
-const GRID_CUSTOMISE_FOCUS_COLOUR = '#26a69a'; // matches --color-primary in css/style.css
-// Same colour as GRID_CUSTOMISE_FOCUS_COLOUR (#26a69a = rgb(38, 166, 154)),
-// translucent - canvas fillStyle has no separate opacity property, so the
-// alpha has to be baked into the colour string itself.
+const GRID_CUSTOMISE_FOCUS_COLOUR = '#26a69a';
+
 const GRID_CUSTOMISE_FOCUS_BAND_FILL = 'rgba(38, 166, 154, 0.35)';
-// A fixed pixel margin either side of the line, not sized off the cell
-// itself (eg via smallestWeightedBand) - that made the band grow to fill
-// most of the cell on a plain 3x3 grid, well past what's needed just to
-// show which line has focus.
+
 const GRID_CUSTOMISE_FOCUS_BAND_MARGIN = 15;
 
-// Draws the Control canvas's only visible focus indicator - a canvas gets
-// no native browser focus ring of its own the way a real form control
-// would. A row/column line gets a translucent band a fixed few pixels
-// either side of it, rather than being painted over directly, so its own
-// black/grey shown-hidden colour stays visible through the tint; a circle
-// gets a ring drawn around it instead of over it, for the same reason.
 function drawGridCustomiseFocus(ctx, w, h, shape, target) {
-
     if (!target) {
         return;
     }
@@ -1215,11 +892,7 @@ function drawGridCustomiseFocus(ctx, w, h, shape, target) {
     }
 }
 
-// Converts a mouse event's page position into the canvas's own pixel
-// coordinates. Scales by canvas-pixels-per-CSS-pixel defensively, though
-// the two match 1:1 today.
 function gridCustomiseEventPosition(event) {
-
     const canvas = event.currentTarget;
     const rect = canvas.getBoundingClientRect();
 
@@ -1229,12 +902,7 @@ function gridCustomiseEventPosition(event) {
     };
 }
 
-// Only "Control" is interactive - "Preview" is purely informational, since
-// a hidden circle draws nothing there for the user to aim at (see
-// onGridCustomiseHover for the pointer feedback that keeps Control itself
-// unambiguous to click).
 function onGridCustomiseClick(event) {
-
     const canvas = event.currentTarget;
     const {x, y} = gridCustomiseEventPosition(event);
     const liveOptions = buildLiveGridCustomiseOptions();
@@ -1248,9 +916,6 @@ function onGridCustomiseClick(event) {
 
     toggleGridCustomiseTarget(target, style.rowLineStates, style.columnLineStates, style.circleLineStates);
 
-    // Keeps keyboard focus in step with the mouse, so switching to the
-    // keyboard afterwards continues from the line/circle just clicked
-    // rather than wherever the focus ring last was.
     const targets = listGridCustomiseTargets(currentCustomiseShape(buildLiveGridCustomiseOptions()));
     const clickedIndex = targets.findIndex(candidate =>
         candidate.type === target.type && candidate.index === target.index &&
@@ -1263,15 +928,11 @@ function onGridCustomiseClick(event) {
     saveOptions();
 }
 
-// Index into listGridCustomiseTargets() of the line/circle keyboard focus
-// currently sits on - clamped defensively wherever it's read, since Rows/
-// Columns can change the target list's length at any time.
 let customiseFocusIndex = 0;
 
 const GRID_CUSTOMISE_NAVIGATION_KEYS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End', 'Enter', ' '];
 
 function onGridCustomiseKeyDown(event) {
-
     if (!GRID_CUSTOMISE_NAVIGATION_KEYS.includes(event.key)) {
         return;
     }
@@ -1311,22 +972,14 @@ function onGridCustomiseKeyDown(event) {
     announceGridCustomiseFocus(listGridCustomiseTargets(currentCustomiseShape(buildLiveGridCustomiseOptions()))[customiseFocusIndex]);
 }
 
-// The Control canvas has no DOM children a screen reader can read, so its
-// current keyboard-selected line/circle - and whether toggling it would
-// show or hide it - is announced through this live region instead.
 function announceGridCustomiseFocus(target) {
-
     const liveRegion = document.getElementById('grid-customise-status');
     if (liveRegion && target) {
         liveRegion.textContent = target.label + ': ' + (target.enabled ? 'shown' : 'hidden') + '. Press Enter or Space to toggle.';
     }
 }
 
-// Switches the cursor to a pointer only while actually hovering a line or
-// circle, so the canvas doesn't look uniformly clickable when most of it
-// isn't a valid target.
 function onGridCustomiseHover(event) {
-
     const canvas = event.currentTarget;
     const {x, y} = gridCustomiseEventPosition(event);
 
@@ -1334,17 +987,11 @@ function onGridCustomiseHover(event) {
     canvas.style.cursor = target ? 'pointer' : 'default';
 }
 
-// A 1x1 grid draws no lines in either direction, so once one dimension is 1,
-// the other dimension's floor rises to 2.
 function minGridLines(otherDimensionValue) {
-
     return otherDimensionValue === 1 ? 2 : MIN_GRID_LINES;
 }
 
-// Only the field actively being edited gets the raised minimum - the other
-// field was already valid before this edit, so its own minimum stays put.
 function computeGridLineMinimums(currentGridRows, currentGridColumns, changedElementId) {
-
     return {
         gridRowsMin: changedElementId === 'grid-rows' ? minGridLines(currentGridColumns) : MIN_GRID_LINES,
         gridColumnsMin: changedElementId === 'grid-columns' ? minGridLines(currentGridRows) : MIN_GRID_LINES
@@ -1352,7 +999,6 @@ function computeGridLineMinimums(currentGridRows, currentGridColumns, changedEle
 }
 
 function selectOption(elementName, value) {
-
     document.getElementsByName(elementName).forEach(element => {
         if (element.value === value) {
             element.checked = true;
@@ -1360,24 +1006,15 @@ function selectOption(elementName, value) {
     });
 }
 
-// Falls back rather than throwing when nothing in the group is checked yet
-// - the static HTML marks no radio `checked` by default, so this can
-// briefly be true if a render is triggered (eg by the background photo's
-// `onload`, or ResizeObserver's own first callback) before
-// chrome.storage.sync.get resolves and setOptions() has run.
 function getSelectedOption(elementName, fallback) {
-
     const checked = document.querySelector('input[name="' + elementName + '"]:checked');
     return checked ? checked.value : fallback;
 }
 
-// Guards Node (used by /test) where there's no page to attach to.
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', loadOptions);
     document.querySelectorAll('input').forEach(input => input.addEventListener('change', saveOptions));
 
-    // 'input' (not just 'change') so the selection ring tracks the native
-    // colour picker live, in case it's dragged onto a quick-pick colour.
     document.getElementById('line-colour').addEventListener('input', () => syncQuickPickSelection('line-colour'));
     document.getElementById('circle-colour').addEventListener('input', () => syncQuickPickSelection('circle-colour'));
 
@@ -1385,18 +1022,6 @@ if (typeof document !== 'undefined') {
     document.getElementById('circle-opacity').addEventListener('input', () => updateOpacityLabel('circle-opacity'));
     document.getElementById('resize-mask-opacity').addEventListener('input', () => updateOpacityLabel('resize-mask-opacity'));
 
-    // Live-updates the ratio as it's typed, not just once the field is
-    // committed (blur/Enter) - debounced so a burst of keystrokes (or the
-    // native number input's up/down arrow keys, held down) triggers one
-    // update shortly after typing pauses, not one per keystroke. Writes
-    // just the phiRatio key to chrome.storage.sync (a merge, not a full
-    // options save - every other key is left untouched) so the real
-    // overlay on any other tab picks it up via the same storage.onChanged
-    // listener content.js already reacts to for a saved change, for
-    // side-by-side editing with the page the overlay's actually on.
-    // write:false throughout (see renderGridCustomisePreview/readPhiRatio)
-    // so this never clamps-and-rewrites the field mid-edit - only
-    // saveOptions (on 'change') does that, once typing is actually done.
     let phiRatioPreviewTimeoutId;
     document.querySelectorAll('.phi-ratio-row input').forEach(input => input.addEventListener('input', () => {
         clearTimeout(phiRatioPreviewTimeoutId);
@@ -1420,8 +1045,7 @@ if (typeof document !== 'undefined') {
         renderGridCustomisePreview();
         announceGridCustomiseFocus(targets[customiseFocusIndex]);
     });
-    // Re-renders on blur too, purely to erase the focus ring - it has no
-    // reason to still show once keyboard focus has left the canvas.
+
     gridCustomiseControl.addEventListener('blur', () => renderGridCustomisePreview());
 
     document.querySelectorAll('.quick-swatch').forEach(swatch => swatch.addEventListener('click', () => {
@@ -1436,9 +1060,6 @@ if (typeof document !== 'undefined') {
 
     loadPreviewPhoto();
 
-    // ResizeObserver rather than a plain window 'resize' listener, since
-    // what actually matters is the row's own width - which can also change
-    // from things a window resize wouldn't catch (eg a scrollbar appearing).
     new ResizeObserver(() => layoutGridCustomiseCanvases()).observe(document.getElementById('grid-customise-col'));
 
     document.querySelectorAll('input[name="overlay-style"]').forEach(input => input.addEventListener('change', syncOverlayStyleVisibility));
