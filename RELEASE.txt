@@ -26,6 +26,8 @@ SUPPORT
 History
 ------------------------------------------------------------------------------------------------------------------------
 
+UNRELEASED
+
 v1.9.1 - 18 October 2026
 * Fixed right-click menu options not reliably being enabled when they should be
 
